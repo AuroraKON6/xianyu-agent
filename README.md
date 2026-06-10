@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Architecture-Multi--Agent-orange" />
-  <img src="https://img.shields.io/badge/LLM-MiMo%20v2.5%20Pro-blue" />
+  <img src="https://img.shields.io/badge/LLM-Multi--Model%20Support-blue" />
   <img src="https://img.shields.io/badge/LLM-DeepSeek%20V4-green" />
   <img src="https://img.shields.io/badge/Platform-Xianyu/Goofish-yellow" />
   <img src="https://img.shields.io/badge/Integration-OpenClaw-purple" />
@@ -20,7 +20,7 @@
 
 ## 🚀 What Is This?
 
-XiānYu Agent is an **AI-powered autonomous e-commerce platform** that orchestrates multiple specialized AI agents to run a complete second-hand marketplace business. Built on the **OpenClaw multi-agent framework** with LLM backends (MiMo v2.5 Pro, DeepSeek V4), it handles the entire lifecycle:
+XiānYu Agent is an **AI-powered autonomous e-commerce platform** that orchestrates multiple specialized AI agents to run a complete second-hand marketplace business. Built on the **OpenClaw multi-agent framework** with pluggable LLM backends (DeepSeek, MiMo, Ollama, OpenAI-compatible), it handles the entire lifecycle:
 
 ```
 Product Discovery → Market Analysis → Pricing Strategy → Listing Creation
@@ -58,7 +58,7 @@ Product Discovery → Market Analysis → Pricing Strategy → Listing Creation
     │  ┌──────────┐ ┌──────────┐ ┌────────────────────┐  │
     │  │ LLM      │ │ Browser  │ │ Platform Guard     │  │
     │  │ Manager  │ │ Pool     │ │ (Anti-detection,   │  │
-    │  │ MiMo/    │ │ Playwright│  Rate limiting,     │  │
+    │  │ LLM      │ │ Playwright│  Rate limiting,     │  │
     │  │ DeepSeek │ │ CDP      │  CAPTCHA-aware)     │  │
     │  └──────────┘ └──────────┘ └────────────────────────┘│
     │  ┌──────────┐ ┌──────────┐ ┌──────────┐            │
@@ -109,7 +109,7 @@ Product Discovery → Market Analysis → Pricing Strategy → Listing Creation
 ## 🧰 Tech Stack
 
 - **Runtime**: Python 3.11+ with asyncio
-- **LLM Engines**: MiMo v2.5 Pro (Xiaomi), DeepSeek V4/V4 Flash
+- **LLM Engines**: Pluggable multi-model support (DeepSeek V4, MiMo, Ollama, any OpenAI-compatible API)
 - **Browser Automation**: Playwright + Chrome DevTools Protocol (CDP)
 - **API Framework**: FastAPI + Uvicorn
 - **Agent Framework**: OpenClaw Multi-Agent System
@@ -202,5 +202,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <p align="center">
   <b>Built with 🧠 by <a href="https://github.com/AuroraKON6">AuroraKON6</a></b><br/>
-  <sub>Powered by MiMo · DeepSeek · OpenClaw · Playwright</sub>
+  <sub>Powered by LLM · OpenClaw · Playwright</sub>
 </p>
