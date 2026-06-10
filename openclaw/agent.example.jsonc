@@ -1,0 +1,24 @@
+﻿{
+  // Example only: copy these ideas into your OpenClaw workspace config.
+  // Full manifest: E:/闲鱼/xianyu/openclaw/xianyu-commerce-agent.openclaw.yaml
+  // Keep the API key in environment variables, not in this file.
+  "agent": {
+    "name": "xianyu-commerce-agent",
+    "model": {
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "baseUrl": "https://api.deepseek.com"
+    },
+    "skills": [
+      "E:/闲鱼/xianyu/skills/xianyu-commerce-agent"
+    ],
+    "channels": {
+      "feishu": {
+        "enabled": true,
+        "webhook": "http://localhost:8788/feishu/events"
+      }
+    }
+  }
+}
+

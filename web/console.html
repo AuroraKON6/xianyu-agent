@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>闲鱼 OpenClaw 控制台</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/console/style.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="mark">闲</div>
+          <div>
+            <h1>闲鱼 OpenClaw</h1>
+            <p>OpenClaw · DeepSeek V4</p>
+          </div>
+        </div>
+        <nav class="nav">
+          <button class="nav-item active" data-template="上架：AI资料包，库存10，售价39，自动发货内容：https://example.com/card">上架</button>
+          <button class="nav-item" data-template="协作上架：蓝牙耳机，成本70，售价98，库存3，成色很新">协作上架</button>
+          <button class="nav-item" data-template="讨论：如何上架蓝牙耳机，成本70，售价98，库存3">讨论</button>
+          <button class="nav-item" data-template="比价：AI提示词资料包，源售价99，计划卖39，已有供应商转售授权">比价</button>
+          <button class="nav-item" data-template="crawl: https://example.com/product">URL</button>
+          <button class="nav-item" data-template="github: ai agent workflow automation">GitHub</button>
+          <button class="nav-item" data-template="记忆：以后虚拟商品文案更强调自动发货、低客服、授权证明">记忆</button>
+          <hr style="border: none; border-top: 1px solid #334155; margin: 8px 0;" />
+          <button class="nav-item" data-template="成本：500 售价：800 运费：50 类别：餐饮">货源评估</button>
+          <button class="nav-item" data-template="货源：不锈钢">原材料选品</button>
+          <button class="nav-item" data-template="上架策略：商用不锈钢操作台，餐饮类，成本500售价800">上架策略</button>
+          <button class="nav-item" data-template="售后：东西破损了">售后处理</button>
+        </nav>
+        <div class="status-list">
+          <div class="status-row"><span>服务</span><strong id="status-ok">检查中</strong></div>
+          <div class="status-row"><span>模型</span><strong id="status-model">-</strong></div>
+          <div class="status-row"><span>发布</span><strong id="status-adapter">-</strong></div>
+          <div class="status-row"><span>记忆</span><strong id="status-memory">-</strong></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2>OpenClaw 指令</h2>
+            <p id="guard-line">风控状态读取中</p>
+          </div>
+          <div class="top-actions">
+            <button id="refresh-btn" class="icon-btn" title="刷新状态">刷新</button>
+            <button id="polish-btn" class="icon-btn" title="立即擦亮">擦亮</button>
+            <button id="resume-btn" class="icon-btn" title="恢复风控暂停">恢复</button>
+          </div>
+        </header>
+
+        <section class="command-panel">
+          <textarea id="command-input" spellcheck="false">上架：测试商品，库存1，售价9.9，自动发货内容：https://example.com/test</textarea>
+          <div class="command-actions">
+            <label class="switch">
+              <input id="publish-toggle" type="checkbox" checked />
+              <span>允许提交到当前适配器</span>
+            </label>
+            <button id="send-btn" class="primary">发送给OpenClaw</button>
+          </div>
+        </section>
+
+        <section class="grid">
+          <article class="panel result-panel">
+            <div class="panel-head">
+              <h3>结果</h3>
+              <button id="copy-result" class="text-btn">复制JSON</button>
+            </div>
+            <div id="summary" class="summary">等待指令</div>
+            <pre id="result-json">{}</pre>
+          </article>
+
+          <article class="panel memory-panel">
+            <div class="panel-head">
+              <h3>记忆</h3>
+              <button id="save-memory" class="text-btn">保存</button>
+            </div>
+            <textarea id="memory-input" spellcheck="false" placeholder="写入新的偏好、选品规则、文案习惯"></textarea>
+            <div id="memory-list" class="memory-list"></div>
+          </article>
+
+          <article class="panel collaboration-panel">
+            <div class="panel-head">
+              <h3>协作记录</h3>
+              <button id="refresh-collaboration" class="text-btn">刷新</button>
+            </div>
+            <div id="collaboration-feed" class="collaboration-feed">暂无协作记录</div>
+          </article>
+
+          <article class="panel work-order-panel">
+            <div class="panel-head">
+              <h3>工作流任务单</h3>
+              <button id="refresh-work-orders" class="text-btn">刷新</button>
+            </div>
+            <div id="approval-count-badges" class="approval-count-badges"></div>
+            <div class="operations-filters">
+              <select id="work-order-filter-status">
+                <option value="">全部状态</option>
+              </select>
+              <select id="work-order-filter-kind">
+                <option value="">全部类型</option>
+              </select>
+              <select id="work-order-filter-owner">
+                <option value="">全部负责人</option>
+              </select>
+              <select id="work-order-filter-risk">
+                <option value="">全部风险</option>
+              </select>
+            </div>
+            <div id="work-order-feed" class="work-order-feed">暂无任务单</div>
+          </article>
+
+          <article class="panel execution-job-panel">
+            <div class="panel-head">
+              <h3>执行任务队列</h3>
+              <div class="top-actions">
+                <button id="run-next-jobs" class="text-btn">执行下一批</button>
+                <button id="run-pending-jobs" class="text-btn">执行全部可执行</button>
+                <button id="refresh-execution-jobs" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <div class="operations-filters">
+              <select id="execution-job-filter-status">
+                <option value="">全部执行状态</option>
+                <option value="queued">queued</option>
+                <option value="running">running</option>
+                <option value="completed">completed</option>
+                <option value="failed">failed</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </div>
+            <div id="execution-job-feed" class="execution-job-feed">暂无执行任务</div>
+          </article>
+
+          <article class="panel message-intake-panel">
+            <div class="panel-head">
+              <h3>消息入站</h3>
+              <div class="top-actions">
+                <button id="run-message-intake-dry-run" class="text-btn">Dry-run检查</button>
+                <button id="export-message-intake-bundle" class="text-btn">导出事件包</button>
+                <button id="prune-message-intake" class="text-btn">裁剪留存</button>
+                <button id="refresh-message-intake" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <div id="message-intake-metrics" class="approval-count-badges"></div>
+            <div id="message-intake-health" class="message-intake-health"></div>
+            <div id="message-intake-alerts" class="message-intake-alerts"></div>
+            <div id="message-intake-runbooks" class="message-intake-runbooks"></div>
+            <div id="message-intake-feed" class="message-intake-feed">暂无入站消息</div>
+          </article>
+
+          <article class="panel sourcing-panel">
+            <div class="panel-head">
+              <h3>实物货源评估</h3>
+              <div class="top-actions">
+                <button id="refresh-sourcing" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <form id="sourcing-form" class="resale-form">
+              <label>产品标题 *
+                <input name="title" required placeholder="商用不锈钢操作台" />
+              </label>
+              <label>类别 *
+                <select name="category" required>
+                  <option value="餐饮">餐饮</option>
+                  <option value="厨具">厨具</option>
+                  <option value="机械">机械</option>
+                  <option value="家具">家具</option>
+                  <option value="养殖">养殖</option>
+                  <option value="办公">办公</option>
+                  <option value="服装">服装</option>
+                  <option value="建材">建材</option>
+                  <option value="电子">电子</option>
+                </select>
+              </label>
+              <label>成本价 *
+                <input name="cost_price" type="number" step="0.01" min="0" required placeholder="500" />
+              </label>
+              <label>计划售价 *
+                <input name="resale_price" type="number" step="0.01" min="0" required placeholder="800" />
+              </label>
+              <label>运费
+                <input name="shipping_cost" type="number" step="0.01" min="0" value="0" placeholder="0" />
+              </label>
+              <label>发货地
+                <input name="shipping_origin" placeholder="河北廊坊" />
+              </label>
+              <div class="resale-form-actions">
+                <button type="submit" class="primary">评估利润</button>
+                <button type="button" id="sourcing-strategy-btn" class="text-btn">生成策略</button>
+              </div>
+            </form>
+            <div id="sourcing-result" class="resale-dashboard">填写表单后点击评估</div>
+          </article>
+
+          <article class="panel strategy-panel">
+            <div class="panel-head">
+              <h3>上架策略生成</h3>
+              <div class="top-actions">
+                <button id="refresh-strategy" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <div id="strategy-result" class="resale-dashboard">
+              <p>在左侧"货源评估"面板中填写产品信息并点击"生成策略"</p>
+              <p>系统将自动生成：</p>
+              <ul>
+                <li>低价引流方案（标价 = 实际售价 50%）</li>
+                <li>推荐发布城市（根据类别/发货地）</li>
+                <li>首图策略（场景图/堆积图/文字标签）</li>
+                <li>描述重点（标品看价格 / 非标看详情）</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="panel aftersales-panel">
+            <div class="panel-head">
+              <h3>售后工单</h3>
+              <div class="top-actions">
+                <button id="refresh-aftersales" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <div id="aftersales-stats" class="resale-dashboard">加载中...</div>
+            <form id="aftersales-form" class="resale-form">
+              <label>买家反馈 *
+                <textarea name="buyer_message" required placeholder="东西破损了，角上凹了一块" rows="3"></textarea>
+              </label>
+              <label>产品名称
+                <input name="product_title" placeholder="不锈钢操作台" />
+              </label>
+              <label>产品价格
+                <input name="product_price" type="number" step="0.01" min="0" placeholder="800" />
+              </label>
+              <label>产品大小
+                <select name="product_size">
+                  <option value="small">小件（&lt;20kg）</option>
+                  <option value="medium">中件（20-50kg）</option>
+                  <option value="large">大件（&gt;50kg）</option>
+                </select>
+              </label>
+              <div class="resale-form-actions">
+                <button type="submit" class="primary">生成回复</button>
+              </div>
+            </form>
+            <div id="aftersales-feed" class="resale-feed">暂无工单</div>
+          </article>
+
+          <article class="panel stealth-panel">
+            <div class="panel-head">
+              <h3>无痕发货话术</h3>
+              <div class="top-actions">
+                <button id="refresh-stealth" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <div id="stealth-templates" class="resale-dashboard">
+              <p>点击下方按钮查看各场景标准话术</p>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                <button class="text-btn stealth-scenario" data-scenario="order_note">下单备注</button>
+                <button class="text-btn stealth-scenario" data-scenario="buyer_pdd_logo">PDD logo</button>
+                <button class="text-btn stealth-scenario" data-scenario="buyer_pdd_card">好评卡</button>
+                <button class="text-btn stealth-scenario" data-scenario="buyer_pdd_sms">PDD短信</button>
+                <button class="text-btn stealth-scenario" data-scenario="factory_negotiation">厂家谈判</button>
+              </div>
+              <pre id="stealth-content" style="margin-top: 12px; white-space: pre-wrap; background: #1e293b; padding: 12px; border-radius: 8px;">选择上方场景查看话术</pre>
+            </div>
+          </article>
+
+          <article class="panel resale-panel">
+            <div class="panel-head">
+              <h3>倒卖机会验证</h3>
+              <div class="top-actions">
+                <button id="refresh-dashboard" class="text-btn">仪表盘</button>
+                <button id="refresh-resale" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <div id="resale-dashboard" class="resale-dashboard">加载中...</div>
+            <form id="resale-form" class="resale-form">
+              <label>商品标题 *
+                <input name="title" required placeholder="蓝牙耳机 TWS" />
+              </label>
+              <label>类目
+                <input name="category" placeholder="数码配件" />
+              </label>
+              <label>来源平台 *
+                <select name="source_platform" required>
+                  <option value="pdd">拼多多</option>
+                  <option value="1688">1688</option>
+                </select>
+              </label>
+              <label>销售平台
+                <select name="sales_platform">
+                  <option value="xianyu">闲鱼</option>
+                  <option value="shopee">Shopee</option>
+                  <option value="lazada">Lazada</option>
+                </select>
+              </label>
+              <label>市场范围
+                <select name="market_scope">
+                  <option value="domestic">国内</option>
+                  <option value="cross_border">跨境</option>
+                </select>
+              </label>
+              <label>供应商链接
+                <input name="source_url" placeholder="https://pdd.example.com/item/..." />
+              </label>
+              <label>供应商价格 *
+                <input name="supplier_price" type="number" step="0.01" min="0" required placeholder="25.00" />
+              </label>
+              <label>运费
+                <input name="supplier_shipping" type="number" step="0.01" min="0" value="0" placeholder="0" />
+              </label>
+              <label>目标售价 *
+                <input name="target_sale_price" type="number" step="0.01" min="0" required placeholder="59.00" />
+              </label>
+              <label>平台费率
+                <input name="platform_fee_rate" type="number" step="0.01" min="0" max="1" value="0.08" />
+              </label>
+              <label>退款损耗率
+                <input name="expected_refund_rate" type="number" step="0.01" min="0" max="1" value="0.02" />
+              </label>
+              <label>规格 (JSON)
+                <input name="specifications" placeholder='{"color":"black"}' />
+              </label>
+              <div class="resale-form-actions">
+                <button type="submit" class="primary">录入候选</button>
+              </div>
+            </form>
+            <div class="resale-filters">
+              <select id="resale-filter-scope">
+                <option value="">全部市场</option>
+                <option value="domestic">国内</option>
+                <option value="cross_border">跨境</option>
+              </select>
+              <select id="resale-filter-source">
+                <option value="">全部来源</option>
+                <option value="pdd">拼多多</option>
+                <option value="1688">1688</option>
+              </select>
+              <select id="resale-filter-status">
+                <option value="">全部状态</option>
+                <option value="evaluating">评估中</option>
+                <option value="approved">已通过</option>
+                <option value="blocked">已阻断</option>
+              </select>
+            </div>
+            <div id="resale-feed" class="resale-feed">暂无候选</div>
+          </article>
+          <article class="panel purchase-task-panel">
+            <div class="panel-header">
+              <h3>人工采购任务</h3>
+              <button id="refresh-purchase-tasks" class="text-btn">刷新</button>
+            </div>
+            <div id="purchase-task-feed" class="purchase-task-feed">暂无采购任务</div>
+          </article>
+          <article class="panel order-panel">
+            <div class="panel-header">
+              <h3>订单对账</h3>
+              <button id="refresh-orders" class="text-btn">刷新</button>
+            </div>
+            <div id="order-dashboard" class="order-dashboard">加载中...</div>
+            <div id="order-feed" class="order-feed">暂无订单</div>
+          </article>
+          <article class="panel opc-dashboard-panel">
+            <div class="panel-header">
+              <h3>OPC 仪表板</h3>
+              <div class="top-actions">
+                <button id="refresh-opc-dashboard" class="text-btn">刷新</button>
+                <button id="run-weekly-review" class="text-btn">生成周复盘</button>
+              </div>
+            </div>
+            <div id="opc-dashboard-content" class="resale-dashboard">加载中...</div>
+          </article>
+        </section>
+      </main>
+    </div>
+    <script src="/console/app.js"></script>
+  </body>
+</html>

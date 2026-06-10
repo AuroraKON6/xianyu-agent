@@ -1,0 +1,4 @@
+interface:
+  display_name: "Xianyu Commerce Agent"
+  short_description: "Xianyu listing, Feishu, crawling, guardrails, and opportunities."
+  default_prompt: "Use the local xianyu_agent workflow to create Xianyu listing drafts, crawl authorized URLs, evaluate virtual product resale opportunities, apply platform guardrails, publish through the configured adapter, fulfill digital orders, discover GitHub agent ideas, or run polish tasks."

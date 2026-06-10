@@ -1,0 +1,54 @@
+# === Secrets & Credentials ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# === Runtime Data ===
+data/
+test_data/
+*.pid
+*.lock
+
+# === Python ===
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# === Node ===
+node_modules/
+package-lock.json
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === Workbuddy / Copilot ===
+.workbuddy/
+codex openclaw/
+
+# === External Projects (not part of this repo) ===
+openclaw-control-center/
+
+# === OS ===
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# === Browser Profile ===
+browser_cookies.json
+
+# === Misc ===
+*.log
+.openclaw-gateway.pid
+.control-center.pid

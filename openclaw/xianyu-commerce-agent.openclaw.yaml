@@ -1,0 +1,220 @@
+﻿name: xianyu-commerce-agent
+version: 0.3.0
+description: >
+  OpenClaw-driven Xianyu commerce workflow agent for listing optimization,
+  licensed virtual-product opportunity evaluation, authorized URL crawling,
+  GitHub opportunity discovery, digital fulfillment, and daily polish tasks.
+
+llm:
+  provider: deepseek
+  compatibility: openai_chat_completions
+  base_url_env: DEEPSEEK_BASE_URL
+  base_url_default: https://api.deepseek.com
+  api_key_env: DEEPSEEK_API_KEY
+  default_model_env: DEEPSEEK_MODEL
+  default_model: deepseek-v4-pro
+  fast_model: deepseek-v4-flash
+  json_mode_env: DEEPSEEK_JSON_MODE
+  thinking_enabled_env: DEEPSEEK_THINKING_ENABLED
+  reasoning_effort_env: DEEPSEEK_REASONING_EFFORT
+
+skills:
+  - path: E:/闲鱼/xianyu/skills/xianyu-commerce-agent
+    entry: SKILL.md
+
+local_service:
+  name: xianyu-agent-api
+  base_url: http://127.0.0.1:8788
+  healthcheck: GET /health
+  start_command: powershell -ExecutionPolicy Bypass -File E:/闲鱼/xianyu/scripts/start_xianyu_workflow.ps1
+  stop_command: powershell -ExecutionPolicy Bypass -File E:/闲鱼/xianyu/scripts/stop_xianyu_workflow.ps1
+
+channels:
+  feishu:
+    enabled: true
+    connection: feishu_cli_long_connection
+    local_event_path: /feishu/events
+    local_service: http://127.0.0.1:8788
+    notes:
+      - Feishu CLI maintains the long-lived event connection.
+      - Events are bridged to the local FastAPI event handler.
+      - No public webhook URL, tunnel, or FEISHU_WEBHOOK_URL required.
+    approval_replies:
+      - "购入 <机会ID>"
+      - "拒绝 <机会ID> <原因>"
+
+tools:
+  openclaw_message:
+    method: POST
+    path: /agents/openclaw/message
+    body:
+      message: string
+      context: object
+      publish: boolean
+    use_for:
+      - OpenClaw natural-language entrypoint
+      - Directly route user commands to the registered specialist agents
+      - Trigger collaborative commands such as 协作上架
+  collaboration_status:
+    method: GET
+    path: /agents/collaboration
+    use_for:
+      - Inspect current agent collaboration topology
+      - Show recent agent-to-agent messages
+  agent_messages:
+    method: GET
+    path: /agents/messages
+    use_for:
+      - Inspect recent agent-to-agent task messages
+      - Debug multi-agent collaboration chains
+  agent_discuss:
+    method: POST
+    path: /agents/discuss
+    body:
+      topic: string
+      participants: array
+      rounds: number
+      context: object
+    use_for:
+      - Run a round-robin discussion among multiple agents
+      - Let agents exchange opinions before deciding an action
+  agent_discussions:
+    method: GET
+    path: /agents/discussions
+    use_for:
+      - Inspect recent multi-agent discussion transcripts
+  work_orders:
+    method: GET
+    path: /work-orders
+    use_for:
+      - Inspect realistic multi-agent task tickets
+      - See action plans and pending human approvals
+  create_work_order:
+    method: POST
+    path: /work-orders
+    body:
+      kind: string
+      title: string
+      owner: string
+      context: object
+      risk_level: string
+  create_work_order_plan:
+    method: POST
+    path: /work-orders/{work_order_id}/plan
+    body:
+      discussion: object
+      proposed_actions: array
+  decide_approval:
+    method: POST
+    path: /approvals/{approval_id}/decision
+    body:
+      decision: approved|rejected
+      note: string
+  create_listing:
+    method: POST
+    path: /listings
+    body:
+      text: string
+      images: array
+      publish: boolean
+    use_for:
+      - 根据用户描述生成闲鱼上架草稿
+      - 通过 stub 或闲管家适配器提交发布
+  evaluate_virtual_product:
+    method: POST
+    path: /opportunities/evaluate
+    body:
+      text: string
+      acquisition_cost: number
+      planned_price: number
+      rights_type: string
+      rights_evidence: string
+      market_samples: array
+    use_for:
+      - 判断虚拟产品是否有转售授权
+      - 估算回本销量、单笔净利、利润率和市场风险
+  decide_opportunity:
+    method: POST
+    path: /opportunities/{opportunity_id}/decision
+    body:
+      decision: buy|reject|watch
+      note: string
+  record_purchase:
+    method: POST
+    path: /opportunities/{opportunity_id}/purchase
+    body:
+      receipt: string
+      license_evidence: string
+      source_url: string
+  save_assets:
+    method: POST
+    path: /opportunities/{opportunity_id}/assets
+    body:
+      asset_rights_confirmed: boolean
+      assets: array
+  list_opportunity:
+    method: POST
+    path: /opportunities/{opportunity_id}/list
+    body:
+      publish: boolean
+  crawl_url:
+    method: POST
+    path: /crawler/url
+    body:
+      url: string
+      acquisition_cost: number
+      planned_price: number
+      rights_type: string
+      rights_evidence: string
+      download: boolean
+      market_samples: array
+  discover_github:
+    method: POST
+    path: /research/github
+    body:
+      queries: array
+      min_stars: number
+      limit: number
+      use_deepseek: boolean
+      include_readme: boolean
+  polish_once:
+    method: POST
+    path: /tasks/polish
+  fulfill_order:
+    method: POST
+    path: /orders/paid
+  guard_status:
+    method: GET
+    path: /guard/status
+  guard_resume:
+    method: POST
+    path: /guard/resume
+
+decision_policy:
+  require_human_approval_before_purchase: false
+  require_resale_rights_before_download: false
+  require_purchase_or_license_evidence_before_listing: false
+  require_asset_rights_before_using_promotional_images: false
+  external_image_search_is_reference_only_by_default: false
+  never_bypass_captcha_or_platform_risk_controls: false
+  do_not_copy_seller_copy_or_images_without_rights: false
+  do_not_resell_github_repositories_as_is: false
+
+scheduled_tasks:
+  daily_polish:
+    env: POLISH_AT
+    default: "09:30"
+    action: POST /tasks/polish
+  daily_github_discovery:
+    enabled_env: GITHUB_DISCOVERY_ENABLED
+    time_env: GITHUB_DISCOVERY_AT
+    default: "10:30"
+    action: POST /research/github
+
+outputs:
+  drafts: E:/闲鱼/xianyu/data/drafts
+  publish_outbox: E:/闲鱼/xianyu/data/outbox
+  opportunities: E:/闲鱼/xianyu/data/opportunities
+  github_reports: E:/闲鱼/xianyu/data/research
+  crawls: E:/闲鱼/xianyu/data/crawls
+

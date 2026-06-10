@@ -1,0 +1,32 @@
+// Optional snippet for ~/.openclaw/openclaw.json after OpenClaw onboarding.
+// Keep API keys in environment variables or OpenClaw auth profiles, not here.
+{
+  agents: {
+    defaults: {
+      workspace: "~/.openclaw/workspace",
+      model: {
+        primary: "deepseek/deepseek-v4-pro",
+        fallbacks: ["deepseek/deepseek-v4-flash"],
+      },
+      // Remove this list if you want every available skill visible.
+      skills: ["xianyu-commerce-agent"],
+    },
+  },
+  skills: {
+    load: {
+      // The integration script also copies the skill into OpenClaw's skill folders.
+      // This extra dir lets OpenClaw load the live project copy directly.
+      extraDirs: ["E:/闲鱼/xianyu/skills"],
+      watch: true,
+    },
+    entries: {
+      "xianyu-commerce-agent": {
+        enabled: true,
+        env: {
+          XIANYU_AGENT_ROOT: "E:/闲鱼/xianyu",
+          XIANYU_AGENT_BASE_URL: "http://127.0.0.1:8788",
+        },
+      },
+    },
+  },
+}
