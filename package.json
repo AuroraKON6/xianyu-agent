@@ -1,0 +1,12 @@
+{
+  "name": "xianyu-pi-operator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Project-local Pi agent runtime for the Xianyu commercial operations system.",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.84.2"
+  }
+}
