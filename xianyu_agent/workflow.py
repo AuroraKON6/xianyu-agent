@@ -151,6 +151,9 @@ class CommerceWorkflow:
     def browser_open_url(self, url: str, wait_seconds: float = 3.0) -> Dict[str, Any]:
         return self.browser.open_url(url, wait_seconds=wait_seconds)
 
+    def browser_open_account_login(self) -> Dict[str, Any]:
+        return self.browser.open_account_login()
+
     def discover_github_opportunities(
         self,
         queries: Optional[Iterable[str]] = None,

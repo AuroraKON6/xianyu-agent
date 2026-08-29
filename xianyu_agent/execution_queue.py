@@ -64,6 +64,8 @@ class ExecutionJobQueue:
             "next_retry_at": None,
             "result": None,
             "error": None,
+            "evidence": _default_evidence(),
+            "operator_next_action": "run_when_ready",
             "created_at": now,
             "updated_at": now,
             "started_at": None,
@@ -121,6 +123,7 @@ class ExecutionJobQueue:
         job["error"] = None
         job["result"] = None
         job["next_retry_at"] = None
+        job["operator_next_action"] = "run_when_ready"
         job["updated_at"] = time.time()
         self._save()
         return _copy(job)
@@ -139,6 +142,55 @@ class ExecutionJobQueue:
         job["status"] = "cancelled"
         job["updated_at"] = time.time()
         job["finished_at"] = time.time()
+        self._save()
+        return _copy(job)
+
+    def quarantine_jobs_for_work_orders(
+        self,
+        work_order_ids: List[str],
+        reason: str = "unassigned_work_quarantined",
+    ) -> Dict[str, Any]:
+        """Cancel non-running jobs for explicitly quarantined work orders."""
+        selected = {str(item or "").strip() for item in work_order_ids if str(item or "").strip()}
+        matched = [job for job in self._jobs.values() if str(job.get("work_order_id") or "") in selected]
+        blocked = [
+            str(job.get("job_id") or "")
+            for job in matched
+            if str(job.get("status") or "") in {"running", "completed"}
+        ]
+        if blocked:
+            return {"ok": False, "cancelled": 0, "job_ids": [], "blocked_job_ids": blocked}
+
+        now = time.time()
+        cancelled = []
+        for job in matched:
+            if str(job.get("status") or "") not in {"queued", "failed"}:
+                continue
+            job["status"] = "cancelled"
+            job["cancellation_reason"] = str(reason or "unassigned_work_quarantined")
+            job["operator_next_action"] = "none"
+            job["updated_at"] = now
+            job["finished_at"] = now
+            cancelled.append(str(job.get("job_id") or ""))
+        if cancelled:
+            self._save()
+        return {"ok": True, "cancelled": len(cancelled), "job_ids": cancelled, "blocked_job_ids": []}
+
+    def record_evidence(self, job_id: str, evidence: Dict[str, Any]) -> Dict[str, Any]:
+        """Attach operator or adapter evidence to a job without executing it."""
+        job = self._jobs.get(job_id)
+        if not job:
+            raise KeyError(f"Execution job not found: {job_id}")
+        normalized = _normalize_evidence(evidence)
+        current = _normalize_evidence(job.get("evidence") or {})
+        current.update({key: value for key, value in normalized.items() if value not in ("", 0, 0.0, None)})
+        job["evidence"] = current
+        next_action = str(evidence.get("operator_next_action") or "").strip()
+        if next_action:
+            job["operator_next_action"] = next_action
+        elif current.get("detected_blocker"):
+            job["operator_next_action"] = "inspect_execution_blocker"
+        job["updated_at"] = time.time()
         self._save()
         return _copy(job)
 
@@ -162,15 +214,26 @@ class ExecutionJobQueue:
                 executor_context=executor_context or {},
             )
             handler_result = execution_result.get("execution_result", execution_result)
+            evidence = _evidence_from_result(handler_result)
+            if evidence:
+                job["evidence"] = evidence
 
             if handler_result.get("ok"):
                 job["status"] = "completed"
                 job["result"] = handler_result
                 job["error"] = None
+                job["operator_next_action"] = str(
+                    handler_result.get("operator_next_action") or "review_execution_result"
+                )
             else:
                 job["status"] = "failed"
                 job["result"] = handler_result
                 job["error"] = handler_result.get("error", "Handler returned ok=False")
+                job["operator_next_action"] = str(
+                    handler_result.get("operator_next_action")
+                    or job.get("evidence", {}).get("operator_next_action")
+                    or "inspect_failed_job"
+                )
 
             job["finished_at"] = time.time()
             job["updated_at"] = time.time()
@@ -182,6 +245,8 @@ class ExecutionJobQueue:
             job["status"] = "failed"
             job["error"] = str(exc)
             job["result"] = {"ok": False, "error": str(exc)}
+            job["evidence"] = _normalize_evidence({"detected_blocker": "executor_exception"})
+            job["operator_next_action"] = "inspect_failed_job"
             job["finished_at"] = time.time()
             job["updated_at"] = time.time()
             self._save()
@@ -217,6 +282,8 @@ class ExecutionJobQueue:
         for item in raw if isinstance(raw, list) else []:
             job_id = item.get("job_id")
             if job_id:
+                item.setdefault("evidence", _default_evidence())
+                item.setdefault("operator_next_action", "")
                 self._jobs[job_id] = item
 
     def _save(self) -> None:
@@ -227,6 +294,51 @@ class ExecutionJobQueue:
 
 def _copy(value: Dict[str, Any]) -> Dict[str, Any]:
     return json.loads(json.dumps(value, ensure_ascii=False))
+
+
+def _default_evidence() -> Dict[str, Any]:
+    return {
+        "before_screenshot": "",
+        "after_screenshot": "",
+        "page_url": "",
+        "detected_blocker": "",
+        "cooldown_seconds": 0,
+        "operator_next_action": "",
+    }
+
+
+def _normalize_evidence(value: Any) -> Dict[str, Any]:
+    raw = dict(value or {}) if isinstance(value, dict) else {}
+    evidence = _default_evidence()
+    evidence.update(
+        {
+            "before_screenshot": str(raw.get("before_screenshot") or "")[:500],
+            "after_screenshot": str(raw.get("after_screenshot") or "")[:500],
+            "page_url": str(raw.get("page_url") or raw.get("url") or "")[:1000],
+            "detected_blocker": str(raw.get("detected_blocker") or raw.get("blocker") or "")[:200],
+            "operator_next_action": str(raw.get("operator_next_action") or "")[:200],
+        }
+    )
+    try:
+        evidence["cooldown_seconds"] = int(raw.get("cooldown_seconds") or 0)
+    except (TypeError, ValueError):
+        evidence["cooldown_seconds"] = 0
+    return evidence
+
+
+def _evidence_from_result(result: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(result, dict):
+        return {}
+    evidence = result.get("evidence")
+    if isinstance(evidence, dict):
+        normalized = _normalize_evidence(evidence)
+    else:
+        normalized = _normalize_evidence(result)
+    if result.get("operator_next_action") and not normalized.get("operator_next_action"):
+        normalized["operator_next_action"] = str(result.get("operator_next_action") or "")[:200]
+    if any(value not in ("", 0, 0.0, None) for value in normalized.values()):
+        return normalized
+    return {}
 
 
 execution_queue = ExecutionJobQueue()

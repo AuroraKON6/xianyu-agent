@@ -8,10 +8,18 @@ supplier orders.
 from __future__ import annotations
 
 import json
+import math
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from .candidate_activation import candidate_evidence_fingerprint
+from .candidate_evidence_store import (
+    CandidateEvidenceStore,
+    EVIDENCE_KIND_CONFIG,
+    artifact_reference,
+)
 
 
 def _now_iso() -> str:
@@ -49,6 +57,16 @@ RECOMMENDATION_THRESHOLDS = {
     "watch": 21,   # 21-27: worth testing
     "reject": 14,  # below 14: reject
 }
+
+STRUCTURED_LISTING_KEYS = (
+    "search_keywords",
+    "lead_image_requirement",
+    "specification_table",
+    "price_ladder",
+    "trust_paragraph",
+    "delivery_after_sales_notes",
+    "operator_verification_questions",
+)
 
 # Category hints for auto-scoring
 HIGH_TICKET_CATEGORIES = {
@@ -257,6 +275,174 @@ VALID_MARKET_SCOPES = {"domestic", "cross_border"}
 DEFAULT_PLATFORM_FEE_RATE = 0.08
 DEFAULT_REFUND_RATE = 0.02
 
+CANDIDATE_ACTIVATION_UPDATE_FIELDS = {
+    "title", "description", "category", "source_platform", "source_url",
+    "supplier_name", "supplier_sku", "supplier_price", "supplier_shipping",
+    "target_sale_price", "specifications", "images", "sales_platform",
+    "market_scope", "supplier_verified", "supplier_verification_note",
+    "supplier_quote_checked_at", "supplier_quote_evidence_ref",
+    "minimum_order_quantity", "stock_status", "stock_quantity",
+    "stock_checked_at", "stock_evidence_ref", "fulfillment_verified",
+    "fulfillment_verification_note", "fulfillment_evidence_ref",
+    "neutral_shipping_confirmed", "dispatch_time_hours",
+    "supplier_return_policy", "damage_liability_note", "image_rights_type",
+    "image_rights_evidence", "image_rights_evidence_ref", "competitor_links",
+    "competitor_price_min", "competitor_price_max", "competitor_checked_at",
+    "competitor_evidence_ref", "estimated_demand_signal",
+}
+
+VERIFY_UPDATE_FIELDS = {
+    "supplier_verified", "supplier_verification_note",
+    "supplier_quote_checked_at", "supplier_quote_evidence_ref",
+    "minimum_order_quantity", "stock_status", "stock_quantity",
+    "stock_checked_at", "stock_evidence_ref", "fulfillment_verified",
+    "fulfillment_verification_note", "fulfillment_evidence_ref",
+    "neutral_shipping_confirmed", "dispatch_time_hours",
+    "supplier_return_policy", "damage_liability_note", "image_rights_type",
+    "image_rights_evidence", "image_rights_evidence_ref", "images",
+    "competitor_links", "competitor_price_min", "competitor_price_max",
+    "competitor_checked_at", "competitor_evidence_ref",
+    "estimated_demand_signal",
+}
+
+_ACTIVATION_FLOAT_FIELDS = {
+    "supplier_price", "supplier_shipping", "target_sale_price",
+    "competitor_price_min", "competitor_price_max", "dispatch_time_hours",
+}
+_ACTIVATION_INT_FIELDS = {"minimum_order_quantity", "stock_quantity"}
+_ACTIVATION_BOOL_FIELDS = {
+    "supplier_verified", "fulfillment_verified", "neutral_shipping_confirmed",
+}
+_ACTIVATION_LIST_FIELDS = {"images", "competitor_links"}
+
+
+def _build_structured_listing_fields(candidate: Dict[str, Any], specs: Dict[str, Any]) -> Dict[str, Any]:
+    title = str(candidate.get("title") or "").strip()
+    category = str(candidate.get("category") or "").strip()
+    target_price = _safe_float(candidate.get("target_sale_price"))
+    supplier_shipping = _safe_float(candidate.get("supplier_shipping"))
+    supplier_note = str(candidate.get("supplier_verification_note") or "").strip()
+    return_boundary = _commercial_return_boundary(candidate)
+    search_keywords = _listing_keywords(title, category, specs)
+    fields = {
+        "search_keywords": search_keywords,
+        "lead_image_requirement": {
+            "format": "1:1正方形高清图",
+            "must_show": "完整商品和使用场景，优先展示实际应用环境",
+            "source_boundary": "必须使用自有实拍、供应商授权素材或可商用图片，禁止复制其他卖家图片",
+            "differentiation_overlay": _image_overlay_text(title, specs),
+        },
+        "specification_table": _specification_table(candidate, specs),
+        "price_ladder": _price_ladder(target_price),
+        "trust_paragraph": (
+            "供应商已验证，商品按实际规格发货。质量、材质、尺寸和发货方式以下单前确认为准；"
+            "如需定制或批量采购，先确认规格、库存和物流费用。"
+            + (f" 供应商备注：{supplier_note}" if supplier_note else "")
+        ),
+        "delivery_after_sales_notes": {
+            "shipping_method": "快递或物流，大件商品优先走物流",
+            "dispatch_time": "拍下后48小时内发货，特殊规格先确认库存",
+            "shipping_cost": supplier_shipping,
+            "damage_process": "到货如有破损，保留外包装和照片，24小时内反馈处理",
+            "return_boundary": return_boundary,
+            "return_policy": str(candidate.get("commercial_return_policy") or "unknown"),
+            "commercial_terms_version": str(candidate.get("commercial_terms_version") or ""),
+        },
+        "operator_verification_questions": [
+            "供应商价格是否为当前有效报价？",
+            "图片是否为自有实拍或供应商授权素材？",
+            "规格表是否和供应商实际可发规格一致？",
+            "运费、发货方式和发货时效是否已确认？",
+            "是否存在禁售、侵权、夸大宣传或误导性低价问题？",
+            "退货和售后说明是否与当前账号、类目的商业条款一致？",
+        ],
+    }
+    fields["structured_fields_complete"] = all(bool(fields.get(key)) for key in STRUCTURED_LISTING_KEYS)
+    return fields
+
+
+def _commercial_return_boundary(candidate: Dict[str, Any]) -> str:
+    policy = str(candidate.get("commercial_return_policy") or "unknown").strip()
+    if policy == "seven_day":
+        return "依法支持七日无理由退货，具体条件和运费承担以平台规则及商品页面公示为准；规格尺寸请下单前确认"
+    if policy == "lawful_exception":
+        return "本商品按平台公示的依法适用类目例外处理退货；质量问题按平台规则处理，规格尺寸请下单前确认"
+    return "退换货按平台规则及商品页面公示执行；质量问题请保留凭证，规格尺寸请下单前确认"
+
+
+def _listing_keywords(title: str, category: str, specs: Dict[str, Any]) -> List[str]:
+    keywords: List[str] = []
+    _append_unique(keywords, title[:30])
+    for token in title.replace("/", " ").replace("｜", " ").split():
+        _append_unique(keywords, token[:30])
+    for hint in ("操作台", "冷柜", "货架", "工作台", "商用", "厨房设备", "餐饮设备", "不锈钢", "机械", "设备"):
+        if hint in title or hint in category or any(hint in str(value) for value in specs.values()):
+            _append_unique(keywords, hint)
+    _append_unique(keywords, category)
+    for key, value in specs.items():
+        if value:
+            _append_unique(keywords, str(value)[:30])
+        if key:
+            _append_unique(keywords, str(key)[:30])
+    for fallback in ("闲鱼同城", "商用设备", "批量采购", "现货发货", "规格可询"):
+        _append_unique(keywords, fallback)
+    return keywords[:10]
+
+
+def _specification_table(candidate: Dict[str, Any], specs: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return [
+        {
+            "specification": str(specs.get("specification") or specs.get("款式") or "默认款"),
+            "size": str(specs.get("size") or specs.get("尺寸") or "下单前确认"),
+            "material": str(specs.get("material") or specs.get("材质") or "下单前确认"),
+            "feature": str(specs.get("feature") or specs.get("功能") or candidate.get("category") or "常规"),
+            "price": _safe_float(candidate.get("target_sale_price")),
+        }
+    ]
+
+
+def _price_ladder(target_price: float) -> List[Dict[str, Any]]:
+    entry_price = round(target_price, 2) if target_price else 0
+    return [
+        {
+            "role": "visible_entry",
+            "label": "当前标价",
+            "price": entry_price,
+            "explanation": "标价为当前基础规格价格，其他规格下单前确认。",
+        },
+        {
+            "role": "upgrade_reference",
+            "label": "升级规格",
+            "price": round(entry_price * 1.25, 2) if entry_price else 0,
+            "explanation": "更大尺寸、升级材质或附加功能可作为加价项。",
+        },
+    ]
+
+
+def _image_overlay_text(title: str, specs: Dict[str, Any]) -> str:
+    material = str(specs.get("material") or specs.get("材质") or "").strip()
+    feature = str(specs.get("feature") or specs.get("功能") or "").strip()
+    if material and feature:
+        return f"{material} / {feature}"
+    if material:
+        return material
+    if feature:
+        return feature
+    return title[:12] or "实拍现货"
+
+
+def _append_unique(items: List[str], value: Any) -> None:
+    text = str(value or "").strip()
+    if text and text not in items:
+        items.append(text)
+
+
+def _safe_float(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
 
 class ResaleManager:
     """Persistent manager for resale candidates, plans, and purchase drafts."""
@@ -264,6 +450,7 @@ class ResaleManager:
     def __init__(self, data_dir: Path) -> None:
         self._data_dir = data_dir
         self._data_dir.mkdir(parents=True, exist_ok=True)
+        self.evidence_store = CandidateEvidenceStore(self._data_dir / "candidate_evidence")
         self._candidates_path = self._data_dir / "resale_candidates.json"
         self._plans_path = self._data_dir / "resale_plans.json"
         self._drafts_path = self._data_dir / "resale_drafts.json"
@@ -280,6 +467,10 @@ class ResaleManager:
         self._resale_orders: Dict[str, Dict] = {}
         self._scorer = ProductScorer()
         self._load_all()
+
+    @property
+    def data_dir(self) -> Path:
+        return self._data_dir
 
     # ------------------------------------------------------------------
     # Persistence
@@ -345,6 +536,9 @@ class ResaleManager:
             "source": draft.get("source", ""),
             "raw_text": "",
         }
+        for key in STRUCTURED_LISTING_KEYS:
+            exec_draft[key] = draft.get(key)
+        exec_draft["structured_fields_complete"] = bool(draft.get("structured_fields_complete"))
         path = self._listing_drafts_dir / f"{draft['draft_id']}.json"
         path.write_text(json.dumps(exec_draft, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -358,9 +552,11 @@ class ResaleManager:
         supplier_shipping: float,
         target_sale_price: float,
         platform_fee_rate: float = DEFAULT_PLATFORM_FEE_RATE,
+        platform_fixed_fee: float = 0.0,
         expected_refund_rate: float = DEFAULT_REFUND_RATE,
     ) -> Dict[str, Any]:
-        platform_fee = round(target_sale_price * platform_fee_rate, 2)
+        variable_platform_fee = round(target_sale_price * platform_fee_rate, 2)
+        platform_fee = round(variable_platform_fee + platform_fixed_fee, 2)
         refund_loss = round(target_sale_price * expected_refund_rate, 2)
         gross_profit = round(
             target_sale_price - supplier_price - supplier_shipping - platform_fee - refund_loss, 2
@@ -371,6 +567,8 @@ class ResaleManager:
             "supplier_shipping": supplier_shipping,
             "target_sale_price": target_sale_price,
             "platform_fee_rate": platform_fee_rate,
+            "platform_fixed_fee": platform_fixed_fee,
+            "variable_platform_fee": variable_platform_fee,
             "expected_refund_rate": expected_refund_rate,
             "platform_fee": platform_fee,
             "refund_loss": refund_loss,
@@ -436,6 +634,7 @@ class ResaleManager:
         economics = self.compute_economics(
             supplier_price, float(payload.get("supplier_shipping", 0)), target_price,
             float(payload.get("platform_fee_rate", DEFAULT_PLATFORM_FEE_RATE)),
+            float(payload.get("platform_fixed_fee", 0)),
             float(payload.get("expected_refund_rate", DEFAULT_REFUND_RATE)),
         )
         if economics["gross_profit"] < 0:
@@ -466,11 +665,12 @@ class ResaleManager:
         supplier_shipping = float(payload.get("supplier_shipping", 0))
         target_sale_price = float(payload.get("target_sale_price", 0))
         platform_fee_rate = float(payload.get("platform_fee_rate", DEFAULT_PLATFORM_FEE_RATE))
+        platform_fixed_fee = float(payload.get("platform_fixed_fee", 0))
         expected_refund_rate = float(payload.get("expected_refund_rate", DEFAULT_REFUND_RATE))
 
         economics = self.compute_economics(
             supplier_price, supplier_shipping, target_sale_price,
-            platform_fee_rate, expected_refund_rate,
+            platform_fee_rate, platform_fixed_fee, expected_refund_rate,
         )
         risk = self.evaluate_risk(payload)
 
@@ -489,6 +689,8 @@ class ResaleManager:
             "description": payload.get("description", ""),
             "source_platform": source_platform,
             "source_url": payload.get("source_url", ""),
+            "supplier_name": payload.get("supplier_name", ""),
+            "supplier_sku": payload.get("supplier_sku", ""),
             "supplier_price": supplier_price,
             "supplier_shipping": supplier_shipping,
             "market_scope": market_scope,
@@ -505,12 +707,43 @@ class ResaleManager:
             "notes": payload.get("notes", ""),
             "supplier_verified": False,
             "supplier_verification_note": "",
+            "supplier_quote_checked_at": None,
+            "supplier_quote_evidence_ref": "",
+            "minimum_order_quantity": None,
+            "stock_status": "",
+            "stock_quantity": None,
+            "stock_checked_at": None,
+            "stock_evidence_ref": "",
+            "fulfillment_verified": False,
+            "fulfillment_verification_note": "",
+            "fulfillment_evidence_ref": "",
+            "neutral_shipping_confirmed": False,
+            "dispatch_time_hours": None,
+            "supplier_return_policy": "",
+            "damage_liability_note": "",
+            "image_rights_type": "",
+            "image_rights_evidence": "",
+            "image_rights_evidence_ref": "",
             "competitor_links": [],
             "competitor_price_min": None,
             "competitor_price_max": None,
+            "competitor_checked_at": None,
+            "competitor_evidence_ref": "",
             "estimated_demand_signal": "",
             "manual_decision": None,
             "manual_decision_note": "",
+            "approved_evidence_fingerprint": "",
+            "manual_decision_approved_at": "",
+            "manual_decision_invalidated_at": "",
+            "manual_decision_invalidation_reason": "",
+            "evidence_revision": 1,
+            "commercial_terms_version": "",
+            "commercial_terms_cookie_id": "",
+            "commercial_terms_category": "",
+            "commercial_terms_observed_at": "",
+            "commercial_terms_evidence_ref": "",
+            "commercial_return_policy": "unknown",
+            "commercial_return_exception_basis": "",
             "verified_at": None,
             "listing_draft_id": None,
             "created_at": now,
@@ -553,6 +786,83 @@ class ResaleManager:
         candidate["updated_at"] = _now_iso()
         self._save_candidates()
         return _copy(scoring)
+
+    def update_candidate_economics_from_commercial_terms(
+        self,
+        candidate_id: str,
+        *,
+        cookie_id: str,
+        category: str,
+        platform_fee_rate: float,
+        platform_fixed_fee: float,
+        snapshot_version: str,
+        observed_at: str,
+        evidence_ref: str,
+        return_policy: str = "unknown",
+        return_exception_basis: str = "",
+    ) -> Optional[Dict]:
+        """Reprice one candidate from a current account/category terms snapshot."""
+        candidate = self._candidates.get(candidate_id)
+        if not candidate:
+            return None
+        if str(candidate.get("category") or "").strip().casefold() != str(category or "").strip().casefold():
+            raise ValueError("candidate category does not match commercial terms")
+        before_fingerprint = candidate_evidence_fingerprint(candidate)
+
+        rate = float(platform_fee_rate)
+        fixed_fee = float(platform_fixed_fee)
+        if not math.isfinite(rate) or rate < 0 or rate >= 1:
+            raise ValueError("platform_fee_rate must be >= 0 and < 1")
+        if not math.isfinite(fixed_fee) or fixed_fee < 0:
+            raise ValueError("platform_fixed_fee must be >= 0")
+
+        refund_rate = _safe_float(
+            (candidate.get("economics") or {}).get("expected_refund_rate", DEFAULT_REFUND_RATE)
+        )
+        candidate["economics"] = self.compute_economics(
+            _safe_float(candidate.get("supplier_price")),
+            _safe_float(candidate.get("supplier_shipping")),
+            _safe_float(candidate.get("target_sale_price")),
+            rate,
+            fixed_fee,
+            refund_rate,
+        )
+        candidate["commercial_terms_version"] = str(snapshot_version or "").strip()
+        candidate["commercial_terms_cookie_id"] = str(cookie_id or "").strip()
+        candidate["commercial_terms_category"] = str(category or "").strip()
+        candidate["commercial_terms_observed_at"] = str(observed_at or "").strip()
+        candidate["commercial_terms_evidence_ref"] = str(evidence_ref or "").strip()[:300]
+        candidate["commercial_return_policy"] = str(return_policy or "unknown").strip()
+        candidate["commercial_return_exception_basis"] = str(return_exception_basis or "").strip()[:300]
+
+        risk_payload = dict(candidate)
+        risk_payload["platform_fee_rate"] = rate
+        risk_payload["platform_fixed_fee"] = fixed_fee
+        risk_payload["expected_refund_rate"] = refund_rate
+        risk = self.evaluate_risk(risk_payload)
+        candidate["risk_level"] = risk["risk_level"]
+        candidate["risk_flags"] = risk["risk_flags"]
+        candidate["blocked_reason"] = risk["blocked_reason"]
+        if risk["risk_level"] == "blocked":
+            candidate["status"] = "blocked"
+        after_fingerprint = candidate_evidence_fingerprint(candidate)
+        if before_fingerprint != after_fingerprint:
+            now = _now_iso()
+            candidate["evidence_revision"] = int(candidate.get("evidence_revision") or 1) + 1
+            if candidate.get("manual_decision") is not None:
+                candidate["manual_decision_invalidated_at"] = now
+                candidate["manual_decision_invalidation_reason"] = "account/category commercial terms changed"
+            candidate["manual_decision"] = None
+            candidate["manual_decision_note"] = ""
+            candidate["manual_decision_override_reason"] = ""
+            candidate["approved_evidence_fingerprint"] = ""
+            candidate["manual_decision_approved_at"] = ""
+            if candidate.get("status") != "blocked":
+                candidate["status"] = "evaluating"
+        candidate["scoring"] = self._scorer.score(candidate)
+        candidate["updated_at"] = _now_iso()
+        self._save_candidates()
+        return _copy(candidate)
 
     # ------------------------------------------------------------------
     # Plan CRUD
@@ -620,6 +930,12 @@ class ResaleManager:
         quantity: int = 1,
         buyer_address_summary: str = "",
         buyer_address_full: str = "",
+        commercial_trial_id: str = "",
+        xianyu_order_id: str = "",
+        cookie_id: str = "",
+        item_id: str = "",
+        sale_amount: float = 0,
+        fulfillment_lock_owner: str = "",
     ) -> Optional[Dict]:
         plan = self._plans.get(plan_id)
         if not plan:
@@ -667,6 +983,12 @@ class ResaleManager:
             "product_specs": candidate.get("specifications", {}),
             "quantity": quantity,
             "buyer_address": masked_address or "",
+            "commercial_trial_id": str(commercial_trial_id or "").strip(),
+            "xianyu_order_id": str(xianyu_order_id or "").strip(),
+            "cookie_id": str(cookie_id or "").strip(),
+            "item_id": str(item_id or "").strip(),
+            "sale_amount": round(float(sale_amount or 0), 2),
+            "fulfillment_lock_owner": str(fulfillment_lock_owner or "").strip(),
             "total_cost": total_cost,
             "profit_review": profit_review,
             "risk_warnings": risk_warnings,
@@ -699,16 +1021,192 @@ class ResaleManager:
     # ------------------------------------------------------------------
 
     def verify_candidate(self, candidate_id: str, payload: Dict) -> Optional[Dict]:
+        """Compatibility entrypoint for partial evidence updates."""
+        return self._update_candidate_activation_fields(
+            candidate_id,
+            payload,
+            allowed_fields=VERIFY_UPDATE_FIELDS,
+        )
+
+    def update_candidate_activation(self, candidate_id: str, payload: Dict) -> Optional[Dict]:
+        """Update one candidate's launch evidence as a versioned fact set.
+
+        Material changes invalidate any existing manual decision. A candidate
+        with a generated listing draft cannot be changed in place because the
+        draft and its approval payload represent the previous fact revision.
+        """
+        return self._update_candidate_activation_fields(
+            candidate_id,
+            payload,
+            allowed_fields=CANDIDATE_ACTIVATION_UPDATE_FIELDS,
+        )
+
+    def archive_candidate_evidence(
+        self,
+        candidate_id: str,
+        *,
+        kind: str,
+        content: bytes,
+        original_filename: str,
+        mime_type: str,
+        observed_at: str,
+        note: str = "",
+        source_url: str = "",
+    ) -> Optional[Dict[str, Any]]:
+        """Archive one immutable artifact and bind it to a candidate revision."""
         candidate = self._candidates.get(candidate_id)
         if not candidate:
             return None
-        for key in ("supplier_verified", "supplier_verification_note",
-                     "competitor_links", "competitor_price_min",
-                     "competitor_price_max", "estimated_demand_signal"):
-            if key in payload:
-                candidate[key] = payload[key]
-        candidate["verified_at"] = _now_iso()
-        candidate["updated_at"] = _now_iso()
+        if candidate.get("listing_draft_id"):
+            raise ValueError(
+                "candidate already has a listing draft; create a new candidate revision before archiving evidence"
+            )
+        config = EVIDENCE_KIND_CONFIG.get(str(kind or "").strip())
+        if not config:
+            raise ValueError("unsupported evidence kind")
+
+        staged = self.evidence_store.stage_bytes(
+            candidate_id=candidate_id,
+            kind=kind,
+            content=content,
+            original_filename=original_filename,
+            mime_type=mime_type,
+            observed_at=observed_at,
+            note=note,
+            source_url=source_url,
+        )
+        artifact = dict(staged["artifact"])
+        updates: Dict[str, Any] = {
+            config["ref_field"]: artifact_reference(artifact["artifact_id"]),
+        }
+        timestamp_field = str(config.get("timestamp_field") or "")
+        if timestamp_field:
+            updates[timestamp_field] = artifact["observed_at"]
+        try:
+            updated = self.update_candidate_activation(candidate_id, updates)
+            if updated is None:
+                raise ValueError("candidate not found while binding evidence")
+        except Exception:
+            if staged.get("created"):
+                self.evidence_store.mark_orphaned(artifact["artifact_id"])
+            raise
+
+        active_artifact = self.evidence_store.activate(artifact["artifact_id"])
+        return {
+            "candidate": updated,
+            "artifact": active_artifact,
+            "created": bool(staged.get("created")),
+        }
+
+    def _update_candidate_activation_fields(
+        self,
+        candidate_id: str,
+        payload: Dict,
+        *,
+        allowed_fields: set,
+    ) -> Optional[Dict]:
+        candidate = self._candidates.get(candidate_id)
+        if not candidate:
+            return None
+
+        normalized: Dict[str, Any] = {}
+        for key, raw_value in dict(payload or {}).items():
+            if key not in allowed_fields:
+                continue
+            value = raw_value
+            if key in _ACTIVATION_FLOAT_FIELDS:
+                if value in (None, ""):
+                    value = None
+                else:
+                    value = float(value)
+                    if not math.isfinite(value) or value < 0:
+                        raise ValueError(f"{key} must be a finite nonnegative number")
+            elif key in _ACTIVATION_INT_FIELDS:
+                if value in (None, ""):
+                    value = None
+                else:
+                    number = float(value)
+                    if not math.isfinite(number) or number < 0 or not number.is_integer():
+                        raise ValueError(f"{key} must be a nonnegative integer")
+                    value = int(number)
+            elif key in _ACTIVATION_BOOL_FIELDS:
+                value = bool(value)
+            elif key in _ACTIVATION_LIST_FIELDS:
+                if value is None:
+                    value = []
+                if not isinstance(value, list):
+                    raise ValueError(f"{key} must be a list")
+                value = [str(item).strip() for item in value if str(item or "").strip()]
+            elif key == "specifications":
+                if value is None:
+                    value = {}
+                if not isinstance(value, dict):
+                    raise ValueError("specifications must be an object")
+            elif value is None:
+                value = ""
+            elif isinstance(value, str):
+                value = value.strip()
+            normalized[key] = value
+
+        changed = {
+            key: value for key, value in normalized.items()
+            if candidate.get(key) != value
+        }
+        if changed and candidate.get("listing_draft_id"):
+            raise ValueError(
+                "candidate already has a listing draft; create a new candidate revision instead of changing approved facts"
+            )
+
+        before_fingerprint = candidate_evidence_fingerprint(candidate)
+        candidate.update(changed)
+
+        economics_fields = {"supplier_price", "supplier_shipping", "target_sale_price"}
+        if economics_fields.intersection(changed):
+            current_economics = candidate.get("economics") if isinstance(candidate.get("economics"), dict) else {}
+            candidate["economics"] = self.compute_economics(
+                _safe_float(candidate.get("supplier_price")),
+                _safe_float(candidate.get("supplier_shipping")),
+                _safe_float(candidate.get("target_sale_price")),
+                _safe_float(current_economics.get("platform_fee_rate", DEFAULT_PLATFORM_FEE_RATE)),
+                _safe_float(current_economics.get("platform_fixed_fee", 0)),
+                _safe_float(current_economics.get("expected_refund_rate", DEFAULT_REFUND_RATE)),
+            )
+
+        if changed:
+            risk_payload = dict(candidate)
+            current_economics = candidate.get("economics") if isinstance(candidate.get("economics"), dict) else {}
+            risk_payload["platform_fee_rate"] = current_economics.get("platform_fee_rate", DEFAULT_PLATFORM_FEE_RATE)
+            risk_payload["platform_fixed_fee"] = current_economics.get("platform_fixed_fee", 0)
+            risk_payload["expected_refund_rate"] = current_economics.get("expected_refund_rate", DEFAULT_REFUND_RATE)
+            risk = self.evaluate_risk(risk_payload)
+            candidate["risk_level"] = risk["risk_level"]
+            candidate["risk_flags"] = risk["risk_flags"]
+            candidate["blocked_reason"] = risk["blocked_reason"]
+            if risk["risk_level"] == "blocked":
+                candidate["status"] = "blocked"
+
+        after_fingerprint = candidate_evidence_fingerprint(candidate)
+        now = _now_iso()
+        if changed and before_fingerprint != after_fingerprint:
+            candidate["evidence_revision"] = int(candidate.get("evidence_revision") or 1) + 1
+            if candidate.get("manual_decision") is not None:
+                candidate["manual_decision_invalidated_at"] = now
+                candidate["manual_decision_invalidation_reason"] = (
+                    "candidate evidence changed: " + ",".join(sorted(changed))
+                )[:500]
+            candidate["manual_decision"] = None
+            candidate["manual_decision_note"] = ""
+            candidate["manual_decision_override_reason"] = ""
+            candidate["approved_evidence_fingerprint"] = ""
+            candidate["manual_decision_approved_at"] = ""
+            candidate["agent_review_stale"] = bool(candidate.get("agent_reviews"))
+            if candidate.get("status") != "blocked":
+                candidate["status"] = "evaluating"
+
+        if changed:
+            candidate["scoring"] = self._scorer.score(candidate)
+        candidate["verified_at"] = now
+        candidate["updated_at"] = now
         self._save_candidates()
         return _copy(candidate)
 
@@ -722,6 +1220,12 @@ class ResaleManager:
             return None
         if decision == "approve" and candidate.get("status") == "blocked":
             return {"error": "cannot approve blocked candidate", "blocked_reason": candidate.get("blocked_reason", "")}
+        if (
+            decision == "approve"
+            and candidate.get("agent_review_recommendation") == "reject"
+            and not str(override_reason or "").strip()
+        ):
+            return {"error": "override_reason is required when agent review recommendation is reject"}
         if override_reason:
             candidate["manual_decision_override_reason"] = override_reason
         candidate["manual_decision"] = decision
@@ -729,8 +1233,18 @@ class ResaleManager:
         candidate["updated_at"] = _now_iso()
         if decision == "approve":
             candidate["status"] = "approved"
+            candidate["approved_evidence_fingerprint"] = candidate_evidence_fingerprint(candidate)
+            candidate["manual_decision_approved_at"] = candidate["updated_at"]
+            candidate["manual_decision_invalidated_at"] = ""
+            candidate["manual_decision_invalidation_reason"] = ""
         elif decision == "reject":
             candidate["status"] = "rejected"
+            candidate["approved_evidence_fingerprint"] = ""
+            candidate["manual_decision_approved_at"] = ""
+        else:
+            candidate["status"] = "evaluating"
+            candidate["approved_evidence_fingerprint"] = ""
+            candidate["manual_decision_approved_at"] = ""
         self._save_candidates()
         return _copy(candidate)
 
@@ -828,20 +1342,27 @@ class ResaleManager:
             return {"error": "supplier not verified"}
         if candidate.get("manual_decision") != "approve":
             return {"error": "manual decision must be approve"}
+        approved_fingerprint = str(candidate.get("approved_evidence_fingerprint") or "").strip()
+        if not approved_fingerprint or approved_fingerprint != candidate_evidence_fingerprint(candidate):
+            return {"error": "manual decision is stale for the current candidate evidence"}
 
         draft_id = _new_id("ld")
         now = _now_iso()
 
         specs = candidate.get("specifications", {})
+        if not isinstance(specs, dict):
+            specs = {}
         spec_text = ", ".join(f"{k}: {v}" for k, v in specs.items()) if specs else "无"
 
         risk_flags = candidate.get("risk_flags", [])
         risk_text = "；".join(risk_flags) if risk_flags else "无特殊风险"
 
+        structured_fields = _build_structured_listing_fields(candidate, specs)
+
         description = "\n".join([
             f"【商品规格】{spec_text}",
             f"【发货说明】拍下后48小时内发货，{candidate.get('sales_platform', 'xianyu')}平台发货",
-            "【售后边界】非质量问题不退换，签收后24小时内反馈",
+            f"【售后边界】{_commercial_return_boundary(candidate)}",
             f"【风险提醒】{risk_text}",
         ])
 
@@ -867,6 +1388,7 @@ class ResaleManager:
             "created_at": now,
             "updated_at": now,
         }
+        draft.update(structured_fields)
         self._listing_drafts[draft_id] = draft
         self._save_listing_drafts()
         self._write_executable_draft(draft)
@@ -916,6 +1438,12 @@ class ResaleManager:
             "product_specs": draft.get("product_specs", {}),
             "quantity": draft.get("quantity", 1),
             "masked_buyer_address": draft.get("buyer_address", ""),
+            "commercial_trial_id": draft.get("commercial_trial_id", ""),
+            "xianyu_order_id": draft.get("xianyu_order_id", ""),
+            "cookie_id": draft.get("cookie_id", ""),
+            "item_id": draft.get("item_id", ""),
+            "sale_amount": draft.get("sale_amount", 0),
+            "fulfillment_lock_owner": draft.get("fulfillment_lock_owner", ""),
             "payable_amount": draft.get("total_cost", 0),
             "expected_profit": draft.get("profit_review", {}).get("expected_profit", 0),
             "risk_warnings": risk_warnings,
@@ -984,6 +1512,10 @@ class ResaleManager:
             "plan_id": payload.get("plan_id", ""),
             "candidate_id": payload.get("candidate_id", ""),
             "listing_draft_id": payload.get("listing_draft_id", ""),
+            "commercial_trial_id": payload.get("commercial_trial_id", ""),
+            "cookie_id": payload.get("cookie_id", ""),
+            "item_id": payload.get("item_id", ""),
+            "fulfillment_lock_owner": payload.get("fulfillment_lock_owner", ""),
             "supplier_order_id": payload.get("supplier_order_id", ""),
             "supplier_tracking_number": payload.get("supplier_tracking_number", ""),
             "xianyu_tracking_number": payload.get("xianyu_tracking_number", ""),
@@ -997,6 +1529,9 @@ class ResaleManager:
             "buyer_note": payload.get("buyer_note", ""),
             "supplier_note": payload.get("supplier_note", ""),
             "aftersale_note": payload.get("aftersale_note", ""),
+            "financial_evidence_note": payload.get("financial_evidence_note", ""),
+            "financial_evidence_ref": payload.get("financial_evidence_ref", ""),
+            "financial_reconciled_at": payload.get("financial_reconciled_at", ""),
             "created_at": now,
             "updated_at": now,
             "completed_at": None,
@@ -1025,7 +1560,9 @@ class ResaleManager:
         for key, value in updates.items():
             if key in ("status", "xianyu_order_id", "supplier_order_id",
                        "supplier_tracking_number", "xianyu_tracking_number",
-                       "buyer_note", "supplier_note", "aftersale_note"):
+                       "buyer_note", "supplier_note", "aftersale_note",
+                       "financial_evidence_note", "financial_evidence_ref",
+                       "financial_reconciled_at"):
                 order[key] = value
             elif key in ("sale_amount", "supplier_cost", "shipping_cost", "platform_fee"):
                 order[key] = float(value)
@@ -1065,6 +1602,17 @@ class ResaleManager:
 
         overrides = overrides or {}
 
+        xianyu_order_id = str(
+            overrides.get("xianyu_order_id") or task.get("xianyu_order_id") or ""
+        ).strip()
+        if xianyu_order_id and not allow_duplicate:
+            for order in self._resale_orders.values():
+                if (
+                    str(order.get("xianyu_order_id") or "").strip() == xianyu_order_id
+                    and order.get("status") not in ("cancelled", "refunded")
+                ):
+                    return {"error": "active order already exists for this Xianyu order"}
+
         # Auto-determine status from task status
         default_status = "purchased" if task.get("status") == "ordered" else "pending_purchase"
 
@@ -1087,12 +1635,19 @@ class ResaleManager:
             "supplier_cost": task.get("payable_amount", 0),
             "shipping_cost": overrides.get("shipping_cost", 0),
             "status": overrides.get("status", default_status),
-            "xianyu_order_id": overrides.get("xianyu_order_id", ""),
-            "sale_amount": overrides.get("sale_amount", 0),
+            "xianyu_order_id": xianyu_order_id,
+            "commercial_trial_id": task.get("commercial_trial_id", ""),
+            "cookie_id": task.get("cookie_id", ""),
+            "item_id": task.get("item_id", ""),
+            "fulfillment_lock_owner": task.get("fulfillment_lock_owner", ""),
+            "sale_amount": overrides.get("sale_amount") or task.get("sale_amount", 0),
             "platform_fee": overrides.get("platform_fee", 0),
             "buyer_note": overrides.get("buyer_note", ""),
             "supplier_note": overrides.get("supplier_note", ""),
             "aftersale_note": overrides.get("aftersale_note", ""),
+            "financial_evidence_note": overrides.get("financial_evidence_note", ""),
+            "financial_evidence_ref": overrides.get("financial_evidence_ref", ""),
+            "financial_reconciled_at": overrides.get("financial_reconciled_at", ""),
         }
         return self.create_resale_order(payload)
 

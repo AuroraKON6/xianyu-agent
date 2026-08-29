@@ -26,6 +26,8 @@ from collections import defaultdict
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set
 
+from .message_envelope import normalize_message_envelope
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -681,6 +683,17 @@ class XianyuWebSocket:
 
         # Callback
         if self._on_message_callback:
+            message_envelope = normalize_message_envelope(
+                source="xianyu_ws",
+                raw_payload={
+                    "buyer_id": buyer_id,
+                    "buyer_name": buyer_name,
+                    "message": message,
+                    "chat_id": chat_id,
+                    "item_id": item_id,
+                },
+                cookie_id=self.cookie_id,
+            )
             self._on_message_callback({
                 "cookie_id": self.cookie_id,
                 "buyer_id": buyer_id,
@@ -689,6 +702,7 @@ class XianyuWebSocket:
                 "item_id": item_id,
                 "chat_id": chat_id,
                 "reply": reply,
+                "message_envelope": message_envelope,
             })
 
     def _is_sync_package(self, data: Dict) -> bool:

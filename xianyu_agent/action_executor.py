@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Any, Callable, Dict
 
@@ -79,6 +80,7 @@ class ActionExecutor:
     def _register_stubs(self) -> None:
         """Register real handlers and stubs for future actions."""
         self.register_handler("publish_listing", handle_publish_listing)
+        self.register_handler("edit_listing", handle_edit_listing)
         self.register_handler("fulfill_order", handle_fulfill_order)
         self.register_handler("send_message", handle_send_message)
         self.register_handler("sensitive_reply", handle_sensitive_reply)
@@ -93,6 +95,11 @@ async def handle_publish_listing(approval: Dict[str, Any], context: Dict[str, An
     action = "publish_listing"
     payload = approval.get("payload", {})
     draft_id = payload.get("draft_id", "")
+    cookie_id = str(
+        payload.get("cookie_id")
+        or (approval.get("draft_snapshot") or {}).get("cookie_id")
+        or "default"
+    ).strip()
 
     if not draft_id:
         return {"ok": False, "action": action, "error": "draft_id missing from approval payload"}
@@ -142,7 +149,7 @@ async def handle_publish_listing(approval: Dict[str, Any], context: Dict[str, An
         raw_text=draft_data.get("raw_text", ""),
     )
 
-    result = await adapter.publish_listing(draft, cookie_id="default")
+    result = await adapter.publish_listing(draft, cookie_id=cookie_id)
     if result.ok:
         workflow.storage.save_publish_result(result, draft)
 
@@ -150,6 +157,7 @@ async def handle_publish_listing(approval: Dict[str, Any], context: Dict[str, An
         "ok": result.ok,
         "action": action,
         "draft_id": draft_id,
+        "cookie_id": cookie_id,
         "publish_result": {
             "ok": result.ok,
             "external_id": result.external_id,
@@ -159,11 +167,110 @@ async def handle_publish_listing(approval: Dict[str, Any], context: Dict[str, An
     }
 
 
+async def handle_edit_listing(approval: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    """Submit one approved title/price edit; activation needs later evidence."""
+    action = "edit_listing"
+    payload = approval.get("payload") if isinstance(approval.get("payload"), dict) else {}
+    item_id = str(payload.get("item_id") or "").strip()
+    cookie_id = str(payload.get("cookie_id") or "").strip()
+    variable = str(payload.get("variable") or "").strip().lower()
+    after_value = payload.get("after_value")
+    if not item_id or not cookie_id:
+        return {"ok": False, "action": action, "error": "item_id and cookie_id are required"}
+    if variable not in {"title", "price"}:
+        return {
+            "ok": False,
+            "action": action,
+            "item_id": item_id,
+            "variable": variable,
+            "manual_required": True,
+            "error": f"{variable or 'unknown'} edit requires operator confirmation",
+            "operator_next_action": "complete_manual_listing_edit",
+        }
+
+    trial_id = str(payload.get("commercial_trial_id") or "").strip()
+    experiment_id = str(payload.get("experiment_id") or "").strip()
+    if trial_id or experiment_id:
+        store = context.get("commercial_trial_store")
+        if store is None or not trial_id or not experiment_id:
+            return {
+                "ok": False,
+                "action": action,
+                "error": "commercial experiment state is unavailable",
+                "operator_next_action": "inspect_experiment_linkage",
+            }
+        trial = store.get_trial(trial_id)
+        experiment = next(
+            (
+                item
+                for item in (trial or {}).get("experiments") or []
+                if str(item.get("experiment_id") or "") == experiment_id
+            ),
+            None,
+        )
+        if (
+            not trial
+            or str(trial.get("lifecycle") or "") != "active"
+            or not experiment
+            or str(experiment.get("status") or "") != "proposed"
+        ):
+            return {
+                "ok": False,
+                "action": action,
+                "item_id": item_id,
+                "error": "commercial experiment is no longer executable",
+                "operator_next_action": "review_cancelled_or_inactive_experiment",
+            }
+
+    if variable == "title":
+        clean_value = str(after_value or "").strip()
+        if not clean_value or len(clean_value) > 80:
+            return {"ok": False, "action": action, "error": "title must contain 1 to 80 characters"}
+    else:
+        try:
+            clean_value = round(float(after_value), 2)
+        except (TypeError, ValueError):
+            clean_value = float("nan")
+        if not math.isfinite(clean_value) or not 0 < clean_value <= 1_000_000:
+            return {"ok": False, "action": action, "error": "price must be a positive finite number"}
+
+    workflow = context.get("workflow")
+    adapter = getattr(workflow, "adapter", None) if workflow is not None else None
+    if adapter is None:
+        return {"ok": False, "action": action, "error": "adapter not available"}
+    if hasattr(adapter, "polish_listing"):
+        result = adapter.polish_listing(item_id, {variable: clean_value}, cookie_id=cookie_id)
+    else:
+        result = adapter.polish(item_id, {variable: clean_value})
+    if asyncio.iscoroutine(result) or asyncio.isfuture(result):
+        result = await result
+    result = dict(result or {})
+    submitted = bool(result.get("ok"))
+    return {
+        "ok": submitted,
+        "action": action,
+        "item_id": item_id,
+        "cookie_id": cookie_id,
+        "variable": variable,
+        "submitted": submitted,
+        "confirmed": False,
+        "adapter_result": result,
+        "error": None if submitted else str(result.get("error") or result.get("message") or "listing edit failed"),
+        "operator_next_action": "sync_listing_and_activate_experiment" if submitted else "inspect_listing_edit_failure",
+        "evidence": {
+            "page_url": str(result.get("page_url") or ""),
+            "detected_blocker": str(result.get("blocker") or ""),
+            "operator_next_action": "sync_listing_and_activate_experiment" if submitted else "inspect_listing_edit_failure",
+        },
+    }
+
+
 async def handle_fulfill_order(approval: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
     """Fulfill an order by calling workflow.fulfill_order."""
     action = "fulfill_order"
     payload = approval.get("payload", {})
     order_id = payload.get("order_id", "")
+    cookie_id = str(payload.get("cookie_id") or "default")
 
     if not order_id:
         return {"ok": False, "action": action, "error": "order_id missing from approval payload"}
@@ -182,6 +289,7 @@ async def handle_fulfill_order(approval: Dict[str, Any], context: Dict[str, Any]
         "ok": result.get("ok", False),
         "action": action,
         "order_id": order_id,
+        "cookie_id": cookie_id,
         "fulfillment_result": result,
         "error": None if result.get("ok") else result.get("message", "fulfill_order failed"),
     }

@@ -9,14 +9,16 @@ This is the PRIMARY interface for all Xianyu operations.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import re
+import secrets
 import threading
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, unquote_plus
 
 from .models import ListingDraft, Order, PublishResult
 
@@ -56,7 +58,51 @@ URL = {
     "search":    "https://www.goofish.com/search?q={q}",
 }
 
-PUBLISH_BLOCKERS: List = []
+PUBLISH_BLOCKERS: List = [
+    ("manual_verification_required", "\u5b8c\u6210\u8ba4\u8bc1\u624d\u53ef\u7ee7\u7eed\u53d1\u5e03"),
+    ("manual_verification_required", "\u8bf7\u4f7f\u7528\u624b\u673a\u626b\u7801\u8fdb\u884c\u8ba4\u8bc1"),
+    ("manual_verification_required", "\u8bf7\u5148\u5b8c\u6210\u8ba4\u8bc1"),
+    ("manual_verification_required", "\u4eba\u8138\u8ba4\u8bc1"),
+    ("unsupported_web_category", "\u6682\u4e0d\u652f\u6301\u5728\u7f51\u9875\u7aef\u53d1\u5e03"),
+    ("unsupported_web_category", "\u8bf7\u524d\u5f80\u95f2\u9c7cAPP\u53d1\u5e03"),
+    ("unsupported_web_category", "\u8be5\u7c7b\u76ee\u6682\u4e0d\u652f\u6301"),
+    ("missing_condition", "\u8bf7\u9009\u62e9\u6210\u8272"),
+    ("missing_condition", "\u8bf7\u9009\u62e9\u65b0\u65e7\u7a0b\u5ea6"),
+    ("missing_image", "\u8bf7\u4e0a\u4f20\u56fe\u7247"),
+    ("missing_image", "\u81f3\u5c11\u4e0a\u4f20\u4e00\u5f20"),
+]
+
+ACCOUNT_IMPORT_PREVIEW_TTL_SECONDS = 300
+ACCOUNT_IMPORT_REQUIRED_COOKIES = {"unb", "cookie2", "_m_h5_tk"}
+ACCOUNT_IMPORT_COOKIE_DOMAINS = ("goofish.com", "taobao.com")
+ACCOUNT_LOGIN_PROBE_URL = "https://passport.goofish.com/newlogin/hasLogin.do"
+
+
+def _find_nonnegative_counter(value: Any, keys: set[str], depth: int = 0) -> Optional[int]:
+    """Find a platform counter without treating a missing field as zero."""
+    if depth > 4:
+        return None
+    if isinstance(value, dict):
+        for key in keys:
+            if key not in value:
+                continue
+            raw = value.get(key)
+            try:
+                number = int(float(str(raw).replace(",", "").strip()))
+            except (TypeError, ValueError):
+                continue
+            if number >= 0:
+                return number
+        for child in value.values():
+            found = _find_nonnegative_counter(child, keys, depth + 1)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for child in value[:50]:
+            found = _find_nonnegative_counter(child, keys, depth + 1)
+            if found is not None:
+                return found
+    return None
 
 
 class BrowserAdapter:
@@ -79,6 +125,11 @@ class BrowserAdapter:
         self._persistent_browser = None
         self._persistent_context = None
         self._persistent_page = None
+        self._persistent_cookie_id = ""
+        self._persistent_is_cdp = False
+        self._cookie_provider: Optional[Callable[[str], Optional[str]]] = None
+        self._account_import_previews: Dict[str, Dict[str, Any]] = {}
+        self._account_import_lock = threading.RLock()
         # Sync ListingAdapter contract methods run browser coroutines on one
         # dedicated loop so Playwright state is not split across transient loops.
         self._sync_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -128,24 +179,58 @@ class BrowserAdapter:
         return self._run_sync(self.polish_listing, external_id, record)
 
     def fulfill(self, order: Order) -> Dict[str, Any]:
-        return self._run_sync(self.fulfill_order, order)
+        cookie_id = str((order.raw or {}).get("cookie_id") or "default")
+        return self._run_sync(self.fulfill_order, order, cookie_id=cookie_id)
+
+    def sync_orders(self, cookie_id: str = "default", status: str = "") -> Dict[str, Any]:
+        orders = self._run_sync(self.get_orders, cookie_id, status)
+        return {
+            "ok": True,
+            "adapter": self.name,
+            "cookie_id": cookie_id,
+            "status": status,
+            "orders": orders if isinstance(orders, list) else [],
+        }
+
+    def sync_my_listings(self, cookie_id: str = "default") -> Dict[str, Any]:
+        items = self._run_sync(self.get_my_listings, cookie_id)
+        return {
+            "ok": True,
+            "adapter": self.name,
+            "cookie_id": cookie_id,
+            "items": items if isinstance(items, list) else [],
+        }
 
     # ============================================================
     # Browser lifecycle
     # ============================================================
 
-    async def _ensure_session(self, cookie_id: str = "default") -> Optional[Any]:
+    def set_cookie_provider(self, provider: Callable[[str], Optional[str]]) -> None:
+        """Use the account database as the primary credential source."""
+        self._cookie_provider = provider
+
+    async def _ensure_session(
+        self,
+        cookie_id: str = "default",
+        *,
+        require_cdp: bool = False,
+    ) -> Optional[Any]:
         """Get or create a persistent browser session.
 
         Two modes:
         1. CDP mode (recommended): Connect to a running Chrome/Edge via CDP.
            No automation detection. User logs in manually.
-           Set BROWSER_CDP_URL=http://127.0.0.1:9222 in .env
+           Set BROWSER_CDP_URL to the same port as BROWSER_DEBUG_PORT.
         2. Launch mode: Launch Playwright Chromium with stealth patches.
            May still trigger captcha on sensitive pages.
         """
+        clean_cookie_id = str(cookie_id or "default").strip() or "default"
         if self._persistent_page and not self._persistent_page.is_closed():
-            return self._persistent_page
+            if self._persistent_cookie_id == clean_cookie_id and (
+                not require_cdp or self._persistent_is_cdp
+            ):
+                return self._persistent_page
+            await self.close()
 
         try:
             from playwright.async_api import async_playwright
@@ -160,6 +245,7 @@ class BrowserAdapter:
         if cdp_url:
             try:
                 self._persistent_browser = await self._persistent_pw.chromium.connect_over_cdp(cdp_url)
+                self._persistent_is_cdp = True
                 # Use the first page or create a new one
                 contexts = self._persistent_browser.contexts
                 if contexts:
@@ -172,13 +258,23 @@ class BrowserAdapter:
                 else:
                     self._persistent_context = await self._persistent_browser.new_context()
                     self._persistent_page = await self._persistent_context.new_page()
-                cookies_str = self._load_cookies(cookie_id)
+                cookies_str = self._load_cookies(clean_cookie_id)
                 if cookies_str:
                     await self._set_cookies(cookies_str)
+                self._persistent_cookie_id = clean_cookie_id
                 logger.info(f"Connected to browser via CDP: {cdp_url}")
                 return self._persistent_page
             except Exception as e:
+                if require_cdp:
+                    logger.warning(f"Required CDP connection failed ({cdp_url}): {e}")
+                    await self.close()
+                    return None
                 logger.warning(f"CDP connection failed ({cdp_url}): {e}, falling back to launch mode")
+
+        if require_cdp:
+            logger.warning("A CDP browser session is required for current-account import")
+            await self.close()
+            return None
 
         # Mode 2: Launch Playwright with stealth patches
         self._persistent_browser = await self._persistent_pw.chromium.launch(
@@ -208,10 +304,12 @@ class BrowserAdapter:
             logger.warning(f"Stealth patch failed: {e}")
 
         # Load cookies
-        cookies_str = self._load_cookies(cookie_id)
+        cookies_str = self._load_cookies(clean_cookie_id)
         if cookies_str:
             await self._set_cookies(cookies_str)
 
+        self._persistent_cookie_id = clean_cookie_id
+        self._persistent_is_cdp = False
         logger.info("Browser session created (launch mode)")
         return self._persistent_page
 
@@ -234,9 +332,9 @@ class BrowserAdapter:
     async def close(self) -> None:
         """Close persistent session."""
         try:
-            if self._persistent_page:
+            if self._persistent_page and not self._persistent_is_cdp:
                 await self._persistent_page.close()
-            if self._persistent_context:
+            if self._persistent_context and not self._persistent_is_cdp:
                 await self._persistent_context.close()
             if self._persistent_browser:
                 await self._persistent_browser.close()
@@ -248,17 +346,29 @@ class BrowserAdapter:
         self._persistent_browser = None
         self._persistent_context = None
         self._persistent_page = None
+        self._persistent_cookie_id = ""
+        self._persistent_is_cdp = False
 
     def _load_cookies(self, cookie_id: str = "default") -> str:
         """Load cookies from settings or file."""
-        if getattr(self.settings, 'xianyu_cookies', ''):
-            return self.settings.xianyu_cookies
+        clean_cookie_id = str(cookie_id or "default").strip() or "default"
+        if self._cookie_provider is not None:
+            try:
+                provided = str(self._cookie_provider(clean_cookie_id) or "").strip()
+            except Exception:
+                provided = ""
+            if provided:
+                return provided
         if self._cookie_file.exists():
             try:
                 data = json.loads(self._cookie_file.read_text(encoding="utf-8"))
-                return data.get(cookie_id, "")
+                stored = str(data.get(clean_cookie_id, "") or "").strip()
+                if stored:
+                    return stored
             except Exception:
                 pass
+        if clean_cookie_id == "default" and getattr(self.settings, "xianyu_cookies", ""):
+            return str(self.settings.xianyu_cookies).strip()
         return ""
 
     def _save_cookies(self, cookie_id: str, cookie_string: str) -> None:
@@ -413,6 +523,256 @@ class BrowserAdapter:
                 pass
         return {"cookie_id": cookie_id, "logged_in": False}
 
+    @staticmethod
+    def _account_cookie_map(cookies: List[Dict[str, Any]]) -> Dict[str, str]:
+        values: Dict[str, str] = {}
+        for cookie in cookies or []:
+            if not isinstance(cookie, dict):
+                continue
+            domain = str(cookie.get("domain") or "").strip().lower().lstrip(".")
+            domain_allowed = any(
+                domain == allowed or domain.endswith(f".{allowed}")
+                for allowed in ACCOUNT_IMPORT_COOKIE_DOMAINS
+            )
+            if not domain_allowed:
+                continue
+            name = str(cookie.get("name") or "").strip()
+            value = str(cookie.get("value") or "")
+            if name and value:
+                values[name] = value
+        return values
+
+    @staticmethod
+    def _account_cookie_string(cookie_map: Dict[str, str]) -> str:
+        return "; ".join(f"{name}={cookie_map[name]}" for name in sorted(cookie_map))
+
+    @staticmethod
+    def _account_display_name(cookie_map: Dict[str, str]) -> str:
+        for key in ("tracknick", "lgc", "sn"):
+            value = str(cookie_map.get(key) or "").strip()
+            if value:
+                try:
+                    return unquote_plus(value)[:80]
+                except Exception:
+                    return value[:80]
+        return ""
+
+    @staticmethod
+    def _account_session_fingerprint(cookie_map: Dict[str, str]) -> str:
+        stable_values = {
+            key: str(cookie_map.get(key) or "")
+            for key in ("unb", "cookie2", "sid")
+        }
+        return hashlib.sha256(
+            json.dumps(stable_values, ensure_ascii=True, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+
+    async def _probe_current_browser_login(
+        self,
+        cookie_map: Dict[str, str],
+    ) -> Dict[str, Any]:
+        context = self._persistent_context
+        request_context = getattr(context, "request", None) if context is not None else None
+        if request_context is None or not hasattr(request_context, "post"):
+            return {
+                "ok": False,
+                "error_code": "browser_login_probe_unavailable",
+                "error": "The browser context cannot run the authenticated login probe.",
+            }
+
+        params = {"appName": "xianyu", "fromSite": "77"}
+        form = {
+            "hid": str(cookie_map.get("unb") or ""),
+            "ltl": "true",
+            "appName": "xianyu",
+            "appEntrance": "web",
+            "_csrf_token": str(cookie_map.get("XSRF-TOKEN") or ""),
+            "hsiz": str(cookie_map.get("cookie2") or ""),
+            "bizParams": "taobaoBizLoginFrom=web",
+            "mainPage": "false",
+            "isMobile": "false",
+            "lang": "zh_CN",
+            "returnUrl": "",
+            "fromSite": "77",
+            "isIframe": "true",
+            "defaultView": "hasLogin",
+            "deviceId": str(cookie_map.get("cna") or ""),
+        }
+        try:
+            response = await request_context.post(
+                ACCOUNT_LOGIN_PROBE_URL,
+                params=params,
+                form=form,
+                timeout=10000,
+            )
+            payload = await response.json()
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error_code": "browser_login_probe_failed",
+                "error": str(exc)[:200],
+            }
+
+        content = payload.get("content") if isinstance(payload, dict) else {}
+        success_value = content.get("success") if isinstance(content, dict) else False
+        logged_in = success_value is True or str(success_value).strip().lower() in {"1", "true"}
+        if not logged_in:
+            return {
+                "ok": False,
+                "error_code": "browser_login_not_verified",
+                "error": "The current browser session is not authenticated with Xianyu.",
+            }
+        return {"ok": True, "probe": "passport_has_login"}
+
+    async def _capture_current_browser_account(self) -> Dict[str, Any]:
+        page = await self._ensure_session("__account_import__", require_cdp=True)
+        context = self._persistent_context
+        if page is None or context is None or not hasattr(context, "cookies"):
+            return {
+                "ok": False,
+                "error_code": "browser_cdp_unavailable",
+                "error": "The dedicated login browser is not available on the configured CDP port.",
+            }
+
+        try:
+            initial_cookie_map = self._account_cookie_map(await context.cookies())
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error_code": "browser_cookie_read_failed",
+                "error": str(exc)[:200],
+            }
+
+        missing = sorted(ACCOUNT_IMPORT_REQUIRED_COOKIES - set(initial_cookie_map))
+        if missing:
+            return {
+                "ok": False,
+                "error_code": "browser_login_cookies_missing",
+                "error": "The current browser is not fully logged in to Xianyu.",
+                "missing_cookie_names": missing,
+            }
+
+        probe = await self._probe_current_browser_login(initial_cookie_map)
+        if not probe.get("ok"):
+            return probe
+
+        try:
+            cookie_map = self._account_cookie_map(await context.cookies())
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error_code": "browser_cookie_read_failed",
+                "error": str(exc)[:200],
+            }
+        missing = sorted(ACCOUNT_IMPORT_REQUIRED_COOKIES - set(cookie_map))
+        if missing:
+            return {
+                "ok": False,
+                "error_code": "browser_login_cookies_missing",
+                "error": "The authenticated browser session lost required login cookies.",
+                "missing_cookie_names": missing,
+            }
+
+        account_id = str(cookie_map.get("unb") or "").strip()
+        if not re.fullmatch(r"\d{5,32}", account_id):
+            return {
+                "ok": False,
+                "error_code": "browser_account_id_invalid",
+                "error": "The authenticated session did not expose a valid numeric account id.",
+            }
+        return {
+            "ok": True,
+            "account_id": account_id,
+            "display_name": self._account_display_name(cookie_map),
+            "cookie_count": len(cookie_map),
+            "required_cookie_names": sorted(ACCOUNT_IMPORT_REQUIRED_COOKIES),
+            "session_fingerprint": self._account_session_fingerprint(cookie_map),
+            "cookie_string": self._account_cookie_string(cookie_map),
+            "probe": str(probe.get("probe") or "passport_has_login"),
+            "observed_at": time.time(),
+        }
+
+    def _account_import_preview(self, preview_token: str, now: float) -> Dict[str, Any]:
+        clean_token = str(preview_token or "").strip()
+        with self._account_import_lock:
+            expired = [
+                token
+                for token, item in self._account_import_previews.items()
+                if float(item.get("expires_at") or 0) < now
+            ]
+            for token in expired:
+                self._account_import_previews.pop(token, None)
+            preview = self._account_import_previews.get(clean_token)
+            return dict(preview) if isinstance(preview, dict) else {}
+
+    async def preview_current_account_import(self, *, now: Optional[float] = None) -> Dict[str, Any]:
+        """Preview the authenticated browser account without returning cookies."""
+        captured = await self._capture_current_browser_account()
+        if not captured.get("ok"):
+            return captured
+
+        observed_at = time.time() if now is None else float(now)
+        expires_at = observed_at + ACCOUNT_IMPORT_PREVIEW_TTL_SECONDS
+        preview_token = secrets.token_urlsafe(24)
+        preview = {
+            "preview_token": preview_token,
+            "account_id": captured["account_id"],
+            "display_name": captured.get("display_name") or "",
+            "cookie_count": int(captured.get("cookie_count") or 0),
+            "required_cookie_names": list(captured.get("required_cookie_names") or []),
+            "session_fingerprint": captured["session_fingerprint"],
+            "session_ref": str(captured["session_fingerprint"])[:12],
+            "probe": captured.get("probe") or "passport_has_login",
+            "observed_at": observed_at,
+            "expires_at": expires_at,
+            "confirmation_phrase": f"BIND {preview_token[:8].upper()}",
+        }
+        with self._account_import_lock:
+            self._account_import_previews[preview_token] = dict(preview)
+        return {"ok": True, **preview}
+
+    async def confirm_current_account_import(
+        self,
+        preview_token: str,
+        *,
+        now: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Recheck the browser and return credentials only to the server caller."""
+        checked_at = time.time() if now is None else float(now)
+        preview = self._account_import_preview(preview_token, checked_at)
+        if not preview:
+            return {
+                "ok": False,
+                "error_code": "account_import_preview_expired",
+                "error": "The account import preview is missing or expired.",
+            }
+
+        captured = await self._capture_current_browser_account()
+        if not captured.get("ok"):
+            return captured
+        if str(captured.get("account_id") or "") != str(preview.get("account_id") or ""):
+            return {
+                "ok": False,
+                "error_code": "browser_account_changed",
+                "error": "The browser is now logged in to a different account; preview again.",
+            }
+        if str(captured.get("session_fingerprint") or "") != str(preview.get("session_fingerprint") or ""):
+            return {
+                "ok": False,
+                "error_code": "browser_session_changed",
+                "error": "The browser login session changed; preview again before importing.",
+            }
+        return {
+            "ok": True,
+            "account_id": captured["account_id"],
+            "display_name": captured.get("display_name") or "",
+            "cookie_string": captured["cookie_string"],
+            "cookie_count": int(captured.get("cookie_count") or 0),
+            "session_ref": str(captured["session_fingerprint"])[:12],
+            "probe": captured.get("probe") or "passport_has_login",
+            "observed_at": float(captured.get("observed_at") or checked_at),
+        }
+
     # ============================================================
     # Search products (same as product_discovery.py)
     # ============================================================
@@ -488,6 +848,12 @@ class BrowserAdapter:
         import re as _re
         title = str(data.get("title") or data.get("name") or "")
         title = _re.sub(r"<[^>]+>", "", title).strip()
+        want_count = _find_nonnegative_counter(
+            data, {"wantCount", "want_count", "collectCount", "favoriteCount"}
+        )
+        browse_count = _find_nonnegative_counter(
+            data, {"browseCount", "browse_count", "viewCount", "view_count"}
+        )
         return {
             "product_id": str(data.get("id") or data.get("itemId") or ""),
             "title": title,
@@ -496,8 +862,9 @@ class BrowserAdapter:
             "seller_name": str(data.get("sellerNick") or data.get("userName") or ""),
             "seller_id": str(data.get("sellerId") or data.get("userId") or ""),
             "image_url": str(data.get("picUrl") or data.get("imageUrl") or ""),
-            "want_count": data.get("wantCount", 0),
-            "browse_count": data.get("browseCount", 0),
+            "want_count": want_count if want_count is not None else 0,
+            "browse_count": browse_count if browse_count is not None else 0,
+            "metrics_available": want_count is not None and browse_count is not None,
             "tags": [str(t) for t in (data.get("tags") or data.get("tagList") or [])[:10]],
         }
 
@@ -527,6 +894,12 @@ class BrowserAdapter:
         # Structure varies; try common field names
         title = str(item.get("title") or item.get("name") or "")
         title = _re.sub(r"<[^>]+>", "", title).strip()
+        want_count = _find_nonnegative_counter(
+            item, {"wantCount", "want_count", "collectCount", "favoriteCount"}
+        )
+        browse_count = _find_nonnegative_counter(
+            item, {"browseCount", "browse_count", "viewCount", "view_count"}
+        )
         return {
             "product_id": str(item.get("itemId") or item.get("id") or ""),
             "title": title,
@@ -534,6 +907,9 @@ class BrowserAdapter:
             "location": str(item.get("area") or item.get("city") or ""),
             "image_url": str(item.get("picUrl") or item.get("imageUrl") or item.get("mainPic") or ""),
             "status": str(item.get("status") or item.get("itemStatus") or ""),
+            "want_count": want_count if want_count is not None else 0,
+            "browse_count": browse_count if browse_count is not None else 0,
+            "metrics_available": want_count is not None and browse_count is not None,
             "raw": item,
         }
 
@@ -731,7 +1107,16 @@ class BrowserAdapter:
 
     async def polish_listing(self, external_id: str, record: Dict[str, Any],
                             cookie_id: str = "default") -> Dict[str, Any]:
-        """Edit an existing listing."""
+        """Submit one title/price edit; later listing sync confirms it."""
+        change_keys = [key for key in ("title", "price") if key in record]
+        if len(change_keys) != 1 or any(key not in {"title", "price"} for key in record):
+            return {
+                "ok": False,
+                "external_id": external_id,
+                "manual_required": True,
+                "error": "browser edit requires exactly one supported variable",
+            }
+        variable = change_keys[0]
         page = await self._ensure_session(cookie_id)
         if not page:
             return {"ok": False, "error": "No browser"}
@@ -746,22 +1131,48 @@ class BrowserAdapter:
                 await edit_btn.click()
                 await asyncio.sleep(2)
 
-                if "title" in record:
+                changed = False
+                if variable == "title":
                     el = page.locator('input[placeholder*="标题"]').first
                     if await el.count() > 0:
                         await el.fill(record["title"])
-                if "price" in record:
+                        changed = True
+                if variable == "price":
                     el = page.locator('input[placeholder*="价格"]').first
                     if await el.count() > 0:
                         await el.fill(str(record["price"]))
+                        changed = True
+
+                if not changed:
+                    return {
+                        "ok": False,
+                        "external_id": external_id,
+                        "variable": variable,
+                        "page_url": page.url,
+                        "error": f"{variable} input not found",
+                    }
 
                 save = page.locator('button:has-text("保存"), button:has-text("确认")').first
                 if await save.count() > 0:
                     await save.click()
                     await asyncio.sleep(2)
-                    return {"ok": True, "external_id": external_id}
+                    return {
+                        "ok": True,
+                        "external_id": external_id,
+                        "variable": variable,
+                        "submitted": True,
+                        "confirmed": False,
+                        "page_url": page.url,
+                        "operator_next_action": "sync_listing_and_activate_experiment",
+                    }
 
-            return {"ok": False, "message": "Edit button not found"}
+            return {
+                "ok": False,
+                "external_id": external_id,
+                "variable": variable,
+                "page_url": page.url,
+                "message": "Edit button not found",
+            }
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

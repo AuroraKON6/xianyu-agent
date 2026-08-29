@@ -22,6 +22,8 @@ class EdgeBrowserController:
         self.storage = storage
         self.guard = guard
         self._ids = count(1)
+        self._http = requests.Session()
+        self._http.trust_env = False
 
     def status(self) -> Dict[str, Any]:
         try:
@@ -64,6 +66,19 @@ class EdgeBrowserController:
         self.storage.write_research("browser-open", result)
         return result
 
+    def open_account_login(self) -> Dict[str, Any]:
+        """Open the dedicated login browser without reading or persisting page text."""
+        url = "https://www.goofish.com/"
+        launch = self.ensure_running()
+        tab = self._new_tab(url)
+        return {
+            "ok": True,
+            "url": url,
+            "debug_url": self._debug_url(),
+            "browser_started": bool(launch.get("started")),
+            "tab_id": str(tab.get("id") or ""),
+        }
+
     def ensure_running(self) -> Dict[str, Any]:
         status = self.status()
         if status.get("ok"):
@@ -103,14 +118,14 @@ class EdgeBrowserController:
         raise RuntimeError(f"browser did not become ready: {last_error}")
 
     def _new_tab(self, url: str) -> Dict[str, Any]:
-        response = requests.put(f"{self._debug_url()}/json/new?{url}", timeout=10)
+        response = self._http.put(f"{self._debug_url()}/json/new?{url}", timeout=10)
         if response.status_code == 405:
-            response = requests.get(f"{self._debug_url()}/json/new?{url}", timeout=10)
+            response = self._http.get(f"{self._debug_url()}/json/new?{url}", timeout=10)
         response.raise_for_status()
         return response.json()
 
     def _tabs(self) -> Any:
-        response = requests.get(f"{self._debug_url()}/json", timeout=3)
+        response = self._http.get(f"{self._debug_url()}/json", timeout=3)
         response.raise_for_status()
         return response.json()
 

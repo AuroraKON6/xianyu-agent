@@ -200,8 +200,12 @@ class MessageIntakeLedger:
         risk_flags: List[str],
         work_order_id: str,
         approval_id: str,
+        cookie_id: str = "",
         status: str = "created",
         generation_error: str = "",
+        envelope_id: str = "",
+        source_message_id: str = "",
+        ack_status: str = "",
         created_at: Optional[float] = None,
     ) -> Dict[str, Any]:
         now = time.time() if created_at is None else float(created_at)
@@ -209,6 +213,10 @@ class MessageIntakeLedger:
             "intake_id": f"intake_{uuid.uuid4().hex[:12]}",
             "event_key": event_key,
             "source": source,
+            "cookie_id": cookie_id,
+            "envelope_id": envelope_id,
+            "source_message_id": source_message_id,
+            "ack_status": ack_status,
             "buyer_id": buyer_id,
             "chat_id": chat_id,
             "item_id": item_id,
@@ -232,6 +240,9 @@ class MessageIntakeLedger:
         event_key: str,
         source: str,
         duplicate_of: str,
+        envelope_id: str = "",
+        source_message_id: str = "",
+        ack_status: str = "",
         created_at: Optional[float] = None,
     ) -> Dict[str, Any]:
         now = time.time() if created_at is None else float(created_at)
@@ -239,6 +250,9 @@ class MessageIntakeLedger:
             "intake_id": f"intake_{uuid.uuid4().hex[:12]}",
             "event_key": event_key,
             "source": source,
+            "envelope_id": envelope_id,
+            "source_message_id": source_message_id,
+            "ack_status": ack_status,
             "buyer_id": "",
             "chat_id": "",
             "item_id": "",
@@ -289,6 +303,28 @@ class MessageIntakeLedger:
     def list_recent(self, limit: int = 20) -> List[Dict[str, Any]]:
         records = sorted(self._records.values(), key=lambda item: item.get("created_at", 0), reverse=True)
         return [_copy(record) for record in records[: max(0, int(limit))]]
+
+    def quarantine_for_work_orders(
+        self,
+        work_order_ids: List[str],
+        reason: str = "unassigned_work_quarantined",
+    ) -> Dict[str, Any]:
+        """Close pending intake records belonging to explicitly quarantined work."""
+        selected = {str(item or "").strip() for item in work_order_ids if str(item or "").strip()}
+        now = time.time()
+        quarantined = []
+        for record in self._records.values():
+            if str(record.get("work_order_id") or "") not in selected:
+                continue
+            if str(record.get("status") or "") not in {"created", "retry_created", "retry_failed"}:
+                continue
+            record["status"] = "quarantined"
+            record["quarantine_reason"] = str(reason or "unassigned_work_quarantined")
+            record["updated_at"] = now
+            quarantined.append(str(record.get("intake_id") or ""))
+        if quarantined:
+            self._save()
+        return {"ok": True, "quarantined": len(quarantined), "intake_ids": quarantined}
 
     def metrics(self) -> Dict[str, Any]:
         records = list(self._records.values())

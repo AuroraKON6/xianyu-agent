@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 RISKY_ACTIONS = {
     "publish_listing",
+    "edit_listing",
     "fulfill_order",
     "send_message",
     "delete_item",
@@ -380,6 +381,62 @@ class WorkOrderManager:
                 "error": str(exc),
             })
 
+    def complete_approval_manually(
+        self,
+        approval_id: str,
+        result: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Record an externally completed approved action with audit evidence.
+
+        This is intentionally separate from normal execution. Callers must
+        verify the platform-side evidence before using it; the manager only
+        enforces approval and idempotency invariants.
+        """
+        target_approval = None
+        target_work_order = None
+        for work_order in self._work_orders.values():
+            for approval in work_order.get("approvals", []):
+                if approval.get("approval_id") == approval_id:
+                    target_approval = approval
+                    target_work_order = work_order
+                    break
+            if target_approval:
+                break
+        if not target_approval or not target_work_order:
+            raise KeyError(f"Approval not found: {approval_id}")
+        if target_approval.get("status") != "approved":
+            raise ValueError("manual completion requires an approved action")
+        execution_status = str(target_approval.get("execution_status") or "")
+        if execution_status == "running":
+            raise ValueError("approval execution is currently running")
+        existing_result = target_approval.get("execution_result")
+        if (
+            execution_status == "completed"
+            and isinstance(existing_result, dict)
+            and bool(existing_result.get("ok"))
+        ):
+            return _copy(target_approval)
+
+        now = time.time()
+        clean_result = dict(result or {})
+        clean_result.setdefault("ok", True)
+        clean_result["manual_confirmation"] = True
+        target_approval["execution_status"] = "completed"
+        target_approval["execution_result"] = clean_result
+        target_approval["execution_started_at"] = now
+        target_approval["executed_at"] = now
+        target_work_order["events"].append({
+            "type": "execution_manually_confirmed",
+            "created_at": now,
+            "approval_id": approval_id,
+            "action": target_approval.get("action", ""),
+            "result": clean_result,
+        })
+        self._refresh_execution_status(target_work_order)
+        self._touch(target_work_order)
+        self._save()
+        return _copy(target_approval)
+
     def _refresh_execution_status(self, work_order: Dict[str, Any]) -> None:
         approvals = work_order.get("approvals", [])
         exec_statuses = [a.get("execution_status") for a in approvals if a.get("status") == "approved"]
@@ -406,14 +463,20 @@ class WorkOrderManager:
         ]
 
     def _new_approval(self, work_order: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
+        payload = dict(action.get("params") or {})
+        draft_snapshot = dict(action.get("draft_snapshot") or {})
+        cookie_id = _find_cookie_id(payload, draft_snapshot, work_order.get("context"))
+        if cookie_id:
+            payload.setdefault("cookie_id", cookie_id)
+            draft_snapshot.setdefault("cookie_id", cookie_id)
         return {
             "approval_id": f"approval_{uuid.uuid4().hex[:12]}",
             "work_order_id": work_order["work_order_id"],
             "agent": action["agent"],
             "action": action["action"],
             "reason": f"{action['action']} requires human approval",
-            "payload": action.get("params") or {},
-            "draft_snapshot": action.get("draft_snapshot") or {},
+            "payload": payload,
+            "draft_snapshot": draft_snapshot,
             "status": "pending",
             "requested_at": time.time(),
             "decided_at": None,
@@ -470,6 +533,31 @@ class WorkOrderManager:
 
 def _copy(value: Dict[str, Any]) -> Dict[str, Any]:
     return json.loads(json.dumps(value, ensure_ascii=False))
+
+
+def _find_cookie_id(*values) -> str:
+    for value in values:
+        found = _find_cookie_id_in_value(value)
+        if found:
+            return found
+    return ""
+
+
+def _find_cookie_id_in_value(value) -> str:
+    if isinstance(value, dict):
+        direct = value.get("cookie_id")
+        if isinstance(direct, str) and direct.strip():
+            return direct.strip()
+        for child in value.values():
+            found = _find_cookie_id_in_value(child)
+            if found:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = _find_cookie_id_in_value(child)
+            if found:
+                return found
+    return ""
 
 
 work_order_manager = WorkOrderManager()
