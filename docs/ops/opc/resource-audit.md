@@ -47,7 +47,7 @@
 ## 6. Constraints
 
 - **Time**: One-person operation. Must prioritize high-leverage activities (selection, listing optimization, conversion) over low-leverage ones (manual customer service, logistics tracking).
-- **Cash**: Low startup cost. Xianyu requires no deposit. Pinduoduo allows 0-yuan orders on some items. Main cash risk is large orders requiring upfront payment to supplier.
+- **Cash**: Startup cash depends on the current seller account and category. Xianyu may require buyer-protection or guarantee funds and may charge account/category-specific service fees; these must be checked on the execution-day platform page. Pinduoduo allows 0-yuan orders on some items, but supplier prepayment, guarantee funds, refunds, and platform fees all consume working capital.
 - **Bandwidth**: Cannot operate unlimited categories simultaneously. Focus on 1-2 verticals + 1 miscellaneous store.
 - **Psychological constraint**: Must manage expectations. Not every inquiry converts. Not every listing gets traction. High exposure ≠ high profit (electronics get millions of views but margins are thin; commercial equipment gets thousands but margins are 200+ per unit). Focus on what's controllable: selection, title, image, copy, reply quality.
 
