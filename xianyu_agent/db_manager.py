@@ -21,24 +21,32 @@ from loguru import logger
 
 
 class DBManager:
-    """SQLite database manager with thread-safe operations."""
+    """SQLite database manager with thread-safe operations.
+
+    Construction is intentionally free of filesystem side effects: the
+    connection and schema are created lazily on first use (or by an explicit
+    ``init_db()`` from the composition root) so that merely importing the
+    module graph never creates a database file at a default path.
+    """
 
     def __init__(self, db_path: str = None):
         if db_path is None:
             db_path = os.getenv("DB_PATH", "data/xianyu_data.db")
 
-        db_dir = os.path.dirname(db_path)
-        if db_dir:
-            os.makedirs(db_dir, exist_ok=True)
-
         self.db_path = db_path
         self.conn = None
         self.lock = threading.RLock()
-        self.init_db()
+
+    def _ensure_connected(self):
+        if self.conn is None:
+            self.init_db()
 
     def init_db(self):
         """Initialize database schema."""
         try:
+            db_dir = os.path.dirname(self.db_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
             self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
             cursor = self.conn.cursor()
@@ -151,7 +159,36 @@ class DBManager:
                     price REAL DEFAULT 0,
                     description TEXT DEFAULT '',
                     status TEXT DEFAULT 'active',
+                    metrics_available INTEGER DEFAULT 0,
+                    browse_count INTEGER DEFAULT 0,
+                    want_count INTEGER DEFAULT 0,
+                    metrics_observed_at REAL DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (cookie_id) REFERENCES cookies(id) ON DELETE CASCADE
+                )
+            """)
+            item_columns = {
+                str(row["name"])
+                for row in cursor.execute("PRAGMA table_info(items)").fetchall()
+            }
+            for column, definition in (
+                ("metrics_available", "INTEGER DEFAULT 0"),
+                ("browse_count", "INTEGER DEFAULT 0"),
+                ("want_count", "INTEGER DEFAULT 0"),
+                ("metrics_observed_at", "REAL DEFAULT 0"),
+            ):
+                if column not in item_columns:
+                    cursor.execute(f"ALTER TABLE items ADD COLUMN {column} {definition}")
+
+            # Account sync freshness metadata
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS account_sync_state (
+                    cookie_id TEXT NOT NULL,
+                    resource TEXT NOT NULL,
+                    adapter TEXT DEFAULT '',
+                    last_count INTEGER DEFAULT 0,
+                    last_synced_at REAL DEFAULT 0,
+                    PRIMARY KEY (cookie_id, resource),
                     FOREIGN KEY (cookie_id) REFERENCES cookies(id) ON DELETE CASCADE
                 )
             """)
@@ -179,6 +216,7 @@ class DBManager:
     def _execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
         """Thread-safe execute."""
         with self.lock:
+            self._ensure_connected()
             cursor = self.conn.cursor()
             cursor.execute(sql, params)
             self.conn.commit()
@@ -186,12 +224,14 @@ class DBManager:
 
     def _fetchone(self, sql: str, params: tuple = ()) -> Optional[sqlite3.Row]:
         with self.lock:
+            self._ensure_connected()
             cursor = self.conn.cursor()
             cursor.execute(sql, params)
             return cursor.fetchone()
 
     def _fetchall(self, sql: str, params: tuple = ()) -> List[sqlite3.Row]:
         with self.lock:
+            self._ensure_connected()
             cursor = self.conn.cursor()
             cursor.execute(sql, params)
             return cursor.fetchall()
@@ -221,6 +261,9 @@ class DBManager:
 
     def update_cookie_value(self, cookie_id: str, new_value: str):
         self._execute("UPDATE cookies SET value = ? WHERE id = ?", (new_value, cookie_id))
+
+    def update_cookie_remark(self, cookie_id: str, remark: str):
+        self._execute("UPDATE cookies SET remark = ? WHERE id = ?", (remark, cookie_id))
 
     def get_auto_confirm(self, cookie_id: str) -> bool:
         row = self._fetchone("SELECT auto_confirm FROM cookies WHERE id = ?", (cookie_id,))
@@ -397,9 +440,20 @@ class DBManager:
 
     def save_item(self, item_id: str, cookie_id: str, **kwargs):
         self._execute(
-            """INSERT OR REPLACE INTO items
-            (item_id, cookie_id, title, price, description, status)
-            VALUES (?, ?, ?, ?, ?, ?)""",
+            """INSERT INTO items
+            (item_id, cookie_id, title, price, description, status,
+             metrics_available, browse_count, want_count, metrics_observed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(item_id) DO UPDATE SET
+                cookie_id = excluded.cookie_id,
+                title = excluded.title,
+                price = excluded.price,
+                description = excluded.description,
+                status = excluded.status,
+                metrics_available = excluded.metrics_available,
+                browse_count = excluded.browse_count,
+                want_count = excluded.want_count,
+                metrics_observed_at = excluded.metrics_observed_at""",
             (
                 item_id,
                 cookie_id,
@@ -407,6 +461,10 @@ class DBManager:
                 kwargs.get("price", 0),
                 kwargs.get("description", ""),
                 kwargs.get("status", "active"),
+                int(bool(kwargs.get("metrics_available", False))),
+                max(0, int(kwargs.get("browse_count", 0) or 0)),
+                max(0, int(kwargs.get("want_count", 0) or 0)),
+                float(kwargs.get("metrics_observed_at", 0) or 0),
             ),
         )
 
@@ -419,6 +477,49 @@ class DBManager:
     def get_all_items(self) -> List[Dict[str, Any]]:
         rows = self._fetchall("SELECT * FROM items ORDER BY created_at DESC")
         return [dict(row) for row in rows]
+
+    # ---- Account Sync State ----
+
+    def save_account_sync_state(
+        self,
+        cookie_id: str,
+        resource: str,
+        *,
+        adapter: str = "",
+        last_count: int = 0,
+        last_synced_at: float = None,
+    ):
+        timestamp = time.time() if last_synced_at is None else float(last_synced_at)
+        self._execute(
+            """INSERT OR REPLACE INTO account_sync_state
+            (cookie_id, resource, adapter, last_count, last_synced_at)
+            VALUES (?, ?, ?, ?, ?)""",
+            (cookie_id, resource, adapter, int(last_count or 0), timestamp),
+        )
+
+    def get_account_sync_state(self, cookie_id: str, stale_after_seconds: float = 86400) -> Dict[str, Any]:
+        rows = self._fetchall(
+            "SELECT * FROM account_sync_state WHERE cookie_id = ?",
+            (cookie_id,),
+        )
+        now = time.time()
+        result: Dict[str, Any] = {}
+        for row in rows:
+            data = dict(row)
+            resource = str(data.get("resource") or "")
+            last_synced_at = float(data.get("last_synced_at") or 0)
+            age_seconds = max(0, now - last_synced_at) if last_synced_at else None
+            result[resource] = {
+                "adapter": data.get("adapter") or "",
+                "last_count": int(data.get("last_count") or 0),
+                "last_synced_epoch": last_synced_at,
+                "last_synced_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(last_synced_at))
+                if last_synced_at
+                else "",
+                "age_seconds": age_seconds,
+                "fresh": bool(last_synced_at and age_seconds is not None and age_seconds <= stale_after_seconds),
+            }
+        return result
 
     # ---- Auto-Reply Rules ----
 
@@ -455,7 +556,66 @@ class DBManager:
     def close(self):
         if self.conn:
             self.conn.close()
+            self.conn = None
 
 
-# Global singleton
-db_manager = DBManager()
+# ---- Deferred global singleton ----
+#
+# The singleton is no longer constructed at import time. Importing this
+# module (or ``from .db_manager import db_manager`` in dependent modules)
+# performs no filesystem access; the instance is created on first attribute
+# access with its path resolved in this order:
+#
+#   1. an explicit ``configure_db_manager(settings.db_path)`` call from the
+#      service composition root;
+#   2. ``DB_PATH`` from the process environment (used by the isolated test
+#      runner);
+#   3. ``Settings.from_env().db_path`` (loads the project ``.env``).
+#
+# Because ``DBManager`` construction does not touch the filesystem, a wrong
+# import order can no longer silently create ``data/xianyu_data.db``.
+
+_singleton: Optional[DBManager] = None
+_explicit_path: Optional[str] = None
+
+
+def configure_db_manager(db_path: str) -> DBManager:
+    """Bind the global singleton to an explicit path (composition root hook)."""
+    global _singleton, _explicit_path
+    if not db_path:
+        raise ValueError("configure_db_manager requires a non-empty db_path")
+    _explicit_path = db_path
+    if _singleton is None:
+        _singleton = DBManager(db_path)
+    elif _singleton.db_path != db_path:
+        if _singleton.conn is not None:
+            raise RuntimeError(
+                "db_manager is already connected to "
+                f"{_singleton.db_path}; refusing to rebind to {db_path}"
+            )
+        _singleton = DBManager(db_path)
+    return _singleton
+
+
+def _resolve_db_path() -> str:
+    if _explicit_path:
+        return _explicit_path
+    env_path = os.getenv("DB_PATH", "").strip()
+    if env_path:
+        return env_path
+    from .config import Settings
+
+    return Settings.from_env().db_path
+
+
+def get_db_manager() -> DBManager:
+    global _singleton
+    if _singleton is None:
+        _singleton = DBManager(_resolve_db_path())
+    return _singleton
+
+
+def __getattr__(name: str):
+    if name == "db_manager":
+        return get_db_manager()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

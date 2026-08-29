@@ -5,6 +5,7 @@ import json
 import sys
 from typing import Any
 
+from .adapters import xianguanjia_health
 from .config import Settings
 from .workflow import CommerceWorkflow
 
@@ -207,6 +208,7 @@ def main(argv: Any = None) -> int:
             "browser_headless": settings.browser_headless,
             "adapter": settings.xianyu_adapter,
             "xianguanjia_configured": bool(settings.xianguanjia_base_url),
+            "xianguanjia": xianguanjia_health(settings),
             "feishu_token_configured": bool(settings.feishu_verification_token),
             "feishu_connection": "feishu_cli_long_connection",
             "image_search_provider": settings.image_search_provider,

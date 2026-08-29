@@ -130,6 +130,12 @@ class Settings:
         if env_path is None:
             env_path = Path.cwd() / ".env"
         _load_dotenv(env_path, override=False)
+        data_dir = Path(os.environ.get("DATA_DIR", "data"))
+        db_path = os.environ.get("DB_PATH", "").strip() or str(data_dir / "xianyu_data.db")
+        browser_debug_port = int(os.environ.get("BROWSER_DEBUG_PORT", "9223"))
+        browser_cdp_url = os.environ.get("BROWSER_CDP_URL", "").strip()
+        if not browser_cdp_url:
+            browser_cdp_url = f"http://127.0.0.1:{browser_debug_port}"
         return cls(
             deepseek_api_key=os.environ.get("DEEPSEEK_API_KEY", ""),
             deepseek_base_url=os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/"),
@@ -153,8 +159,10 @@ class Settings:
             xianyu_cookies=os.environ.get("XIANYU_COOKIES", ""),
             xianguanjia_base_url=os.environ.get("XIANGUANJIA_BASE_URL", "").rstrip("/"),
             xianguanjia_token=os.environ.get("XIANGUANJIA_TOKEN", ""),
-            xianguanjia_app_id=os.environ.get("XIANGUANJIA_APP_ID", ""),
-            xianguanjia_api_key=os.environ.get("XIANGUANJIA_API_KEY", ""),
+            xianguanjia_app_id=os.environ.get("XIANGUANJIA_APP_ID", "")
+            or os.environ.get("XIANGUANJIA_APP_KEY", ""),
+            xianguanjia_api_key=os.environ.get("XIANGUANJIA_API_KEY", "")
+            or os.environ.get("XIANGUANJIA_APP_SECRET", ""),
             xianguanjia_create_endpoint=os.environ.get("XIANGUANJIA_CREATE_ENDPOINT", "/api/listings"),
             xianguanjia_polish_endpoint=os.environ.get(
                 "XIANGUANJIA_POLISH_ENDPOINT", "/api/listings/{listing_id}/polish"
@@ -168,7 +176,7 @@ class Settings:
             serpapi_key=os.environ.get("SERPAPI_KEY", ""),
             bing_search_key=os.environ.get("BING_SEARCH_KEY", ""),
             allow_external_product_images=_bool_env("ALLOW_EXTERNAL_PRODUCT_IMAGES", False),
-            data_dir=Path(os.environ.get("DATA_DIR", "data")),
+            data_dir=data_dir,
             polish_at=os.environ.get("POLISH_AT", "09:30"),
             server_host=os.environ.get("SERVER_HOST", "0.0.0.0"),
             server_port=int(os.environ.get("SERVER_PORT", "8788")),
@@ -202,10 +210,10 @@ class Settings:
                 "BROWSER_EDGE_PATH",
                 r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
             ),
-            browser_debug_port=int(os.environ.get("BROWSER_DEBUG_PORT", "9223")),
+            browser_debug_port=browser_debug_port,
             browser_user_data_dir=os.environ.get("BROWSER_USER_DATA_DIR", r"E:\xianyu-agent-browser-profile"),
             browser_headless=_bool_env("BROWSER_HEADLESS", False),
-            browser_cdp_url=os.environ.get("BROWSER_CDP_URL", ""),
+            browser_cdp_url=browser_cdp_url,
             openclaw_root=Path(os.environ.get("OPENCLAW_ROOT", r"E:\openclaw\openclaw-main")),
             openclaw_control_center_root=Path(
                 os.environ.get(
@@ -234,7 +242,7 @@ class Settings:
             auto_reply_model=os.environ.get("AUTO_REPLY_MODEL", ""),
             auto_reply_human_toggle=os.environ.get("AUTO_REPLY_HUMAN_TOGGLE", "。"),
             # Database settings
-            db_path=os.environ.get("DB_PATH", str(Path.cwd() / "data" / "xianyu_data.db")),
+            db_path=db_path,
         )
 
     def ensure_dirs(self) -> None:
