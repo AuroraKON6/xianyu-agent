@@ -13,6 +13,12 @@ test_data/
 *.pid
 *.lock
 
+# === QA Output & Local Backups ===
+# output/ holds Playwright screenshots, phase test databases, audit backups,
+# and an .env backup; it must never enter version control.
+output/
+.playwright-cli/
+
 # === Python ===
 .venv/
 __pycache__/
@@ -26,6 +32,7 @@ build/
 # === Node ===
 node_modules/
 package-lock.json
+!package-lock.json
 
 # === IDE ===
 .vscode/
