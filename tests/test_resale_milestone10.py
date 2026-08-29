@@ -600,7 +600,8 @@ class TestEndpointCount(unittest.TestCase):
                 if methods:
                     for m in methods:
                         resale_endpoints.append((m, r.path))
-        self.assertEqual(len(resale_endpoints), 21)
+        # Phase 28 adds candidate-bound evidence archive list/upload/download routes.
+        self.assertEqual(len(resale_endpoints), 27)
 
 
 class TestResaleAgentDeepSeekConfig(unittest.TestCase):

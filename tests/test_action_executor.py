@@ -51,7 +51,10 @@ class ActionExecutorTests(unittest.TestCase):
         }
 
         class FakeAdapter:
+            called_cookie_id = ""
+
             async def publish_listing(self, draft, cookie_id="default"):
+                self.called_cookie_id = cookie_id
                 class R:
                     ok = True
                     external_id = "item_fake_123"
@@ -80,7 +83,7 @@ class ActionExecutorTests(unittest.TestCase):
 
             approval = {
                 "action": "publish_listing",
-                "payload": {"draft_id": "draft_abc"},
+                "payload": {"draft_id": "draft_abc", "cookie_id": "seller_b"},
                 "draft_snapshot": {},
             }
 
@@ -91,7 +94,9 @@ class ActionExecutorTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["action"], "publish_listing")
             self.assertEqual(result["draft_id"], "draft_abc")
+            self.assertEqual(result["cookie_id"], "seller_b")
             self.assertEqual(result["publish_result"]["external_id"], "item_fake_123")
+            self.assertEqual(FakeWorkflow.adapter.called_cookie_id, "seller_b")
 
     def test_phase12_actions_validate_required_ids(self):
         from xianyu_agent.action_executor import ActionExecutor
@@ -108,6 +113,128 @@ class ActionExecutorTests(unittest.TestCase):
             self.assertFalse(result["ok"], f"{action} should return ok=False")
             self.assertIn(missing_field, result["error"], f"{action} error should mention missing field")
             self.assertEqual(result["action"], action)
+
+    def test_edit_listing_submits_one_approved_change_without_claiming_confirmation(self):
+        from xianyu_agent.action_executor import ActionExecutor
+
+        class FakeAdapter:
+            def __init__(self):
+                self.calls = []
+
+            async def polish_listing(self, item_id, record, cookie_id="default"):
+                self.calls.append((item_id, record, cookie_id))
+                return {
+                    "ok": True,
+                    "submitted": True,
+                    "confirmed": False,
+                    "page_url": "https://www.goofish.com/item?id=item_1",
+                }
+
+        class FakeWorkflow:
+            adapter = FakeAdapter()
+
+        executor = ActionExecutor()
+        approval = {
+            "action": "edit_listing",
+            "payload": {
+                "item_id": "item_1",
+                "cookie_id": "seller_a",
+                "variable": "title",
+                "after_value": "不锈钢商用工作台 1200x600",
+            },
+        }
+        result = executor.execute(approval, {"workflow": FakeWorkflow()})
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["submitted"])
+        self.assertFalse(result["confirmed"])
+        self.assertEqual(result["operator_next_action"], "sync_listing_and_activate_experiment")
+        self.assertEqual(
+            FakeWorkflow.adapter.calls,
+            [("item_1", {"title": "不锈钢商用工作台 1200x600"}, "seller_a")],
+        )
+
+    def test_edit_listing_manual_variable_returns_operator_handoff(self):
+        from xianyu_agent.action_executor import ActionExecutor
+
+        result = ActionExecutor().execute(
+            {
+                "action": "edit_listing",
+                "payload": {
+                    "item_id": "item_1",
+                    "cookie_id": "seller_a",
+                    "variable": "cover",
+                    "after_value": "实拍尺寸图",
+                },
+            },
+            context={},
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["manual_required"])
+        self.assertEqual(result["operator_next_action"], "complete_manual_listing_edit")
+
+    def test_edit_listing_refuses_a_cancelled_commercial_experiment(self):
+        from xianyu_agent.action_executor import ActionExecutor
+
+        class FakeStore:
+            def get_trial(self, trial_id):
+                return {
+                    "trial_id": trial_id,
+                    "lifecycle": "active",
+                    "experiments": [{"experiment_id": "te_1", "status": "cancelled"}],
+                }
+
+        result = ActionExecutor().execute(
+            {
+                "action": "edit_listing",
+                "payload": {
+                    "commercial_trial_id": "ct_1",
+                    "experiment_id": "te_1",
+                    "item_id": "item_1",
+                    "cookie_id": "seller_a",
+                    "variable": "title",
+                    "after_value": "新标题",
+                },
+            },
+            context={"commercial_trial_store": FakeStore()},
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("no longer executable", result["error"])
+        self.assertEqual(result["operator_next_action"], "review_cancelled_or_inactive_experiment")
+
+    def test_manual_completion_replaces_a_failed_handler_result_with_audited_success(self):
+        from xianyu_agent.work_orders import WorkOrderManager
+
+        with TemporaryDirectory() as tmp:
+            manager = WorkOrderManager(Path(tmp) / "work_orders.json")
+            order = manager.create_work_order("listing_experiment", "首图实验", "listing", risk_level="high")
+            manager.create_action_plan(
+                order["work_order_id"],
+                proposed_actions=[{
+                    "agent": "listing",
+                    "action": "edit_listing",
+                    "description": "人工修改首图",
+                    "params": {"item_id": "item_1", "cookie_id": "seller_a", "variable": "cover"},
+                }],
+            )
+            approval_id = manager.get_work_order(order["work_order_id"])["approvals"][0]["approval_id"]
+            manager.decide_approval(approval_id, "approved", "同意首图实验")
+            approval = manager.get_work_order(order["work_order_id"])["approvals"][0]
+            approval["execution_status"] = "completed"
+            approval["execution_result"] = {"ok": False, "manual_required": True}
+            manager._work_orders[order["work_order_id"]]["approvals"][0] = approval
+
+            completed = manager.complete_approval_manually(
+                approval_id,
+                {"ok": True, "evidence_ref": "screenshots/item_1-cover.png"},
+            )
+
+            self.assertTrue(completed["execution_result"]["ok"])
+            self.assertTrue(completed["execution_result"]["manual_confirmation"])
+            saved = manager.get_work_order(order["work_order_id"])
+            self.assertEqual(saved["events"][-1]["type"], "execution_manually_confirmed")
 
     def test_execute_approval_through_executor(self):
         from xianyu_agent.work_orders import WorkOrderManager

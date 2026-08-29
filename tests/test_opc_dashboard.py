@@ -54,6 +54,17 @@ class FakeMessageIntake:
         return self._metrics
 
 
+class FakeDiscoveryInbox:
+    def __init__(self, events=None):
+        self._events = events or []
+
+    def list_events(self, status=None, limit=100):
+        events = self._events
+        if status:
+            events = [event for event in events if event.get("status") == status]
+        return events[:limit]
+
+
 class OPCDashboardBasicTests(unittest.TestCase):
     def test_opc_daily_returns_all_sections(self):
         dashboard = OPCDashboard()
@@ -213,6 +224,24 @@ class OPCDashboardWithDataTests(unittest.TestCase):
         self.assertTrue(any("execution_queue" in n for n in notes))
 
 
+class OPCDashboardDiscoveryInboxTests(unittest.TestCase):
+    def test_unread_discovery_inbox_events_count_as_new_discoveries(self):
+        dashboard = OPCDashboard(
+            discovery_inbox_store=FakeDiscoveryInbox(
+                events=[
+                    {"event_id": "di_1", "status": "unread", "title": "lead 1"},
+                    {"event_id": "di_2", "status": "unread", "title": "lead 2"},
+                    {"event_id": "di_3", "status": "promoted", "title": "lead 3"},
+                ]
+            )
+        )
+
+        result = dashboard.get_opc_daily()
+
+        self.assertEqual(result["today_actions"]["new_discoveries"], 2)
+        self.assertTrue(any(action["kind"] == "review_discovery_inbox" for action in result["next_actions"]))
+
+
 class OPCDashboardWeeklyReviewTests(unittest.TestCase):
     def test_weekly_review_creates_markdown_file(self):
         dashboard = OPCDashboard()
@@ -271,6 +300,151 @@ class OPCDashboardBottleneckTests(unittest.TestCase):
         bottleneck = result["bottleneck"]
 
         self.assertIn(bottleneck["stage"], ("listing", "inquiry"))
+
+
+class OPCDashboardReadinessTests(unittest.TestCase):
+    def test_dashboard_includes_account_readiness_and_adapter_health(self):
+        dashboard = OPCDashboard(
+            account_profile_provider=lambda: [
+                {
+                    "cookie_id": "seller_ready",
+                    "enabled": True,
+                    "capabilities": {"seller_auto_reply": True},
+                    "counts": {"items": 3},
+                    "ai": {"enabled": True},
+                    "recommended_next_actions": ["Account profile is ready for monitored seller-mode operation."],
+                },
+                {
+                    "cookie_id": "seller_attention",
+                    "enabled": False,
+                    "capabilities": {"seller_auto_reply": False},
+                    "counts": {"items": 0},
+                    "ai": {"enabled": False},
+                    "recommended_next_actions": ["Enable the account before running live monitoring."],
+                },
+            ],
+            adapter_health_provider=lambda: {
+                "adapter": "xianguanjia",
+                "configured": True,
+                "ready": False,
+                "missing": ["XIANGUANJIA_TOKEN"],
+            },
+        )
+
+        result = dashboard.get_opc_daily()
+
+        self.assertIn("account_readiness", result)
+        self.assertIn("adapter_health", result)
+        self.assertIn("next_actions", result)
+        self.assertEqual(result["account_readiness"]["total_accounts"], 2)
+        self.assertEqual(result["account_readiness"]["ready_for_seller_ops"], 1)
+        self.assertEqual(result["account_readiness"]["needs_attention"], 1)
+        self.assertEqual(result["adapter_health"]["adapter"], "xianguanjia")
+        self.assertFalse(result["adapter_health"]["ready"])
+        self.assertTrue(any(action["kind"] == "adapter_not_ready" for action in result["next_actions"]))
+        self.assertTrue(any(action["kind"] == "account_attention" for action in result["next_actions"]))
+
+    def test_next_actions_prioritize_approvals_failures_and_empty_accounts(self):
+        dashboard = OPCDashboard(
+            work_order_manager=FakeWorkOrderManager(
+                orders=[{"approvals": [{"status": "pending"}, {"status": "pending"}]}]
+            ),
+            execution_queue=FakeExecutionQueue(jobs=[{"status": "failed"}]),
+            account_profile_provider=lambda: [],
+            adapter_health_provider=lambda: {"adapter": "stub", "ready": True, "configured": True},
+        )
+
+        result = dashboard.get_opc_daily()
+        kinds = [action["kind"] for action in result["next_actions"]]
+
+        self.assertEqual(kinds[0], "pending_approvals")
+        self.assertIn("failed_jobs", kinds)
+        self.assertIn("no_accounts", kinds)
+
+    def test_dashboard_includes_message_import_scheduler_without_cookie_field(self):
+        dashboard = OPCDashboard(
+            message_import_scheduler_provider=lambda: {
+                "enabled": True,
+                "cookie_id": "seller_sched",
+                "interval_seconds": 120,
+                "due": False,
+                "run_count": 2,
+                "consecutive_failures": 2,
+                "backoff_seconds": 120,
+                "last_run_at": "2026-07-03T01:00:00",
+                "last_error": "",
+                "last_result": {
+                    "created": 3,
+                    "duplicates": 1,
+                    "failed": 0,
+                    "conversations_selected": 2,
+                },
+                "due_profiles": ["seller_b"],
+                "profiles": {
+                    "seller_sched": {
+                        "cookie_id": "seller_sched",
+                        "enabled": True,
+                        "due": False,
+                        "run_count": 2,
+                        "last_result": {"created": 3},
+                    },
+                    "seller_b": {
+                        "cookie_id": "seller_b",
+                        "enabled": True,
+                        "due": True,
+                        "run_count": 0,
+                        "last_result": {},
+                    },
+                },
+            }
+        )
+
+        result = dashboard.get_opc_daily()
+
+        self.assertIn("message_import_scheduler", result)
+        scheduler = result["message_import_scheduler"]
+        self.assertTrue(scheduler["enabled"])
+        self.assertEqual(scheduler["account"], "seller_sched")
+        self.assertEqual(scheduler["consecutive_failures"], 2)
+        self.assertEqual(scheduler["backoff_seconds"], 120)
+        self.assertEqual(scheduler["total_profiles"], 2)
+        self.assertEqual(scheduler["due_profiles"], ["seller_b"])
+        self.assertEqual(scheduler["profiles"]["seller_b"]["account"], "seller_b")
+        self.assertEqual(scheduler["last_result"]["created"], 3)
+        self.assertNotIn("cookie_id", json.dumps(scheduler, ensure_ascii=False))
+
+    def test_dashboard_turns_scheduler_health_into_operator_actions(self):
+        dashboard = OPCDashboard(
+            account_profile_provider=lambda: [
+                {"cookie_id": "seller_missing", "enabled": True},
+                {"cookie_id": "seller_failed", "enabled": True},
+            ],
+            adapter_health_provider=lambda: {"adapter": "stub", "configured": True, "ready": True},
+            message_import_scheduler_provider=lambda: {
+                "profiles": {
+                    "seller_failed": {
+                        "cookie_id": "seller_failed",
+                        "enabled": True,
+                        "due": False,
+                        "consecutive_failures": 3,
+                        "backoff_seconds": 300,
+                        "last_error": "session expired",
+                    }
+                }
+            },
+        )
+
+        result = dashboard.get_opc_daily()
+        scheduler = result["message_import_scheduler"]
+        health = scheduler["health"]
+        kinds = [action["kind"] for action in result["next_actions"]]
+
+        self.assertEqual(health["status"], "critical")
+        self.assertEqual(health["missing_profiles"], ["seller_missing"])
+        self.assertEqual(health["failed_profiles"][0]["account"], "seller_failed")
+        self.assertIn("message_import_scheduler_error", kinds)
+        self.assertIn("scheduler_profile_missing", kinds)
+        self.assertNotIn("cookie_id", json.dumps(scheduler, ensure_ascii=False))
 
 
 if __name__ == "__main__":

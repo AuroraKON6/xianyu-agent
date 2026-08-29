@@ -32,6 +32,41 @@ class SettingsEnvTests(unittest.TestCase):
                 else:
                     os.environ["XIANYU_ADAPTER"] = old_adapter
 
+    def test_database_defaults_inside_configured_data_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env_path = Path(tmp) / ".env"
+            data_dir = Path(tmp) / "isolated-data"
+            env_path.write_text(f"DATA_DIR={data_dir}\n", encoding="utf-8")
+
+            old_data_dir = os.environ.pop("DATA_DIR", None)
+            old_db_path = os.environ.pop("DB_PATH", None)
+            try:
+                settings = Settings.from_env(env_path)
+                self.assertEqual(settings.data_dir, data_dir)
+                self.assertEqual(Path(settings.db_path), data_dir / "xianyu_data.db")
+            finally:
+                if old_data_dir is not None:
+                    os.environ["DATA_DIR"] = old_data_dir
+                if old_db_path is not None:
+                    os.environ["DB_PATH"] = old_db_path
+
+    def test_browser_cdp_url_defaults_to_the_configured_debug_port(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env_path = Path(tmp) / ".env"
+            env_path.write_text("BROWSER_DEBUG_PORT=9333\n", encoding="utf-8")
+
+            old_port = os.environ.pop("BROWSER_DEBUG_PORT", None)
+            old_cdp_url = os.environ.pop("BROWSER_CDP_URL", None)
+            try:
+                settings = Settings.from_env(env_path)
+                self.assertEqual(settings.browser_debug_port, 9333)
+                self.assertEqual(settings.browser_cdp_url, "http://127.0.0.1:9333")
+            finally:
+                if old_port is not None:
+                    os.environ["BROWSER_DEBUG_PORT"] = old_port
+                if old_cdp_url is not None:
+                    os.environ["BROWSER_CDP_URL"] = old_cdp_url
+
 
 if __name__ == "__main__":
     unittest.main()

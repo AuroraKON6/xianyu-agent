@@ -33,13 +33,14 @@ class BrowserAdapterContractTests(unittest.TestCase):
 
     def test_polish_and_fulfill_delegate_to_async_methods(self):
         adapter = self.make_adapter()
-        order = Order(order_id="order-1", listing_id="item-1")
+        order = Order(order_id="order-1", listing_id="item-1", raw={"cookie_id": "seller_b"})
 
         async def fake_polish_listing(external_id, record, cookie_id="default"):
             return {"ok": True, "external_id": external_id, "record": record}
 
         async def fake_fulfill_order(received_order, cookie_id="default"):
             self.assertIs(received_order, order)
+            self.assertEqual(cookie_id, "seller_b")
             return {"ok": True, "order_id": received_order.order_id}
 
         adapter.polish_listing = fake_polish_listing

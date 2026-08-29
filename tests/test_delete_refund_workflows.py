@@ -106,15 +106,21 @@ class DestructiveFinancialActionHandlerTests(unittest.TestCase):
 class DeleteRefundWorkflowRouteTests(unittest.TestCase):
     def setUp(self):
         from xianyu_agent import server
+        from xianyu_agent.db_manager import DBManager
         from xianyu_agent.work_orders import WorkOrderManager
 
         self.server = server
         self.original_manager = server.work_order_manager
+        self.original_db = server.db_manager
         self.tmp = TemporaryDirectory()
         server.work_order_manager = WorkOrderManager(Path(self.tmp.name) / "work_orders.json")
+        server.db_manager = DBManager(str(Path(self.tmp.name) / "accounts.db"))
+        server.db_manager.save_cookie("seller_a", "test-cookie", "test account")
 
     def tearDown(self):
         self.server.work_order_manager = self.original_manager
+        self.server.db_manager.close()
+        self.server.db_manager = self.original_db
         self.tmp.cleanup()
 
     def test_phase12_routes_are_registered(self):

@@ -329,48 +329,66 @@ class TestWorkOrderDiscussion(unittest.TestCase):
         from xianyu_agent.agents.resale_research import ResaleResearchAgent
         from xianyu_agent.agents.resale_risk import ResaleRiskAgent
         from xianyu_agent.agents.resale_pricing import ResalePricingAgent
+        from xianyu_agent.db_manager import DBManager
+        from xianyu_agent.account_commercial_terms import AccountCommercialTermsStore
+        from contextlib import ExitStack
+        from unittest.mock import patch
+        from preflight_helpers import add_preflight_account, build_runtime_store
         mgr, tmpdir = _make_manager()
         # Reset work_order_manager for test isolation
         wom = WorkOrderManager()
         wom.configure(tmpdir / "work_orders.json")
-        srv.work_order_manager = wom
+        db = DBManager(str(tmpdir / "accounts.db"))
+        add_preflight_account(db, "acct_1")
+        runtime = build_runtime_store(tmpdir, "acct_1")
+        terms = AccountCommercialTermsStore(tmpdir / "commercial_terms.json")
+        mgr._test_commercial_terms_store = terms
+        stack = ExitStack()
+        stack.enter_context(patch.object(srv, "work_order_manager", wom))
+        stack.enter_context(patch.object(srv, "db_manager", db))
+        stack.enter_context(patch.object(srv, "account_runtime_store", runtime))
+        stack.enter_context(patch.object(srv, "account_commercial_terms_store", terms))
+        stack.enter_context(patch.object(srv, "resale_manager", mgr))
         srv.registry.register_agent("resale_research", ResaleResearchAgent())
         srv.registry.register_agent("resale_risk", ResaleRiskAgent())
         srv.registry.register_agent("resale_pricing", ResalePricingAgent())
-        srv.resale_manager = mgr
         client = TestClient(srv.app)
-        return mgr, client, wom
+        return mgr, client, wom, stack
 
     def test_listing_draft_workorder_has_discussion(self):
-        mgr, client, wom = self._setup()
-        c = _make_candidate(mgr)
-        mgr.verify_candidate(c["candidate_id"], {"supplier_verified": True})
-        mgr.set_decision(c["candidate_id"], "approve")
-        # Run agent review first
-        client.post(f"/resale/candidates/{c['candidate_id']}/agent-review")
-        # Now create listing draft
-        resp = client.post(f"/resale/candidates/{c['candidate_id']}/listing-draft")
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        wo = data["work_order"]
-        self.assertIsNotNone(wo.get("discussion"))
-        self.assertIn("summary", wo["discussion"])
+        from preflight_helpers import make_preflight_ready_candidate, record_ready_commercial_terms
+        mgr, client, wom, stack = self._setup()
+        with stack:
+            c = make_preflight_ready_candidate(mgr)
+            record_ready_commercial_terms(
+                mgr._test_commercial_terms_store, mgr, c, "acct_1"
+            )
+            # Run agent review first
+            client.post(f"/resale/candidates/{c['candidate_id']}/agent-review")
+            # Now create listing draft
+            resp = client.post(f"/resale/candidates/{c['candidate_id']}/listing-draft?cookie_id=acct_1")
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            wo = data["work_order"]
+            self.assertIsNotNone(wo.get("discussion"))
+            self.assertIn("summary", wo["discussion"])
 
     def test_purchase_draft_workorder_has_discussion(self):
-        mgr, client, wom = self._setup()
-        c = _make_candidate(mgr)
-        mgr.verify_candidate(c["candidate_id"], {"supplier_verified": True})
-        mgr.set_decision(c["candidate_id"], "approve")
-        # Run agent review first
-        client.post(f"/resale/candidates/{c['candidate_id']}/agent-review")
-        # Create plan + purchase draft
-        plan = mgr.create_plan(c["candidate_id"])
-        resp = client.post(f"/resale/plans/{plan['plan_id']}/purchase-draft", json={"quantity": 1})
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        wo = data["work_order"]
-        self.assertIsNotNone(wo.get("discussion"))
-        self.assertIn("summary", wo["discussion"])
+        mgr, client, wom, stack = self._setup()
+        with stack:
+            c = _make_candidate(mgr)
+            mgr.verify_candidate(c["candidate_id"], {"supplier_verified": True})
+            mgr.set_decision(c["candidate_id"], "approve")
+            # Run agent review first
+            client.post(f"/resale/candidates/{c['candidate_id']}/agent-review")
+            # Create plan + purchase draft
+            plan = mgr.create_plan(c["candidate_id"])
+            resp = client.post(f"/resale/plans/{plan['plan_id']}/purchase-draft", json={"quantity": 1})
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            wo = data["work_order"]
+            self.assertIsNotNone(wo.get("discussion"))
+            self.assertIn("summary", wo["discussion"])
 
 
 # ============================================================

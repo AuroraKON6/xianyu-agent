@@ -6,6 +6,18 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import ExitStack
+from unittest.mock import patch
+
+from xianyu_agent.account_runtime import AccountRuntimeStore
+from xianyu_agent.account_commercial_terms import AccountCommercialTermsStore
+from xianyu_agent.db_manager import DBManager
+from preflight_helpers import (
+    add_preflight_account,
+    build_runtime_store,
+    make_preflight_ready_candidate,
+    record_ready_commercial_terms,
+)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -14,6 +26,29 @@ def _make_manager():
     from xianyu_agent.resale import ResaleManager
     tmpdir = tempfile.mkdtemp()
     return ResaleManager(Path(tmpdir))
+
+
+def _preflight_context():
+    """Return (mgr, ExitStack) with an enabled ready account patched into the server."""
+    from xianyu_agent import server as srv
+    from xianyu_agent.resale import ResaleManager
+    from xianyu_agent.work_orders import WorkOrderManager
+
+    tmpdir = Path(tempfile.mkdtemp())
+    db = DBManager(str(tmpdir / "accounts.db"))
+    add_preflight_account(db, "acct_1")
+    runtime = build_runtime_store(tmpdir, "acct_1")
+    mgr = ResaleManager(tmpdir / "resale")
+    work_orders = WorkOrderManager(tmpdir / "work_orders.json")
+    terms = AccountCommercialTermsStore(tmpdir / "commercial_terms.json")
+    mgr._test_commercial_terms_store = terms
+    stack = ExitStack()
+    stack.enter_context(patch.object(srv, "db_manager", db))
+    stack.enter_context(patch.object(srv, "account_runtime_store", runtime))
+    stack.enter_context(patch.object(srv, "account_commercial_terms_store", terms))
+    stack.enter_context(patch.object(srv, "resale_manager", mgr))
+    stack.enter_context(patch.object(srv, "work_order_manager", work_orders))
+    return mgr, stack
 
 
 def _make_ready_candidate(manager):
@@ -122,7 +157,8 @@ class TestListingDraftDescription(unittest.TestCase):
 
     def test_description_contains_after_sale_boundary(self):
         self.assertIn("售后", self.draft["description"])
-        self.assertIn("不退换", self.draft["description"])
+        self.assertIn("平台规则", self.draft["description"])
+        self.assertNotIn("非质量问题不退换", self.draft["description"])
 
     def test_description_does_not_contain_supplier_url(self):
         self.assertNotIn("pdd.example.com", self.draft["description"])
@@ -143,96 +179,75 @@ class TestListingDraftAPI(unittest.TestCase):
 
     def test_success_creates_draft_and_work_order(self):
         import xianyu_agent.server as srv
-        from xianyu_agent.resale import ResaleManager
         from fastapi.testclient import TestClient
-        tmpdir = tempfile.mkdtemp()
-        mgr = ResaleManager(Path(tmpdir))
-        srv.resale_manager = mgr
-        client = TestClient(srv.app)
-        # Create, verify, approve
-        resp = client.post("/resale/candidates", json={
-            "title": "API测试", "source_platform": "pdd",
-            "supplier_price": 10.0, "target_sale_price": 30.0,
-        })
-        cid = resp.json()["candidate"]["candidate_id"]
-        client.post(f"/resale/candidates/{cid}/verify", json={"supplier_verified": True})
-        client.post(f"/resale/candidates/{cid}/decision", json={"decision": "approve"})
-        # Create listing draft
-        resp = client.post(f"/resale/candidates/{cid}/listing-draft")
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        self.assertTrue(data["ok"])
-        self.assertIn("listing_draft", data)
-        self.assertIn("work_order", data)
-        self.assertTrue(data["approval_required"])
+        mgr, stack = _preflight_context()
+        with stack:
+            client = TestClient(srv.app)
+            candidate = make_preflight_ready_candidate(mgr)
+            record_ready_commercial_terms(
+                mgr._test_commercial_terms_store, mgr, candidate, "acct_1"
+            )
+            cid = candidate["candidate_id"]
+            # Create listing draft through the strict preflight boundary
+            resp = client.post(f"/resale/candidates/{cid}/listing-draft?cookie_id=acct_1")
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            self.assertTrue(data["ok"])
+            self.assertIn("listing_draft", data)
+            self.assertIn("work_order", data)
+            self.assertTrue(data["approval_required"])
 
-    def test_400_on_blocked_candidate(self):
+    def test_409_on_blocked_candidate(self):
         import xianyu_agent.server as srv
-        from xianyu_agent.resale import ResaleManager
         from fastapi.testclient import TestClient
-        tmpdir = tempfile.mkdtemp()
-        srv.resale_manager = ResaleManager(Path(tmpdir))
-        client = TestClient(srv.app)
-        resp = client.post("/resale/candidates", json={
-            "title": "食品", "source_platform": "pdd",
-            "supplier_price": 10.0, "target_sale_price": 30.0, "category": "食品",
-        })
-        cid = resp.json()["candidate"]["candidate_id"]
-        resp = client.post(f"/resale/candidates/{cid}/listing-draft")
-        self.assertEqual(resp.status_code, 400)
+        mgr, stack = _preflight_context()
+        with stack:
+            client = TestClient(srv.app)
+            resp = client.post("/resale/candidates", json={
+                "title": "食品", "source_platform": "pdd",
+                "supplier_price": 10.0, "target_sale_price": 30.0, "category": "食品",
+            })
+            cid = resp.json()["candidate"]["candidate_id"]
+            resp = client.post(f"/resale/candidates/{cid}/listing-draft?cookie_id=acct_1")
+            self.assertEqual(resp.status_code, 409)
+            detail = resp.json()["detail"]
+            gates = {g["code"]: g for g in detail["gates"]}
+            self.assertEqual(gates["candidate_not_blocked"]["status"], "fail")
 
     def test_404_on_nonexistent(self):
         import xianyu_agent.server as srv
-        from xianyu_agent.resale import ResaleManager
         from fastapi.testclient import TestClient
-        tmpdir = tempfile.mkdtemp()
-        srv.resale_manager = ResaleManager(Path(tmpdir))
-        client = TestClient(srv.app)
-        resp = client.post("/resale/candidates/rc_nonexistent/listing-draft")
-        self.assertEqual(resp.status_code, 404)
+        mgr, stack = _preflight_context()
+        with stack:
+            client = TestClient(srv.app)
+            resp = client.post("/resale/candidates/rc_nonexistent/listing-draft")
+            self.assertEqual(resp.status_code, 404)
 
 
 class TestListingDraftApproval(unittest.TestCase):
     """Test that listing draft creates proper WorkOrder + approval."""
 
-    def test_work_order_kind_is_resale_listing(self):
+    def _create_draft(self):
         import xianyu_agent.server as srv
-        from xianyu_agent.resale import ResaleManager
         from fastapi.testclient import TestClient
-        tmpdir = tempfile.mkdtemp()
-        mgr = ResaleManager(Path(tmpdir))
-        srv.resale_manager = mgr
-        client = TestClient(srv.app)
-        resp = client.post("/resale/candidates", json={
-            "title": "审批测试", "source_platform": "pdd",
-            "supplier_price": 10.0, "target_sale_price": 30.0,
-        })
-        cid = resp.json()["candidate"]["candidate_id"]
-        client.post(f"/resale/candidates/{cid}/verify", json={"supplier_verified": True})
-        client.post(f"/resale/candidates/{cid}/decision", json={"decision": "approve"})
-        resp = client.post(f"/resale/candidates/{cid}/listing-draft")
-        data = resp.json()
-        wo = data["work_order"]
+        mgr, stack = _preflight_context()
+        with stack:
+            client = TestClient(srv.app)
+            candidate = make_preflight_ready_candidate(mgr)
+            record_ready_commercial_terms(
+                mgr._test_commercial_terms_store, mgr, candidate, "acct_1"
+            )
+            cid = candidate["candidate_id"]
+            resp = client.post(f"/resale/candidates/{cid}/listing-draft?cookie_id=acct_1")
+            self.assertEqual(resp.status_code, 200, resp.text)
+            return resp.json()["work_order"]
+
+    def test_work_order_kind_is_resale_listing(self):
+        wo = self._create_draft()
         self.assertEqual(wo["kind"], "resale_listing")
 
     def test_approval_action_is_publish_listing(self):
-        import xianyu_agent.server as srv
-        from xianyu_agent.resale import ResaleManager
-        from fastapi.testclient import TestClient
-        tmpdir = tempfile.mkdtemp()
-        mgr = ResaleManager(Path(tmpdir))
-        srv.resale_manager = mgr
-        client = TestClient(srv.app)
-        resp = client.post("/resale/candidates", json={
-            "title": "审批测试2", "source_platform": "pdd",
-            "supplier_price": 10.0, "target_sale_price": 30.0,
-        })
-        cid = resp.json()["candidate"]["candidate_id"]
-        client.post(f"/resale/candidates/{cid}/verify", json={"supplier_verified": True})
-        client.post(f"/resale/candidates/{cid}/decision", json={"decision": "approve"})
-        resp = client.post(f"/resale/candidates/{cid}/listing-draft")
-        data = resp.json()
-        wo = data["work_order"]
+        wo = self._create_draft()
         # Check approval exists with correct action
         approvals = wo.get("approvals", [])
         self.assertTrue(len(approvals) > 0)
@@ -240,23 +255,7 @@ class TestListingDraftApproval(unittest.TestCase):
         self.assertEqual(approvals[0]["status"], "pending")
 
     def test_approval_snapshot_has_required_fields(self):
-        import xianyu_agent.server as srv
-        from xianyu_agent.resale import ResaleManager
-        from fastapi.testclient import TestClient
-        tmpdir = tempfile.mkdtemp()
-        mgr = ResaleManager(Path(tmpdir))
-        srv.resale_manager = mgr
-        client = TestClient(srv.app)
-        resp = client.post("/resale/candidates", json={
-            "title": "快照测试", "source_platform": "pdd",
-            "supplier_price": 10.0, "target_sale_price": 30.0,
-        })
-        cid = resp.json()["candidate"]["candidate_id"]
-        client.post(f"/resale/candidates/{cid}/verify", json={"supplier_verified": True})
-        client.post(f"/resale/candidates/{cid}/decision", json={"decision": "approve"})
-        resp = client.post(f"/resale/candidates/{cid}/listing-draft")
-        data = resp.json()
-        wo = data["work_order"]
+        wo = self._create_draft()
         snapshot = wo["approvals"][0]["draft_snapshot"]
         self.assertIn("title", snapshot)
         self.assertIn("price", snapshot)
@@ -267,6 +266,8 @@ class TestListingDraftApproval(unittest.TestCase):
         self.assertIn("candidate_id", snapshot)
         self.assertIn("gross_margin", snapshot)
         self.assertIn("supplier_verified", snapshot)
+        self.assertIn("preflight", snapshot)
+        self.assertIn("preflight", wo["approvals"][0]["payload"])
 
 
 class TestMilestone4UIStrings(unittest.TestCase):

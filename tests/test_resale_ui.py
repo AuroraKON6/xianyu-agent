@@ -443,9 +443,9 @@ class TestResaleEndpointCount(unittest.TestCase):
                 if methods:
                     for m in methods:
                         resale_endpoints.append((m, r.path))
-        # 21 method+path combos: 5 original + 3 milestone 3 + 1 milestone 4 + 4 milestone 6 + 5 milestone 7 + 2 milestone 8 + 1 milestone 9
-        self.assertEqual(len(resale_endpoints), 21,
-                         f"Expected 21 resale endpoints, got {len(resale_endpoints)}: {resale_endpoints}")
+        # 22 method+path combos: previous 21 + Phase 18 publish-preflight GET.
+        self.assertEqual(len(resale_endpoints), 27,
+                         f"Expected 27 resale endpoints, got {len(resale_endpoints)}: {resale_endpoints}")
 
     def test_post_and_get_share_candidates_path(self):
         from xianyu_agent.server import app

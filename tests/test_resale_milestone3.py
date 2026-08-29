@@ -128,8 +128,10 @@ class TestDashboardSummary(unittest.TestCase):
         self.normal = _make_candidate(self.manager, title="普通商品")
         self.blocked = _make_candidate(self.manager, title="食品", category="食品")
         self.approved = _make_candidate(self.manager, title="已通过商品")
-        self.manager.set_decision(self.approved["candidate_id"], "approve")
         self.manager.verify_candidate(self.approved["candidate_id"], {"supplier_verified": True})
+        # Evidence updates invalidate prior decisions, so approval must always be
+        # recorded against the latest candidate revision.
+        self.manager.set_decision(self.approved["candidate_id"], "approve")
         self.watched = _make_candidate(self.manager, title="观察中商品")
         self.manager.set_decision(self.watched["candidate_id"], "watch")
 
@@ -353,7 +355,7 @@ class TestMilestone3UIStrings(unittest.TestCase):
         self.assertIn('id="refresh-dashboard"', html)
 
     def test_verify_button_in_render(self):
-        self.assertIn("记录验证", self.js)
+        self.assertIn("一品启动包", self.js)
 
     def test_decision_button_in_render(self):
         self.assertIn("人工决策", self.js)

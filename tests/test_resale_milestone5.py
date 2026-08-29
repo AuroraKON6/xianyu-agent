@@ -294,15 +294,31 @@ class TestEndToEndResalePublish(unittest.TestCase):
     """Full e2e: candidate → listing draft → approval → enqueue → run → ok."""
 
     def test_full_pipeline(self):
+        from unittest.mock import patch
+
         from xianyu_agent.work_orders import WorkOrderManager
         from xianyu_agent.execution_queue import ExecutionJobQueue
         from xianyu_agent.action_executor import ActionExecutor
         from xianyu_agent.server import app
         import xianyu_agent.server as srv
         from fastapi.testclient import TestClient
+        from xianyu_agent.db_manager import DBManager
+        from xianyu_agent.account_commercial_terms import AccountCommercialTermsStore
+        from preflight_helpers import (
+            add_preflight_account,
+            archive_candidate_evidence_fixtures,
+            build_runtime_store,
+            evidence_verify_payload,
+            record_ready_commercial_terms,
+        )
 
         tmpdir = tempfile.mkdtemp()
         data_dir = Path(tmpdir)
+        db = DBManager(str(data_dir / "accounts.db"))
+        add_preflight_account(db, "acct_1")
+        runtime = build_runtime_store(data_dir, "acct_1")
+        terms = AccountCommercialTermsStore(data_dir / "commercial_terms.json")
+
         mgr = __import__("xianyu_agent.resale", fromlist=["ResaleManager"]).ResaleManager(data_dir)
         srv.resale_manager = mgr
 
@@ -313,45 +329,61 @@ class TestEndToEndResalePublish(unittest.TestCase):
         eq = ExecutionJobQueue(data_dir / "jobs.json")
         srv.execution_queue = eq
 
-        client = TestClient(app)
+        with patch.object(srv, "db_manager", db), patch.object(
+            srv, "account_runtime_store", runtime
+        ), patch.object(srv, "account_commercial_terms_store", terms):
+            client = TestClient(app)
 
-        # 1. Create candidate
-        resp = client.post("/resale/candidates", json={
-            "title": "E2E测试商品", "source_platform": "pdd",
-            "supplier_price": 10.0, "target_sale_price": 30.0,
-        })
-        self.assertEqual(resp.status_code, 200)
-        cid = resp.json()["candidate"]["candidate_id"]
+            # 1. Create candidate
+            resp = client.post("/resale/candidates", json={
+                "title": "商用不锈钢操作台 带制冷",
+                "source_platform": "pdd",
+                "source_url": "https://mobile.yangkeduo.com/goods.html?goods_id=e2e-ops-table",
+                "supplier_name": "端到端测试供应商A",
+                "supplier_sku": "OPS-E2E-1200-304",
+                "supplier_price": 680.0,
+                "supplier_shipping": 80.0,
+                "target_sale_price": 1280.0,
+                "category": "商用厨具",
+                "specifications": {"material": "304不锈钢", "size": "120x60x80cm"},
+                "images": ["test-fixture/owned-e2e-ops-table.jpg"],
+            })
+            self.assertEqual(resp.status_code, 200)
+            cid = resp.json()["candidate"]["candidate_id"]
+            record_ready_commercial_terms(
+                terms, mgr, mgr.get_candidate(cid), "acct_1"
+            )
 
-        # 2. Verify + approve
-        client.post(f"/resale/candidates/{cid}/verify", json={"supplier_verified": True})
-        client.post(f"/resale/candidates/{cid}/decision", json={"decision": "approve"})
+            # 2. Verify + approve with full preflight evidence
+            client.post(f"/resale/candidates/{cid}/verify", json=evidence_verify_payload())
+            archive_candidate_evidence_fixtures(mgr, cid)
+            client.post(f"/resale/candidates/{cid}/decision", json={"decision": "approve"})
 
-        # 3. Create listing draft
-        resp = client.post(f"/resale/candidates/{cid}/listing-draft")
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        draft_id = data["listing_draft"]["draft_id"]
-        wo_id = data["work_order"]["work_order_id"]
+            # 3. Create listing draft through the strict preflight boundary
+            resp = client.post(f"/resale/candidates/{cid}/listing-draft?cookie_id=acct_1")
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            draft_id = data["listing_draft"]["draft_id"]
+            wo_id = data["work_order"]["work_order_id"]
 
-        # 4. Verify draft file exists in data/drafts/
-        draft_path = data_dir / "drafts" / f"{draft_id}.json"
-        self.assertTrue(draft_path.exists())
+            # 4. Verify draft file exists in data/drafts/
+            draft_path = data_dir / "drafts" / f"{draft_id}.json"
+            self.assertTrue(draft_path.exists())
 
-        # 5. Get approval_id
-        wo = wom.get_work_order(wo_id)
-        approval_id = wo["approvals"][0]["approval_id"]
-        self.assertEqual(wo["approvals"][0]["status"], "pending")
+            # 5. Get approval_id
+            wo = wom.get_work_order(wo_id)
+            approval_id = wo["approvals"][0]["approval_id"]
+            self.assertEqual(wo["approvals"][0]["status"], "pending")
 
-        # 6. Approve the approval
-        resp = client.post(f"/approvals/{approval_id}/decision", json={
-            "decision": "approved", "reason": "ok",
-        })
-        self.assertEqual(resp.status_code, 200)
+            # 6. Approve the approval
+            resp = client.post(f"/approvals/{approval_id}/decision", json={
+                "decision": "approved", "reason": "ok",
+            })
+            self.assertEqual(resp.status_code, 200)
 
-        # 7. Enqueue execution job
-        resp = client.post(f"/approvals/{approval_id}/execute")
-        self.assertEqual(resp.status_code, 200)
+            # 7. Enqueue execution job
+            resp = client.post(f"/approvals/{approval_id}/execute")
+            self.assertEqual(resp.status_code, 200)
 
         # 8. Run with fake workflow
         class FakeResult:
