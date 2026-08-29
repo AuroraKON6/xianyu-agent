@@ -5,9 +5,48 @@ const state = {
   collaboration: { messages: [], discussions: [] },
   workOrders: [],
   executionJobs: [],
-  messageIntake: { metrics: {}, health: {}, recent: [], runbooks: [] },
+  messageIntake: { metrics: {}, health: {}, recent: [], runbooks: [], scheduler: {} },
+  accountProfiles: [],
+  browserAccountImportPreview: null,
+  unassignedWorkReview: null,
+  commercialLaunchPreview: null,
+  commercialCandidates: [],
   resaleCandidates: [],
+  discoveryInbox: [],
   lastResult: {},
+  evidenceCandidateId: null,
+  candidateActivationPacket: null,
+  candidateEvidenceArtifacts: [],
+  commercialTermsContext: null,
+};
+
+const CANDIDATE_EVIDENCE_KIND_LABELS = {
+  supplier_quote: "供应商报价",
+  supplier_stock: "供应商库存",
+  supplier_fulfillment: "供应商履约",
+  image_rights: "图片使用权",
+  market_baseline: "竞品基线",
+};
+
+const SCHEDULER_PRESETS = {
+  high_touch: {
+    enabled: true,
+    interval_seconds: 60,
+    max_conversations: 30,
+    messages_per_conversation: 30,
+  },
+  observe: {
+    enabled: true,
+    interval_seconds: 600,
+    max_conversations: 10,
+    messages_per_conversation: 10,
+  },
+  paused: {
+    enabled: false,
+    interval_seconds: 300,
+    max_conversations: 5,
+    messages_per_conversation: 10,
+  },
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -22,9 +61,21 @@ async function api(path, options = {}) {
     ...options,
   });
   const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
   if (!response.ok) {
-    throw new Error(data.detail || response.statusText);
+    const detail = data && typeof data.detail === "object" ? data.detail : (data.detail || response.statusText);
+    const message = typeof detail === "string"
+      ? detail
+      : (detail?.message || detail?.error || "请求被拒绝");
+    const error = new Error(message);
+    error.detail = detail;
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
@@ -40,6 +91,23 @@ function summarize(data) {
     return "等待指令";
   }
   const result = data.result || {};
+  if (data.type === "error") {
+    return [
+      `<strong>操作未完成</strong>`,
+      escapeHtml(result.message || "请求被拒绝"),
+    ].join("<br>");
+  }
+  if (data.type === "pi_agent") {
+    const toolCalls = Array.isArray(result.tool_calls) ? result.tool_calls : [];
+    const toolText = toolCalls.length
+      ? toolCalls.map((item) => `${item.name || "tool"}:${item.ok === false ? "失败" : "完成"}`).join(" / ")
+      : "未调用工具";
+    return [
+      `<strong>Pi · ${escapeHtml(result.model || "-")}</strong>`,
+      escapeHtml(result.message || "Pi 已完成，但未返回文本").replaceAll("\n", "<br>"),
+      `工具：${escapeHtml(toolText)} ｜ 外部动作：${result.external_action ? "是" : "否"}`,
+    ].join("<br>");
+  }
   if (data.type === "memory") {
     return "记忆已保存。后续生成文案、比价和授权判断会带上这些偏好。";
   }
@@ -147,6 +215,77 @@ function summarize(data) {
     const count = result.executed || 0;
     return `<strong>执行队列处理</strong>：${count} 个任务已执行`;
   }
+  if (data.type === "account_sync") {
+    const orders = result.orders || {};
+    const listings = result.listings || {};
+    return [
+      `<strong>账号同步完成</strong>`,
+      `账号：${escapeHtml(result.cookie_id || "-")}`,
+      `订单：${orders.persisted || 0}/${orders.fetched || 0}`,
+      `商品：${listings.persisted || 0}/${listings.fetched || 0}`,
+    ].join("<br>");
+  }
+  if (data.type === "account_prompt_profile") {
+    const missing = result.missing_required_keys || [];
+    const unknown = result.unknown_keys || [];
+    return [
+      `<strong>Prompt 配置${result.ready ? "已就绪" : "需补齐"}</strong>`,
+      `账号：${escapeHtml(result.cookie_id || "-")}`,
+      `已配置：${escapeHtml((result.configured_keys || []).join(", ") || "none")}`,
+      `缺失：${escapeHtml(missing.join(", ") || "none")}`,
+      unknown.length ? `未知项：${escapeHtml(unknown.join(", "))}` : "",
+    ].filter(Boolean).join("<br>");
+  }
+  if (data.type === "account_prompt_bootstrap") {
+    const missing = result.missing_required_keys || [];
+    return [
+      `<strong>Prompt 初始化${result.ready ? "完成" : "仍需补齐"}</strong>`,
+      `账号：${escapeHtml(result.cookie_id || "-")}`,
+      `必需项：${escapeHtml((result.configured_required_keys || []).join(", ") || "none")}`,
+      `缺失：${escapeHtml(missing.join(", ") || "none")}`,
+      `下一步：跑账号同步，补商品/订单上下文。`,
+    ].join("<br>");
+  }
+  if (data.type === "account_bootstrap") {
+    return [
+      `<strong>账号已导入</strong>`,
+      `账号：${escapeHtml(result.cookie_id || "-")}`,
+      `下一步：刷新首轮实盘试跑 gates，并补齐 Prompt / 同步商品订单。`,
+    ].join("<br>");
+  }
+  if (data.type === "browser_login_browser") {
+    return [
+      `<strong>闲鱼登录浏览器已打开</strong>`,
+      `会话：${result.browser_started ? "新启动" : "已连接"}`,
+      `状态：${result.ok === false ? "启动失败" : "等待登录"}`,
+    ].join("<br>");
+  }
+  if (data.type === "browser_account_import") {
+    return [
+      `<strong>浏览器账号${result.operation === "refresh" ? "已刷新" : "已建档"}</strong>`,
+      `账号：${escapeHtml(result.cookie_id || "-")}`,
+      `会话凭据：${Number(result.cookie_count || 0)} 项 ｜ 状态：${result.enabled ? "enabled" : "disabled"}`,
+      `下一步：初始化 Prompt、同步订单商品、记录商业条款。`,
+    ].join("<br>");
+  }
+  if (data.type === "account_conversation_summary") {
+    const risks = result.risk_flags || [];
+    const recent = result.recent_messages || [];
+    const intents = result.intent_counts || {};
+    const intentText = Object.entries(intents).map(([key, value]) => `${key}:${value}`).join(", ");
+    const recentText = recent.slice(-3)
+      .map((message) => `${message.role || "-"}:${message.intent || "-"}:${message.content || ""}`)
+      .join(" / ");
+    return [
+      `<strong>会话摘要</strong>`,
+      `账号：${escapeHtml(result.cookie_id || "-")}`,
+      `轮次：${Number(result.turns || 0)} ｜ 最近意图：${escapeHtml(result.last_intent || "-")}`,
+      `砍价轮次：${Number(result.max_bargain_count || 0)} ｜ 下一步：${escapeHtml(result.next_operator_action || "-")}`,
+      `意图分布：${escapeHtml(intentText || "none")}`,
+      risks.length ? `风险：${escapeHtml(risks.join(", "))}` : "",
+      recentText ? `最近消息：${escapeHtml(recentText)}` : "",
+    ].filter(Boolean).join("<br>");
+  }
   if (data.type === "message_intake_retry") {
     return result.approval_required
       ? `<strong>重试草稿已创建</strong><br>审批：${escapeHtml((result.intake_record || {}).approval_id || "-")}`
@@ -164,6 +303,56 @@ function summarize(data) {
     const okText = (result.health || {}).ok ? "healthy" : "alerts";
     return `<strong>Dry-run健康检查完成</strong><br>状态：${escapeHtml(okText)}，通知预览 ${previews.length} 条`;
   }
+  if (data.type === "browser_message_import") {
+    return [
+      `<strong>浏览器消息导入完成</strong>`,
+      `created ${result.created || 0} / duplicate ${result.duplicates || 0} / outbound ${result.skipped_outbound || 0} / invalid ${result.skipped_invalid || 0} / failed ${result.failed || 0}`,
+      `buyer: ${escapeHtml(result.buyer_id || "-")} · account: ${escapeHtml(result.cookie_id || "-")}`,
+    ].join("<br>");
+  }
+  if (data.type === "browser_conversation_import") {
+    return [
+      `<strong>未读会话导入完成</strong>`,
+      `conversations ${result.conversations_selected || 0}/${result.conversations_total || 0} · skipped read ${result.conversations_skipped_read || 0}`,
+      `created ${result.created || 0} / duplicate ${result.duplicates || 0} / outbound ${result.skipped_outbound || 0} / invalid ${result.skipped_invalid || 0} / failed ${result.failed || 0}`,
+      `account: ${escapeHtml(result.cookie_id || "-")}`,
+    ].join("<br>");
+  }
+  if (data.type === "message_import_scheduler_run") {
+    const importResult = result.import_result || {};
+    const scheduler = result.scheduler || {};
+    return result.ok
+      ? [
+          `<strong>消息导入轮询完成</strong>`,
+          `created ${importResult.created || 0} / duplicate ${importResult.duplicates || 0} / failed ${importResult.failed || 0}`,
+          `run count: ${scheduler.run_count || 0}`,
+      ].join("<br>")
+      : `<strong style="color:var(--danger)">消息导入轮询失败</strong><br>${escapeHtml(result.error || "unknown error")}`;
+  }
+  if (data.type === "message_import_scheduler_config") {
+    return [
+      `<strong>消息导入轮询已${result.enabled ? "启用" : "暂停"}</strong>`,
+      `account: ${escapeHtml(result.cookie_id || "-")} · interval: ${result.interval_seconds || 0}s`,
+      `max conversations: ${result.max_conversations || 0} · messages: ${result.messages_per_conversation || 0}`,
+    ].join("<br>");
+  }
+  if (data.type === "message_import_scheduler_bootstrap") {
+    return [
+      `<strong>Scheduler profiles bootstrapped</strong>`,
+      `preset: ${escapeHtml(result.preset || "-")} · created ${result.created || 0} · updated ${result.updated || 0} · skipped ${result.skipped || 0}`,
+      result.dry_run ? "dry-run only" : "saved to scheduler config",
+    ].join("<br>");
+  }
+  if (data.type === "discovery_inbox_promote") {
+    const candidate = result.candidate || {};
+    const event = result.event || {};
+    return [
+      `<strong>线索已提升为候选</strong>`,
+      `线索: ${escapeHtml(event.title || event.event_id || "-")}`,
+      `候选: ${escapeHtml(candidate.candidate_id || "-")} ｜ ${escapeHtml(candidate.title || "-")}`,
+      `供应价: ¥${candidate.supplier_price ?? "-"} → 目标售价: ¥${candidate.target_sale_price ?? "-"}`,
+    ].join("<br>");
+  }
   if (data.type === "resale_candidate") {
     const c = result.candidate || result;
     return [
@@ -173,6 +362,17 @@ function summarize(data) {
       `毛利: ¥${(c.economics || {}).gross_profit ?? "-"} ｜ 风险: ${escapeHtml(c.risk_level || "-")}`,
       c.status === "blocked" ? `<span style="color:var(--danger)">已阻断: ${escapeHtml(c.blocked_reason || "")}</span>` : "",
     ].filter(Boolean).join("<br>");
+  }
+  if (data.type === "commercial_terms") {
+    const assessment = result.assessment || {};
+    const candidate = result.candidate || {};
+    const economics = candidate.economics || {};
+    return [
+      `<strong>账号商业条款已保存并重算利润</strong>`,
+      `状态: ${assessment.ready ? "通过" : "仍有待补证据"}`,
+      `平台费用: ¥${economics.platform_fee ?? "-"} ｜ 预计毛利: ¥${economics.gross_profit ?? "-"}`,
+      `待补: ${(assessment.failed_gate_codes || []).map(escapeHtml).join(", ") || "无"}`,
+    ].join("<br>");
   }
   if (data.type === "resale_plan") {
     const plan = result.plan || result;
@@ -204,6 +404,24 @@ function summarize(data) {
       `草稿ID: ${escapeHtml(draft.draft_id || "-")}`,
       `不会自动发布`,
     ].join("<br>");
+  }
+  if (data.type === "resale_preflight") {
+    return summarizePreflight(result);
+  }
+  if (data.type === "resale_preflight_blocked") {
+    const p = result || {};
+    const lines = [`<strong>发布被阻止（409）</strong>`];
+    if (p.message) {
+      lines.push(`原因: ${escapeHtml(p.message)}`);
+    }
+    const gates = p.gates || [];
+    const failed = gates.filter((g) => g.status === "fail");
+    lines.push(`前置检查未通过: ${failed.map((g) => escapeHtml(g.code)).join(", ") || "请先运行发布前检查"}`);
+    lines.push(renderPreflightGateList(failed.length ? failed : gates));
+    if (p.next_step && p.next_step.length) {
+      lines.push(`下一步: ${p.next_step.map((n) => `${escapeHtml(n.code)} — ${escapeHtml(n.message)}`).join("；")}`);
+    }
+    return lines.join("<br>");
   }
   if (data.type === "resale_agent_review") {
     const d = result.discussion || {};
@@ -591,7 +809,69 @@ async function refreshExecutionJobs() {
   renderExecutionJobFeed(jobs);
 }
 
-function renderMessageIntakeFeed(records = [], metrics = {}, health = {}, runbooks = []) {
+function renderMessageImportScheduler(scheduler = {}) {
+  const target = $("#message-import-scheduler");
+  if (!target) {
+    return;
+  }
+  const last = scheduler.last_result || {};
+  const profiles = scheduler.profiles || {};
+  const dueProfiles = scheduler.due_profiles || [];
+  const status = scheduler.enabled ? (scheduler.due ? "due" : "active") : "paused";
+  target.innerHTML = [
+    `<span class="snapshot-field">scheduler: ${escapeHtml(status)}</span>`,
+    `<span class="snapshot-field">account: ${escapeHtml(scheduler.cookie_id || "-")}</span>`,
+    `<span class="snapshot-field">profiles: ${scheduler.total_profiles || Object.keys(profiles).length || 0}</span>`,
+    `<span class="snapshot-field">due profiles: ${dueProfiles.length}</span>`,
+    `<span class="snapshot-field">interval: ${scheduler.interval_seconds || 0}s</span>`,
+    `<span class="snapshot-field">runs: ${scheduler.run_count || 0}</span>`,
+    `<span class="snapshot-field">failures: ${scheduler.consecutive_failures || 0}</span>`,
+    scheduler.backoff_seconds ? `<span class="snapshot-field">backoff: ${scheduler.backoff_seconds}s</span>` : "",
+    scheduler.last_run_at ? `<span class="snapshot-field">last: ${escapeHtml(scheduler.last_run_at)}</span>` : "",
+    Object.keys(last).length ? `<span class="snapshot-field">last created: ${last.created || 0}</span>` : "",
+    scheduler.last_error ? `<span class="snapshot-field">error: ${escapeHtml(scheduler.last_error)}</span>` : "",
+  ].filter(Boolean).join("");
+  target.className = `message-intake-health ${scheduler.last_error ? "is-warn" : ""}`;
+  renderMessageImportSchedulerProfiles(scheduler);
+}
+
+function renderMessageImportSchedulerProfiles(scheduler = {}) {
+  const target = $("#message-import-scheduler-profiles");
+  if (!target) {
+    return;
+  }
+  const profiles = scheduler.profiles || {};
+  const rows = Object.entries(profiles).map(([cookieId, profile]) => {
+    const last = profile.last_result || {};
+    const status = profile.enabled ? (profile.due ? "due" : "active") : "paused";
+    const next = profile.backoff_seconds
+      ? `backoff ${Number(profile.backoff_seconds || 0)}s`
+      : `interval ${Number(profile.interval_seconds || 0)}s`;
+    return `
+      <div class="scheduler-profile-row" data-scheduler-cookie-id="${escapeHtml(cookieId)}">
+        <div class="scheduler-profile-main">
+          <strong>${escapeHtml(profile.cookie_id || cookieId)}</strong>
+          <span>${escapeHtml(status)} / ${escapeHtml(next)}</span>
+        </div>
+        <div class="scheduler-profile-stats">
+          <span>runs ${Number(profile.run_count || 0)}</span>
+          <span>created ${Number(last.created || 0)}</span>
+          <span>failed ${Number(last.failed || 0)}</span>
+          <span>failures ${Number(profile.consecutive_failures || 0)}</span>
+        </div>
+        <div class="scheduler-profile-actions">
+          <button type="button" class="text-btn scheduler-profile-run" data-scheduler-cookie-id="${escapeHtml(cookieId)}">run</button>
+          <button type="button" class="text-btn scheduler-profile-toggle-action" data-scheduler-cookie-id="${escapeHtml(cookieId)}" data-scheduler-enabled="${profile.enabled ? "false" : "true"}">${profile.enabled ? "pause" : "enable"}</button>
+        </div>
+      </div>
+    `;
+  });
+  target.innerHTML = rows.length ? rows.join("") : `<div class="empty-state">no scheduler profiles</div>`;
+}
+
+function renderMessageIntakeFeed(records = [], metrics = {}, health = {}, runbooks = [], scheduler = {}) {
+  renderMessageImportScheduler(scheduler);
+
   const metricTarget = $("#message-intake-metrics");
   if (metricTarget) {
     metricTarget.innerHTML = [
@@ -694,15 +974,270 @@ function renderMessageIntakeFeed(records = [], metrics = {}, health = {}, runboo
 }
 
 async function refreshMessageIntake() {
-  const [metrics, health, recent, runbookData] = await Promise.all([
+  const [metrics, health, recent, runbookData, scheduler] = await Promise.all([
     api("/message-intake/metrics"),
     api("/message-intake/health"),
     api("/message-intake/recent?limit=12"),
     api("/message-intake/runbooks"),
+    api("/message-intake/import-scheduler"),
   ]);
   const runbooks = runbookData.runbooks || [];
-  state.messageIntake = { metrics, health, recent, runbooks };
-  renderMessageIntakeFeed(recent, metrics, health, runbooks);
+  state.messageIntake = { metrics, health, recent, runbooks, scheduler };
+  renderMessageIntakeFeed(recent, metrics, health, runbooks, scheduler);
+}
+
+function renderAccountProfile(profile) {
+  const counts = profile.counts || {};
+  const caps = profile.capabilities || {};
+  const ai = profile.ai || {};
+  const actions = (profile.recommended_next_actions || []).slice(0, 3);
+  const statusClass = profile.enabled ? "approval-badge--approved" : "approval-badge--rejected";
+  const statusText = profile.enabled ? "enabled" : "disabled";
+  const capabilityBadges = [
+    caps.seller_auto_reply ? "seller reply" : "",
+    caps.keyword_reply ? "keywords" : "",
+    caps.ai_reply ? "AI" : "",
+    caps.order_fulfillment_tracking ? "orders" : "",
+    caps.listing_inventory_tracking ? "items" : "",
+  ].filter(Boolean);
+  const cookieId = profile.cookie_id || "";
+  const promptTools = cookieId ? `
+    <div class="account-profile-tools">
+      <button type="button" data-cookie-id="${escapeHtml(cookieId)}" onclick="checkAccountPromptProfile(this.dataset.cookieId)">检查 Prompt</button>
+      <button type="button" data-cookie-id="${escapeHtml(cookieId)}" onclick="bootstrapAccountPromptProfile(this.dataset.cookieId)">初始化 Prompt</button>
+      <button type="button" data-cookie-id="${escapeHtml(cookieId)}" onclick="checkAccountConversationSummary(this.dataset.cookieId)">会话摘要</button>
+    </div>
+  ` : "";
+  return `
+    <div class="account-profile-card">
+      <div class="account-profile-title">
+        <strong>${escapeHtml(profile.cookie_id || "-")}</strong>
+        <span class="approval-badge ${statusClass}">${statusText}</span>
+      </div>
+      <div class="collab-meta">${escapeHtml(profile.remark || "no remark")}</div>
+      <div class="account-profile-stats">
+        <span class="snapshot-field">rules ${counts.keyword_rules || 0}</span>
+        <span class="snapshot-field">items ${counts.items || 0}</span>
+        <span class="snapshot-field">orders ${counts.orders_total || 0}</span>
+        <span class="snapshot-field">pause ${profile.pause_duration || 0}m</span>
+      </div>
+      <div class="account-profile-stats">
+        <span class="snapshot-field">AI ${ai.enabled ? escapeHtml(ai.model_name || "on") : "off"}</span>
+        <span class="snapshot-field">prompts ${(ai.custom_prompt_keys || []).length}</span>
+        <span class="snapshot-field">auto-confirm ${profile.auto_confirm ? "on" : "off"}</span>
+      </div>
+      <div class="account-profile-tags">
+        ${capabilityBadges.map((badge) => `<span class="risk-flag">${escapeHtml(badge)}</span>`).join("") || '<span class="snapshot-field">not ready</span>'}
+      </div>
+      ${promptTools}
+      <ul class="account-profile-actions">
+        ${actions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function renderAccountProfiles(profiles = []) {
+  const target = $("#account-profile-list");
+  if (!target) {
+    return;
+  }
+  target.innerHTML = profiles.length
+    ? profiles.map(renderAccountProfile).join("")
+    : `<div class="empty-state">暂无账号画像</div>`;
+}
+
+async function loadAccountProfiles() {
+  const profiles = await api("/accounts/profiles");
+  state.accountProfiles = profiles;
+  renderAccountProfiles(profiles);
+}
+
+const refreshAccountProfiles = loadAccountProfiles;
+
+async function checkAccountPromptProfile(cookieId) {
+  if (!cookieId) return;
+  try {
+    const result = await api(`/accounts/${encodeURIComponent(cookieId)}/prompt-profile`);
+    renderResult({ type: "account_prompt_profile", result });
+  } catch (error) {
+    alert(`Prompt 检查失败：${error.message}`);
+  }
+}
+
+async function bootstrapAccountPromptProfile(cookieId) {
+  if (!cookieId) return;
+  if (!confirm(`为账号 ${cookieId} 初始化必需 Prompt？已有自定义 Prompt 会保留。`)) {
+    return;
+  }
+  try {
+    const result = await api(`/accounts/${encodeURIComponent(cookieId)}/prompt-profile/bootstrap`, {
+      method: "POST",
+    });
+    renderResult({ type: "account_prompt_bootstrap", result });
+    await loadAccountProfiles();
+    await refreshOPCDashboard();
+  } catch (error) {
+    alert(`Prompt 初始化失败：${error.message}`);
+  }
+}
+
+async function checkAccountConversationSummary(cookieId) {
+  if (!cookieId) return;
+  const chatId = prompt("chat_id", "");
+  if (chatId === null) return;
+  const trimmed = chatId.trim();
+  if (!trimmed) return;
+  try {
+    const result = await api(`/accounts/${encodeURIComponent(cookieId)}/conversation-summary?chat_id=${encodeURIComponent(trimmed)}`);
+    renderResult({ type: "account_conversation_summary", result });
+  } catch (error) {
+    alert(`会话摘要失败：${error.message}`);
+  }
+}
+
+async function submitAccountBootstrapForm(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fd = new FormData(form);
+  const payload = {
+    cookie_id: String(fd.get("cookie_id") || "").trim(),
+    cookie_value: String(fd.get("cookie_value") || "").trim(),
+    remark: String(fd.get("remark") || "").trim(),
+  };
+  if (!payload.cookie_id || !payload.cookie_value) {
+    alert("账号ID和Cookie不能为空");
+    return;
+  }
+  try {
+    const result = await api("/accounts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    renderResult({ type: "account_bootstrap", result });
+    form.reset();
+    await loadAccountProfiles();
+    await refreshOPCDashboard();
+  } catch (error) {
+    alert(`账号导入失败：${error.message}`);
+  }
+}
+
+function renderBrowserAccountImportPreview(preview = null) {
+  const target = $("#browser-account-import-preview");
+  if (!target) return;
+  if (!preview?.preview_token) {
+    target.hidden = true;
+    target.innerHTML = "";
+    return;
+  }
+  const operation = preview.operation === "refresh" ? "刷新已有账号" : "新建账号";
+  const expiresAt = preview.expires_at
+    ? new Date(Number(preview.expires_at) * 1000).toLocaleTimeString("zh-CN", { hour12: false })
+    : "-";
+  target.hidden = false;
+  target.innerHTML = `
+    <div class="browser-account-preview-head">
+      <strong>检测结果</strong>
+      <span class="approval-badge ${preview.existing_account ? "approval-badge--approved" : "approval-badge--pending"}">${operation}</span>
+    </div>
+    <div class="browser-account-preview-grid">
+      <span><small>账号</small><strong>${escapeHtml(preview.account_id || "-")}</strong></span>
+      <span><small>名称</small><strong>${escapeHtml(preview.display_name || "未读取")}</strong></span>
+      <span><small>会话</small><strong>${Number(preview.cookie_count || 0)} 项 · ${escapeHtml(preview.session_ref || "-")}</strong></span>
+      <span><small>有效至</small><strong>${escapeHtml(expiresAt)}</strong></span>
+    </div>
+    <div class="browser-account-preview-confirm">
+      <code>${escapeHtml(preview.confirmation_phrase || "")}</code>
+      <button id="commit-browser-account" type="button" class="primary" onclick="commitBrowserAccountImport()">确认绑定</button>
+    </div>
+  `;
+}
+
+async function openXianyuLoginBrowser() {
+  const button = $("#open-xianyu-login-browser");
+  if (button) button.disabled = true;
+  try {
+    const result = await api("/accounts/browser-import/open", { method: "POST" });
+    renderResult({ type: "browser_login_browser", result });
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function browserAccountImportErrorMessage(error) {
+  const code = error?.detail?.error || "";
+  const messages = {
+    browser_adapter_inactive: "当前未启用浏览器适配器，账号未写入。",
+    browser_cdp_unavailable: "请先点击“打开登录浏览器”，完成闲鱼登录后再检测。",
+    browser_login_cookies_missing: "当前浏览器尚未完成闲鱼登录，请登录后重新检测。",
+    browser_login_not_verified: "闲鱼未确认当前登录状态，请在登录浏览器中重新登录。",
+    browser_login_probe_failed: "闲鱼登录状态检测暂时失败，请检查页面后重试。",
+    account_import_preview_expired: "账号检测结果已过期，请重新检测后再绑定。",
+    browser_account_changed: "浏览器中的账号已变化，请重新检测并核对账号。",
+    browser_session_changed: "浏览器登录会话已刷新，请重新检测后再绑定。",
+    account_import_commit_in_progress: "这个账号正在绑定，请稍后刷新账号画像。",
+    account_import_confirmation_mismatch: "确认语句不匹配，账号未写入。",
+  };
+  return messages[code] || error?.message || "账号接入失败";
+}
+
+async function previewBrowserAccountImport() {
+  const button = $("#preview-browser-account");
+  if (button) button.disabled = true;
+  state.browserAccountImportPreview = null;
+  renderBrowserAccountImportPreview();
+  try {
+    const preview = await api("/accounts/browser-import/preview", { method: "POST" });
+    state.browserAccountImportPreview = preview;
+    renderBrowserAccountImportPreview(preview);
+  } catch (error) {
+    renderResult({
+      type: "error",
+      result: { message: browserAccountImportErrorMessage(error), detail: error.detail },
+    });
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function commitBrowserAccountImport() {
+  const preview = state.browserAccountImportPreview;
+  if (!preview?.preview_token) return;
+  const expected = preview.confirmation_phrase || `BIND ${preview.preview_token.slice(0, 8).toUpperCase()}`;
+  const confirmation = prompt(`输入 ${expected} 确认绑定账号 ${preview.account_id}`, "");
+  if (confirmation === null) return;
+  if (confirmation.trim() !== expected) {
+    alert("确认语句不匹配，账号未写入。");
+    return;
+  }
+  const button = $("#commit-browser-account");
+  if (button) button.disabled = true;
+  const remark = String($("#account-bootstrap-form")?.elements?.remark?.value || "").trim();
+  try {
+    const result = await api("/accounts/browser-import/commit", {
+      method: "POST",
+      body: JSON.stringify({
+        preview_token: preview.preview_token,
+        confirmation,
+        remark,
+      }),
+    });
+    state.browserAccountImportPreview = null;
+    renderBrowserAccountImportPreview();
+    renderResult({ type: "browser_account_import", result });
+    await loadAccountProfiles();
+    await refreshOPCDashboard();
+    await refreshCommercialTrials();
+  } catch (error) {
+    renderResult({
+      type: "error",
+      result: { message: browserAccountImportErrorMessage(error), detail: error.detail },
+    });
+    if (button) button.disabled = false;
+  }
 }
 
 async function retryMessageIntake(intakeId) {
@@ -764,6 +1299,219 @@ async function runMessageIntakeDryRun() {
   }
 }
 
+async function importBrowserMessages() {
+  const cookieId = prompt("cookie_id", "default");
+  if (cookieId === null) return;
+  const buyerId = prompt("buyer_id (required)", "");
+  if (buyerId === null) return;
+  if (!buyerId.trim()) {
+    alert("buyer_id is required");
+    return;
+  }
+  const buyerName = prompt("buyer_name (optional)", "") || "";
+  const chatId = prompt("chat_id (optional)", "") || "";
+  const itemId = prompt("item_id (optional)", "") || "";
+  try {
+    const result = await api("/message-intake/import-browser", {
+      method: "POST",
+      body: JSON.stringify({
+        cookie_id: cookieId.trim() || "default",
+        buyer_id: buyerId.trim(),
+        buyer_name: buyerName.trim(),
+        chat_id: chatId.trim(),
+        item_id: itemId.trim(),
+      }),
+    });
+    renderResult({ type: "browser_message_import", result });
+    await refreshMessageIntake();
+    await refreshWorkOrders();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
+async function importBrowserConversations() {
+  const cookieId = prompt("cookie_id", "default");
+  if (cookieId === null) return;
+  const maxConversations = prompt("max unread conversations", "20");
+  if (maxConversations === null) return;
+  const messagesPerConversation = prompt("messages per conversation", "20");
+  if (messagesPerConversation === null) return;
+  const includeRead = confirm("Include read conversations too? Cancel keeps unread-only mode.");
+  try {
+    const result = await api("/message-intake/import-browser-conversations", {
+      method: "POST",
+      body: JSON.stringify({
+        cookie_id: cookieId.trim() || "default",
+        include_read: includeRead,
+        max_conversations: Number(maxConversations) || 20,
+        messages_per_conversation: Number(messagesPerConversation) || 20,
+      }),
+    });
+    renderResult({ type: "browser_conversation_import", result });
+    await refreshMessageIntake();
+    await refreshWorkOrders();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
+async function configureMessageImportScheduler() {
+  const current = state.messageIntake.scheduler || {};
+  const enabled = confirm("Enable browser message import polling? Cancel disables it.");
+  const cookieId = prompt("cookie_id", current.cookie_id || "default");
+  if (cookieId === null) return;
+  const interval = prompt("interval seconds", String(current.interval_seconds || 300));
+  if (interval === null) return;
+  const maxConversations = prompt("max unread conversations per run", String(current.max_conversations || 20));
+  if (maxConversations === null) return;
+  const messagesPerConversation = prompt("messages per conversation", String(current.messages_per_conversation || 20));
+  if (messagesPerConversation === null) return;
+  const includeRead = confirm("Include read conversations too? Cancel keeps unread-only mode.");
+  try {
+    const result = await api("/message-intake/import-scheduler", {
+      method: "POST",
+      body: JSON.stringify({
+        enabled,
+        cookie_id: cookieId.trim() || "default",
+        interval_seconds: Number(interval) || 300,
+        include_read: includeRead,
+        max_conversations: Number(maxConversations) || 20,
+        messages_per_conversation: Number(messagesPerConversation) || 20,
+      }),
+    });
+    renderResult({ type: "message_import_scheduler_config", result });
+    state.messageIntake.scheduler = result;
+    renderMessageImportScheduler(result);
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
+async function runMessageImportSchedulerNow() {
+  try {
+    const result = await api("/message-intake/import-scheduler/run-now", { method: "POST" });
+    renderResult({ type: "message_import_scheduler_run", result });
+    await refreshMessageIntake();
+    await refreshWorkOrders();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
+async function submitMessageImportSchedulerProfileForm(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const cookieId = String(data.get("scheduler_cookie_id") || "").trim();
+  if (!cookieId) {
+    alert("cookie_id is required");
+    return;
+  }
+  try {
+    const result = await api("/message-intake/import-scheduler", {
+      method: "POST",
+      body: JSON.stringify({
+        enabled: data.get("scheduler_enabled") === "on",
+        cookie_id: cookieId,
+        interval_seconds: Number(data.get("scheduler_interval_seconds")) || 300,
+        max_conversations: Number(data.get("scheduler_max_conversations")) || 20,
+        messages_per_conversation: Number(data.get("scheduler_messages_per_conversation")) || 20,
+      }),
+    });
+    renderResult({ type: "message_import_scheduler_config", result });
+    state.messageIntake.scheduler = result;
+    renderMessageImportScheduler(result);
+    await refreshMessageIntake();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
+function applyMessageImportSchedulerPreset(presetName) {
+  const form = $("#message-import-scheduler-profile-form");
+  const preset = SCHEDULER_PRESETS[presetName] || SCHEDULER_PRESETS.high_touch;
+  if (!form) {
+    return;
+  }
+  form.elements.scheduler_preset.value = presetName in SCHEDULER_PRESETS ? presetName : "high_touch";
+  form.elements.scheduler_interval_seconds.value = String(preset.interval_seconds);
+  form.elements.scheduler_max_conversations.value = String(preset.max_conversations);
+  form.elements.scheduler_messages_per_conversation.value = String(preset.messages_per_conversation);
+  form.elements.scheduler_enabled.checked = Boolean(preset.enabled);
+}
+
+async function bootstrapMessageImportSchedulerProfiles() {
+  const form = $("#message-import-scheduler-profile-form");
+  const preset = form?.elements.scheduler_preset?.value || "observe";
+  const overwrite = Boolean(form?.elements.scheduler_overwrite?.checked);
+  const message = overwrite
+    ? `Bootstrap scheduler profiles from accounts with ${preset} preset and overwrite existing profiles?`
+    : `Bootstrap scheduler profiles from accounts with ${preset} preset? Existing profiles will be skipped.`;
+  if (!confirm(message)) {
+    return;
+  }
+  try {
+    const result = await api("/message-intake/import-scheduler/bootstrap-accounts", {
+      method: "POST",
+      body: JSON.stringify({ preset, overwrite }),
+    });
+    renderResult({ type: "message_import_scheduler_bootstrap", result });
+    state.messageIntake.scheduler = result.scheduler || {};
+    renderMessageImportScheduler(state.messageIntake.scheduler);
+    await refreshMessageIntake();
+    await refreshOPCDashboard();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
+async function runMessageImportSchedulerProfile(cookieId) {
+  const targetCookieId = String(cookieId || "").trim();
+  if (!targetCookieId) {
+    return;
+  }
+  try {
+    const result = await api(`/message-intake/import-scheduler/run-now?cookie_id=${encodeURIComponent(targetCookieId)}`, {
+      method: "POST",
+    });
+    renderResult({ type: "message_import_scheduler_run", result });
+    await refreshMessageIntake();
+    await refreshWorkOrders();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
+async function toggleMessageImportSchedulerProfile(cookieId, enabled) {
+  const targetCookieId = String(cookieId || "").trim();
+  if (!targetCookieId) {
+    return;
+  }
+  const scheduler = state.messageIntake.scheduler || {};
+  const profile = (scheduler.profiles || {})[targetCookieId] || {};
+  try {
+    const result = await api("/message-intake/import-scheduler", {
+      method: "POST",
+      body: JSON.stringify({
+        enabled: Boolean(enabled),
+        cookie_id: targetCookieId,
+        interval_seconds: Number(profile.interval_seconds || scheduler.interval_seconds || 300),
+        include_read: Boolean(profile.include_read),
+        max_conversations: Number(profile.max_conversations || 20),
+        messages_per_conversation: Number(profile.messages_per_conversation || 20),
+        item_id: profile.item_id || "",
+      }),
+    });
+    renderResult({ type: "message_import_scheduler_config", result });
+    state.messageIntake.scheduler = result;
+    renderMessageImportScheduler(result);
+    await refreshMessageIntake();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
 async function refreshStatus() {
   const [health, guard, memory] = await Promise.all([
     api("/health"),
@@ -786,6 +1534,7 @@ async function refreshStatus() {
   await refreshExecutionJobs();
   await refreshWorkOrders();
   await refreshMessageIntake();
+  await refreshAccountProfiles();
 }
 
 function renderMemory(memory) {
@@ -823,7 +1572,7 @@ async function sendCommand() {
     renderResult({ type: "error", result: { message: error.message } });
   } finally {
     $("#send-btn").disabled = false;
-    $("#send-btn").textContent = "发送给OpenClaw";
+    $("#send-btn").textContent = "发送给Pi";
   }
 }
 
@@ -956,9 +1705,40 @@ $("#refresh-collaboration").addEventListener("click", refreshCollaboration);
 $("#refresh-work-orders").addEventListener("click", refreshWorkOrders);
 $("#refresh-execution-jobs")?.addEventListener("click", refreshExecutionJobs);
 $("#refresh-message-intake")?.addEventListener("click", refreshMessageIntake);
+$("#refresh-account-profiles")?.addEventListener("click", refreshAccountProfiles);
+$("#open-xianyu-login-browser")?.addEventListener("click", openXianyuLoginBrowser);
+$("#preview-browser-account")?.addEventListener("click", previewBrowserAccountImport);
+$("#account-bootstrap-form")?.addEventListener("submit", submitAccountBootstrapForm);
 $("#prune-message-intake")?.addEventListener("click", pruneMessageIntake);
 $("#export-message-intake-bundle")?.addEventListener("click", exportMessageIntakeBundle);
 $("#run-message-intake-dry-run")?.addEventListener("click", runMessageIntakeDryRun);
+$("#import-browser-messages")?.addEventListener("click", importBrowserMessages);
+$("#import-browser-conversations")?.addEventListener("click", importBrowserConversations);
+$("#configure-message-import-scheduler")?.addEventListener("click", configureMessageImportScheduler);
+$("#run-message-import-scheduler")?.addEventListener("click", runMessageImportSchedulerNow);
+$("#message-import-scheduler-profile-form")?.addEventListener("submit", submitMessageImportSchedulerProfileForm);
+$("#apply-message-import-scheduler-preset")?.addEventListener("click", () => {
+  const preset = $(".scheduler-preset-control")?.value || "high_touch";
+  applyMessageImportSchedulerPreset(preset);
+});
+$("#bootstrap-message-import-scheduler-profiles")?.addEventListener("click", bootstrapMessageImportSchedulerProfiles);
+$("#message-import-scheduler-preset")?.addEventListener("change", (event) => {
+  applyMessageImportSchedulerPreset(event.target.value);
+});
+$("#message-import-scheduler-profiles")?.addEventListener("click", (event) => {
+  const runButton = event.target.closest(".scheduler-profile-run");
+  if (runButton) {
+    runMessageImportSchedulerProfile(runButton.dataset.schedulerCookieId);
+    return;
+  }
+  const toggleButton = event.target.closest(".scheduler-profile-toggle-action");
+  if (toggleButton) {
+    toggleMessageImportSchedulerProfile(
+      toggleButton.dataset.schedulerCookieId,
+      toggleButton.dataset.schedulerEnabled === "true",
+    );
+  }
+});
 $("#run-next-jobs")?.addEventListener("click", runNextJobs);
 $("#run-pending-jobs")?.addEventListener("click", runPendingJobs);
 $("#work-order-filter-status")?.addEventListener("change", () => renderWorkOrderFeed(state.workOrders));
@@ -984,6 +1764,83 @@ refreshStatus().catch((error) => {
 
 function decisionLabel(d) {
   return { watch: "观察中", approve: "已通过", reject: "已拒绝" }[d] || d;
+}
+
+function renderPreflightGateList(gates = []) {
+  if (!gates.length) {
+    return "";
+  }
+  return gates.map((g) => {
+    const css = g.status === "pass" ? "preflight-gate preflight-gate--pass" : "preflight-gate preflight-gate--fail";
+    return `<div class="${css}"><span class="resale-badge resale-badge--${g.status === "pass" ? "verified" : "unverified"}">${escapeHtml(g.status)}</span>${escapeHtml(g.code)}: ${escapeHtml(g.message)}<span class="snapshot-field">${escapeHtml(g.evidence || "")}</span></div>`;
+  }).join("");
+}
+
+function evidenceAgeHours(value) {
+  if (!value) {
+    return null;
+  }
+  const ts = Date.parse(String(value).replace(" ", "T"));
+  if (Number.isNaN(ts)) {
+    return null;
+  }
+  return (Date.now() - ts) / 3600000;
+}
+
+function renderEvidenceSummary(c) {
+  const parts = [];
+  const add = (label, ok, extraClass = "") => {
+    const cls = ok ? "" : "resale-evidence-item--missing";
+    parts.push(`<span class="resale-evidence-item ${cls} ${extraClass}">${escapeHtml(label)}</span>`);
+  };
+  add(c.supplier_verified ? "供应商已核验" : "供应商未核验", Boolean(c.supplier_verified));
+  const quoteAge = evidenceAgeHours(c.supplier_quote_checked_at);
+  if (quoteAge == null) {
+    add("报价未核验", false);
+  } else if (quoteAge < 0) {
+    add("报价 未来", false, "resale-evidence-item--warn");
+  } else {
+    const within = quoteAge <= 24;
+    add(`报价 ${within ? Math.round(quoteAge) + "h前" : "超24h"}`, within, within ? "" : "resale-evidence-item--warn");
+  }
+  const stockAge = evidenceAgeHours(c.stock_checked_at);
+  if (stockAge == null) {
+    add("库存未核验", false);
+  } else if (stockAge < 0) {
+    add("库存 未来", false, "resale-evidence-item--warn");
+  } else {
+    const within = stockAge <= 24;
+    add(`库存 ${within ? Math.round(stockAge) + "h前" : "超24h"}`, within, within ? "" : "resale-evidence-item--warn");
+  }
+  add(c.fulfillment_verified ? "履约已核验" : "履约未核验", Boolean(c.fulfillment_verified));
+  const imageCount = (c.images || []).filter((img) => String(img || "").trim()).length;
+  add(`图片 ${imageCount}`, imageCount >= 1);
+  add(`授权 ${c.image_rights_type || "未选"}`, Boolean(c.image_rights_type));
+  add(`授权证据 ${c.image_rights_evidence ? "有" : "无"}`, Boolean(c.image_rights_evidence));
+  const activation = c.activation_summary || {};
+  const completion = activation.completion || {};
+  add(`启动包 ${completion.passed || 0}/${completion.total || 12}`, Boolean(activation.ready));
+  return `<div class="resale-evidence-summary">${parts.join("")}</div>`;
+}
+
+function summarizePreflight(p) {
+  const lines = [
+    `<strong>发布前检查: ${p.ready ? "通过" : "未通过"}</strong>`,
+    `状态: ${escapeHtml(p.status || "-")} ｜ 账号: ${escapeHtml(p.cookie_id || "-")}`,
+    `检查时间: ${escapeHtml(p.checked_at || "-")}`,
+  ];
+  const gates = p.gates || [];
+  const failed = gates.filter((g) => g.status === "fail");
+  if (failed.length) {
+    lines.push(`失败门禁: ${failed.map((g) => escapeHtml(g.code)).join(", ")}`);
+    lines.push(renderPreflightGateList(failed));
+  } else {
+    lines.push("全部门禁通过，可生成上架草稿。");
+  }
+  if (p.next_step && p.next_step.length) {
+    lines.push(`下一步: ${p.next_step.map((n) => `${escapeHtml(n.code)} — ${escapeHtml(n.message)}`).join("；")}`);
+  }
+  return lines.join("<br>");
 }
 
 function renderResaleFeed(candidates = []) {
@@ -1015,11 +1872,18 @@ function renderResaleFeed(candidates = []) {
       ? `<div class="resale-decision"><span class="resale-badge resale-badge--decision-${c.manual_decision}">${decisionLabel(c.manual_decision)}</span>${c.manual_decision_note ? `<span class="snapshot-field">${escapeHtml(c.manual_decision_note)}</span>` : ""}</div>`
       : "";
 
-    const canListing = !isBlocked && c.supplier_verified && c.manual_decision === "approve" && !c.listing_draft_id;
+    const activation = c.activation_summary || {};
+    const activationCompletion = activation.completion || {};
+    const activationNext = activation.next_step || {};
+    const activationHtml = `<div class="candidate-activation-card-summary ${activation.ready ? "is-ready" : "is-blocked"}">
+      <strong>一品启动包 ${activationCompletion.passed || 0}/${activationCompletion.total || 12}</strong>
+      <span>${activation.ready ? "当前证据修订可进入账号发布预检" : `下一项: ${escapeHtml(activationNext.title || activationNext.code || "补齐真实商品证据")}`}</span>
+      <span class="snapshot-field">修订 ${escapeHtml(activation.evidence_revision || c.evidence_revision || 1)}</span>
+    </div>`;
+    const canListing = !isBlocked && activation.ready && !c.listing_draft_id;
     const missingReasons = [];
     if (isBlocked) missingReasons.push("已阻断");
-    if (!c.supplier_verified) missingReasons.push("未验证供应商");
-    if (c.manual_decision !== "approve") missingReasons.push(c.manual_decision ? "决策: " + decisionLabel(c.manual_decision) : "未决策");
+    if (!activation.ready) missingReasons.push(activationNext.title || activationNext.code || "启动包未完成");
     if (c.listing_draft_id) missingReasons.push("已生成草稿");
 
     const draftStatusHtml = c.listing_draft_id
@@ -1027,13 +1891,14 @@ function renderResaleFeed(candidates = []) {
       : "";
 
     const actions = isBlocked
-      ? `<div class="resale-actions"><span style="color:var(--danger);font-size:11px">已阻断，无法创建计划</span></div>`
+      ? `<div class="resale-actions"><button class="resale-btn resale-btn--secondary" onclick="openVerifyDialog('${c.candidate_id}')">一品启动包</button><span style="color:var(--danger);font-size:11px">已阻断，无法创建计划；修正事实后重新评估</span></div>`
       : `<div class="resale-actions">
           <button class="resale-btn" onclick="createResalePlan('${c.candidate_id}')">创建倒卖计划</button>
+          <button class="resale-btn resale-btn--secondary" onclick="checkPublishPreflight('${c.candidate_id}')">发布前检查</button>
           ${canListing
             ? `<button class="resale-btn" onclick="createListingDraft('${c.candidate_id}')">生成上架草稿</button>`
             : `<span class="resale-missing" style="color:var(--muted);font-size:11px">上架条件不足: ${escapeHtml(missingReasons.join(", "))}</span>`}
-          <button class="resale-btn resale-btn--secondary" onclick="openVerifyDialog('${c.candidate_id}')">记录验证</button>
+          <button class="resale-btn resale-btn--secondary" onclick="openVerifyDialog('${c.candidate_id}')">一品启动包</button>
           <button class="resale-btn resale-btn--secondary" onclick="openDecisionDialog('${c.candidate_id}')">人工决策</button>
           <button class="resale-btn resale-btn--secondary" onclick="agentReviewCandidate('${c.candidate_id}')">Agent 评审</button>
         </div>`;
@@ -1070,6 +1935,8 @@ function renderResaleFeed(candidates = []) {
         </div>
         ${competitorHtml}
         ${verifyHtml}
+        ${renderEvidenceSummary(c)}
+        ${activationHtml}
         ${decisionHtml}
         ${draftStatusHtml}
         ${agentReviewHtml}
@@ -1079,6 +1946,84 @@ function renderResaleFeed(candidates = []) {
       </div>
     `;
   }).join("");
+}
+
+function renderDiscoveryInbox(events = []) {
+  const feed = $("#discovery-inbox-feed");
+  if (!feed) {
+    return;
+  }
+  if (!events.length) {
+    feed.innerHTML = `<div class="empty-state">暂无线索</div>`;
+    return;
+  }
+  feed.innerHTML = events.map((event) => {
+    const priceHint = Number(event.price_hint || 0);
+    const meta = [
+      event.source ? `source: ${event.source}` : "",
+      event.category_hint ? `category: ${event.category_hint}` : "",
+      event.supplier_hint ? `supplier: ${event.supplier_hint}` : "",
+      priceHint ? `price: ¥${priceHint}` : "",
+      event.status ? `status: ${event.status}` : "",
+    ].filter(Boolean).join(" ｜ ");
+    return `
+      <div class="discovery-inbox-item">
+        <div class="collab-title">${escapeHtml(event.title || event.event_id || "-")}</div>
+        <div class="collab-meta">${escapeHtml(meta || "-")} ｜ ${formatTime(event.created_at)}</div>
+        <div class="collab-body">${escapeHtml(event.summary || "暂无摘要").slice(0, 180)}</div>
+        <div class="discovery-inbox-actions">
+          <button type="button" class="resale-btn" data-event-id="${escapeHtml(event.event_id)}" onclick="promoteDiscoveryEvent(this.dataset.eventId)">提升为候选</button>
+          <button type="button" class="resale-btn resale-btn--secondary" data-event-id="${escapeHtml(event.event_id)}" onclick="markDiscoveryEventRead(this.dataset.eventId)">标记已读</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function refreshDiscoveryInbox() {
+  try {
+    const data = await api("/discovery/inbox?status=unread");
+    state.discoveryInbox = data.events || [];
+    renderDiscoveryInbox(state.discoveryInbox);
+  } catch {
+    state.discoveryInbox = [];
+    renderDiscoveryInbox([]);
+  }
+}
+
+async function markDiscoveryEventRead(eventId) {
+  if (!eventId) {
+    return;
+  }
+  try {
+    await api(`/discovery/inbox/${encodeURIComponent(eventId)}/mark-read`, { method: "POST" });
+    await refreshDiscoveryInbox();
+  } catch (error) {
+    alert(`标记失败：${error.message}`);
+  }
+}
+
+async function promoteDiscoveryEvent(eventId) {
+  if (!eventId) {
+    return;
+  }
+  const event = state.discoveryInbox.find((item) => item.event_id === eventId) || {};
+  const title = event.title || eventId;
+  if (!confirm(`将线索「${title}」提升为候选商品？`)) {
+    return;
+  }
+  try {
+    const data = await api(`/discovery/inbox/${encodeURIComponent(eventId)}/promote-candidate`, {
+      method: "POST",
+      body: "{}",
+    });
+    renderResult({ type: "discovery_inbox_promote", result: data });
+    await refreshDiscoveryInbox();
+    await refreshResaleCandidates();
+    await loadDashboard();
+  } catch (error) {
+    alert(`提升候选失败：${error.message}`);
+  }
 }
 
 async function refreshResaleCandidates() {
@@ -1097,6 +2042,53 @@ async function refreshResaleCandidates() {
   } catch (error) {
     renderResaleFeed([]);
   }
+}
+
+function splitListField(raw, separator = /[\n,]+/) {
+  return String(raw || "")
+    .split(separator)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function numberOrDefault(raw, fallback = 0) {
+  const value = Number.parseFloat(String(raw ?? ""));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function toDatetimeLocal(value) {
+  if (!value) {
+    return "";
+  }
+  const text = String(value).trim();
+  if (/(?:Z|[+-]\d{2}:\d{2})$/i.test(text)) {
+    return toLocalDatetimeInput(text);
+  }
+  // Stored format is "YYYY-MM-DDTHH:MM:SS"; datetime-local drops seconds.
+  const match = text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}):\d{2}$/);
+  return match ? match[1] : text;
+}
+
+function toServerTimestamp(value) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return "";
+  }
+  // datetime-local is "YYYY-MM-DDTHH:MM"; backend expects seconds.
+  const match = text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})$/);
+  return match ? `${match[1]}:00` : text;
+}
+
+function toLocalDatetimeInput(value = null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function toUtcTimestamp(value) {
+  const date = new Date(String(value || ""));
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
 async function submitResaleForm(event) {
@@ -1120,12 +2112,14 @@ async function submitResaleForm(event) {
     sales_platform: fd.get("sales_platform") || "xianyu",
     market_scope: fd.get("market_scope") || "domestic",
     source_url: fd.get("source_url") || "",
-    supplier_price: parseFloat(fd.get("supplier_price")) || 0,
-    supplier_shipping: parseFloat(fd.get("supplier_shipping")) || 0,
-    target_sale_price: parseFloat(fd.get("target_sale_price")) || 0,
-    platform_fee_rate: parseFloat(fd.get("platform_fee_rate")) || 0.08,
-    expected_refund_rate: parseFloat(fd.get("expected_refund_rate")) || 0.02,
+    supplier_price: numberOrDefault(fd.get("supplier_price"), 0),
+    supplier_shipping: numberOrDefault(fd.get("supplier_shipping"), 0),
+    target_sale_price: numberOrDefault(fd.get("target_sale_price"), 0),
+    platform_fee_rate: numberOrDefault(fd.get("platform_fee_rate"), 0.08),
+    platform_fixed_fee: numberOrDefault(fd.get("platform_fixed_fee"), 0),
+    expected_refund_rate: numberOrDefault(fd.get("expected_refund_rate"), 0.02),
     specifications,
+    images: splitListField(fd.get("images")),
   };
   try {
     const result = await api("/resale/candidates", {
@@ -1174,29 +2168,536 @@ async function createPurchaseDraft(planId) {
 }
 
 async function openVerifyDialog(candidateId) {
-  const verified = confirm("供应商已验证？点击确定标记为已验证，取消标记为未验证。");
-  const note = prompt("验证备注（可留空）:", "");
-  const linksRaw = prompt("竞品链接（逗号分隔，可留空）:", "");
-  const priceMinRaw = prompt("竞品最低价（可留空）:", "");
-  const priceMaxRaw = prompt("竞品最高价（可留空）:", "");
-  const demand = prompt("需求信号（如: 月销200+，可留空）:", "");
-  const payload = {
-    supplier_verified: verified,
-    supplier_verification_note: note || "",
-    competitor_links: linksRaw ? linksRaw.split(",").map((s) => s.trim()).filter(Boolean) : [],
-    competitor_price_min: priceMinRaw ? parseFloat(priceMinRaw) : null,
-    competitor_price_max: priceMaxRaw ? parseFloat(priceMaxRaw) : null,
-    estimated_demand_signal: demand || "",
-  };
+  const candidate = state.resaleCandidates.find((item) => item.candidate_id === candidateId) || null;
+  state.evidenceCandidateId = candidateId;
+  populateEvidenceModal(candidate);
+  const modal = $("#evidence-modal");
+  if (modal) {
+    modal.hidden = false;
+  }
+  const summary = $("#candidate-activation-summary");
+  if (summary) {
+    summary.innerHTML = "正在按商业顺序核验当前证据...";
+  }
   try {
-    const result = await api(`/resale/candidates/${candidateId}/verify`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    renderResult({ type: "resale_verification", result: result.candidate || result });
+    const encodedCandidateId = encodeURIComponent(candidateId);
+    const [packet, archive] = await Promise.all([
+      api(`/resale/candidates/${encodedCandidateId}/activation-packet`),
+      api(`/resale/candidates/${encodedCandidateId}/evidence-artifacts`),
+    ]);
+    state.candidateActivationPacket = packet;
+    state.candidateEvidenceArtifacts = Array.isArray(archive?.artifacts) ? archive.artifacts : [];
+    renderCandidateActivationPacket(packet);
+    renderCandidateEvidenceArtifacts(state.candidateEvidenceArtifacts);
+  } catch (error) {
+    showEvidenceFormError(error.message);
+  }
+}
+
+function populateEvidenceModal(candidate) {
+  const c = candidate || {};
+  const form = $("#evidence-form");
+  if (!form) {
+    return;
+  }
+  const set = (name, value) => {
+    const control = form.elements[name];
+    if (!control) {
+      return;
+    }
+    if (control.type === "checkbox") {
+      control.checked = Boolean(value);
+      return;
+    }
+    control.value = value == null ? "" : value;
+  };
+  set("title", c.title || "");
+  set("category", c.category || "");
+  set("source_platform", c.source_platform || "pdd");
+  set("source_url", c.source_url || "");
+  set("supplier_name", c.supplier_name || "");
+  set("supplier_sku", c.supplier_sku || "");
+  set("specifications", JSON.stringify(c.specifications || {}, null, 2));
+  set("supplier_price", c.supplier_price == null ? "" : c.supplier_price);
+  set("supplier_shipping", c.supplier_shipping == null ? "" : c.supplier_shipping);
+  set("target_sale_price", c.target_sale_price == null ? "" : c.target_sale_price);
+  set("supplier_verified", c.supplier_verified);
+  set("supplier_verification_note", c.supplier_verification_note || "");
+  set("supplier_quote_checked_at", toDatetimeLocal(c.supplier_quote_checked_at));
+  set("supplier_quote_evidence_ref", c.supplier_quote_evidence_ref || "");
+  set("minimum_order_quantity", c.minimum_order_quantity == null ? "" : c.minimum_order_quantity);
+  set("stock_status", c.stock_status || "");
+  set("stock_quantity", c.stock_quantity == null ? "" : c.stock_quantity);
+  set("stock_checked_at", toDatetimeLocal(c.stock_checked_at));
+  set("stock_evidence_ref", c.stock_evidence_ref || "");
+  set("fulfillment_verified", c.fulfillment_verified);
+  set("fulfillment_verification_note", c.fulfillment_verification_note || "");
+  set("fulfillment_evidence_ref", c.fulfillment_evidence_ref || "");
+  set("neutral_shipping_confirmed", c.neutral_shipping_confirmed);
+  set("dispatch_time_hours", c.dispatch_time_hours == null ? "" : c.dispatch_time_hours);
+  set("supplier_return_policy", c.supplier_return_policy || "");
+  set("damage_liability_note", c.damage_liability_note || "");
+  set("images", (c.images || []).join("\n"));
+  set("image_rights_type", c.image_rights_type || "");
+  set("image_rights_evidence", c.image_rights_evidence || "");
+  set("image_rights_evidence_ref", c.image_rights_evidence_ref || "");
+  set("competitor_links", (c.competitor_links || []).join(", "));
+  set("competitor_price_min", c.competitor_price_min == null ? "" : c.competitor_price_min);
+  set("competitor_price_max", c.competitor_price_max == null ? "" : c.competitor_price_max);
+  set("competitor_checked_at", toDatetimeLocal(c.competitor_checked_at));
+  set("competitor_evidence_ref", c.competitor_evidence_ref || "");
+  set("estimated_demand_signal", c.estimated_demand_signal || "");
+  const observedAt = $("#candidate-evidence-observed-at");
+  if (observedAt) observedAt.value = toLocalDatetimeInput();
+  const artifactFile = $("#candidate-evidence-file");
+  if (artifactFile) artifactFile.value = "";
+  const artifactNote = $("#candidate-evidence-note");
+  if (artifactNote) artifactNote.value = "";
+  const artifactSourceUrl = $("#candidate-evidence-source-url");
+  if (artifactSourceUrl) artifactSourceUrl.value = "";
+  state.candidateEvidenceArtifacts = [];
+  renderCandidateEvidenceArtifacts([]);
+  const errorBox = $("#evidence-form-error");
+  if (errorBox) {
+    errorBox.hidden = true;
+    errorBox.textContent = "";
+  }
+}
+
+function renderCandidateActivationPacket(packet, notice = "") {
+  const summary = $("#candidate-activation-summary");
+  if (!summary) {
+    return;
+  }
+  const completion = packet?.completion || {};
+  const gates = Array.isArray(packet?.gates) ? packet.gates : [];
+  const gateHtml = gates.map((gate) => `
+    <div class="candidate-activation-gate ${gate.status === "pass" ? "is-pass" : "is-blocked"}">
+      <span class="resale-badge resale-badge--${gate.status === "pass" ? "verified" : "unverified"}">${gate.status === "pass" ? "通过" : "阻断"}</span>
+      <div><strong>${escapeHtml(gate.title || gate.code)}</strong><span>${escapeHtml(gate.action || "")}</span><small>${escapeHtml(gate.evidence || "")}</small></div>
+    </div>
+  `).join("");
+  const next = packet?.next_step;
+  summary.innerHTML = `
+    ${notice ? `<div class="candidate-activation-notice">${escapeHtml(notice)}</div>` : ""}
+    <div class="candidate-activation-summary-head">
+      <strong>${packet?.ready ? "一品启动包已就绪" : "一品启动包仍被阻断"}</strong>
+      <span>${completion.passed || 0}/${completion.total || gates.length} 通过</span>
+      <span>证据修订 ${escapeHtml(packet?.evidence_revision || 1)}</span>
+    </div>
+    ${next ? `<div class="candidate-activation-next"><strong>当前第一项</strong><span>${escapeHtml(next.title || next.code)}</span><small>${escapeHtml(next.action || "")}</small></div>` : ""}
+    <div class="candidate-activation-gates">${gateHtml}</div>
+  `;
+}
+
+function formatArtifactBytes(value) {
+  const bytes = Number(value || 0);
+  if (!Number.isFinite(bytes) || bytes < 0) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
+function renderCandidateEvidenceArtifacts(artifacts = []) {
+  const list = $("#candidate-evidence-artifact-list");
+  const count = $("#candidate-evidence-archive-count");
+  const items = Array.isArray(artifacts) ? artifacts : [];
+  if (count) count.textContent = `${items.length} 份`;
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = '<span class="snapshot-field">暂无存档；五类证据均需上传真实文件</span>';
+    return;
+  }
+  const candidateId = encodeURIComponent(state.evidenceCandidateId || "");
+  list.innerHTML = items.map((artifact) => {
+    const artifactId = encodeURIComponent(artifact.artifact_id || "");
+    const active = artifact.status === "active";
+    const integrityOk = artifact.integrity?.ok === true;
+    const stateClass = active && integrityOk ? "is-active" : "is-inactive";
+    const stateText = active
+      ? (integrityOk ? "当前有效" : "完整性失败")
+      : (artifact.status === "superseded" ? "已被替代" : escapeHtml(artifact.status || "未知"));
+    const digest = String(artifact.sha256 || "");
+    return `
+      <div class="candidate-evidence-artifact ${stateClass}">
+        <span class="resale-badge resale-badge--${active && integrityOk ? "verified" : "unverified"}">${stateText}</span>
+        <div>
+          <strong>${escapeHtml(CANDIDATE_EVIDENCE_KIND_LABELS[artifact.kind] || artifact.kind || "未知证据")}</strong>
+          <span>${escapeHtml(artifact.original_filename || "未命名")} · ${formatArtifactBytes(artifact.byte_size)}</span>
+          <small>观察 ${escapeHtml(artifact.observed_at || "-")} · SHA-256 ${escapeHtml(digest.slice(0, 12) || "-")} · ${escapeHtml(artifact.integrity?.status || "not_checked")}</small>
+        </div>
+        <a class="resale-btn resale-btn--secondary candidate-evidence-download" href="/resale/candidates/${candidateId}/evidence-artifacts/${artifactId}/file" download>下载</a>
+      </div>
+    `;
+  }).join("");
+}
+
+async function uploadCandidateEvidenceArtifact() {
+  const candidateId = state.evidenceCandidateId;
+  const kind = String($("#candidate-evidence-kind")?.value || "").trim();
+  const observedAtInput = String($("#candidate-evidence-observed-at")?.value || "").trim();
+  const fileInput = $("#candidate-evidence-file");
+  const file = fileInput?.files?.[0];
+  if (!candidateId || !kind || !observedAtInput || !file) {
+    showEvidenceFormError("请选择证据类型、实际观察时间和证据文件");
+    return;
+  }
+  if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
+    showEvidenceFormError("证据文件必须大于 0 且不超过 10 MiB");
+    return;
+  }
+  const observedAt = toServerTimestamp(observedAtInput);
+  if (new Date(observedAtInput).getTime() > Date.now() + 60000) {
+    showEvidenceFormError("实际观察时间不能晚于当前时间");
+    return;
+  }
+  const query = new URLSearchParams({
+    kind,
+    observed_at: observedAt,
+    filename: file.name,
+  });
+  const note = String($("#candidate-evidence-note")?.value || "").trim();
+  const sourceUrl = String($("#candidate-evidence-source-url")?.value || "").trim();
+  if (note) query.set("note", note);
+  if (sourceUrl) query.set("source_url", sourceUrl);
+  const button = $("#upload-candidate-evidence");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "上传中";
+  }
+  showEvidenceFormError("");
+  try {
+    const response = await fetch(
+      `/resale/candidates/${encodeURIComponent(candidateId)}/evidence-artifacts?${query}`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      },
+    );
+    const text = await response.text();
+    let result = {};
+    try {
+      result = text ? JSON.parse(text) : {};
+    } catch {
+      result = {};
+    }
+    if (!response.ok) {
+      const detail = result?.detail;
+      throw new Error(typeof detail === "string" ? detail : (detail?.message || "证据上传被拒绝"));
+    }
+    state.candidateActivationPacket = result.activation_packet;
+    const candidate = result.candidate || {};
+    const form = $("#evidence-form");
+    const refBindings = {
+      supplier_quote: "supplier_quote_evidence_ref",
+      supplier_stock: "stock_evidence_ref",
+      supplier_fulfillment: "fulfillment_evidence_ref",
+      image_rights: "image_rights_evidence_ref",
+      market_baseline: "competitor_evidence_ref",
+    };
+    const timestampBindings = {
+      supplier_quote: "supplier_quote_checked_at",
+      supplier_stock: "stock_checked_at",
+      market_baseline: "competitor_checked_at",
+    };
+    const refField = refBindings[kind];
+    if (form?.elements?.[refField]) form.elements[refField].value = candidate[refField] || "";
+    const timestampField = timestampBindings[kind];
+    if (timestampField && form?.elements?.[timestampField]) {
+      form.elements[timestampField].value = toDatetimeLocal(candidate[timestampField]);
+    }
+    const archive = await api(
+      `/resale/candidates/${encodeURIComponent(candidateId)}/evidence-artifacts`,
+    );
+    state.candidateEvidenceArtifacts = Array.isArray(archive?.artifacts) ? archive.artifacts : [];
+    renderCandidateEvidenceArtifacts(state.candidateEvidenceArtifacts);
+    const notice = result.manual_decision_invalidated
+      ? "新证据已存档并绑定，旧人工决策已失效；完成全部证据后重新决策。"
+      : "证据已存档并绑定到当前候选。";
+    renderCandidateActivationPacket(result.activation_packet, notice);
+    renderResult({ type: "candidate_evidence_artifact", result });
+    if (fileInput) fileInput.value = "";
+    const noteInput = $("#candidate-evidence-note");
+    if (noteInput) noteInput.value = "";
     await refreshResaleCandidates();
   } catch (error) {
-    renderResult({ type: "error", result: { message: error.message } });
+    showEvidenceFormError(error.message);
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "上传并绑定";
+    }
+  }
+}
+
+function closeEvidenceModal() {
+  const modal = $("#evidence-modal");
+  if (modal) {
+    modal.hidden = true;
+  }
+  state.evidenceCandidateId = null;
+  state.candidateActivationPacket = null;
+  state.candidateEvidenceArtifacts = [];
+}
+
+function validateEvidenceForm(form) {
+  const priceMin = form.elements.competitor_price_min?.value;
+  const priceMax = form.elements.competitor_price_max?.value;
+  if (priceMin !== "" && priceMax !== "" && Number(priceMax) < Number(priceMin)) {
+    return "竞品最高价不能低于竞品最低价";
+  }
+  const specsRaw = (form.elements.specifications?.value || "").trim();
+  if (specsRaw) {
+    try {
+      const specs = JSON.parse(specsRaw);
+      if (!specs || Array.isArray(specs) || typeof specs !== "object") {
+        return "规格 JSON 必须是对象";
+      }
+    } catch {
+      return "规格 JSON 格式错误";
+    }
+  }
+  for (const field of ["supplier_quote_checked_at", "stock_checked_at", "competitor_checked_at"]) {
+    const value = form.elements[field]?.value;
+    if (value && new Date(value).getTime() > Date.now() + 60000) {
+      return `${field} 不能填写未来时间`;
+    }
+  }
+  return "";
+}
+
+function optionalNumber(control) {
+  const raw = String(control?.value || "").trim();
+  if (!raw) {
+    return null;
+  }
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+async function saveEvidenceModal() {
+  const form = $("#evidence-form");
+  if (!form) {
+    return;
+  }
+  const validationError = validateEvidenceForm(form);
+  if (validationError) {
+    showEvidenceFormError(validationError);
+    return;
+  }
+  const candidateId = state.evidenceCandidateId;
+  if (!candidateId) {
+    return;
+  }
+  let specifications = {};
+  try {
+    specifications = JSON.parse((form.elements.specifications?.value || "{}").trim() || "{}");
+  } catch {
+    showEvidenceFormError("规格 JSON 格式错误");
+    return;
+  }
+  const payload = {
+    title: (form.elements.title?.value || "").trim(),
+    category: (form.elements.category?.value || "").trim(),
+    source_platform: (form.elements.source_platform?.value || "").trim(),
+    source_url: (form.elements.source_url?.value || "").trim(),
+    supplier_name: (form.elements.supplier_name?.value || "").trim(),
+    supplier_sku: (form.elements.supplier_sku?.value || "").trim(),
+    specifications,
+    supplier_price: optionalNumber(form.elements.supplier_price),
+    supplier_shipping: optionalNumber(form.elements.supplier_shipping),
+    target_sale_price: optionalNumber(form.elements.target_sale_price),
+    supplier_verified: form.elements.supplier_verified?.checked === true,
+    supplier_verification_note: (form.elements.supplier_verification_note?.value || "").trim(),
+    supplier_quote_checked_at: toServerTimestamp(form.elements.supplier_quote_checked_at?.value),
+    minimum_order_quantity: optionalNumber(form.elements.minimum_order_quantity),
+    stock_status: (form.elements.stock_status?.value || "").trim(),
+    stock_quantity: optionalNumber(form.elements.stock_quantity),
+    stock_checked_at: toServerTimestamp(form.elements.stock_checked_at?.value),
+    fulfillment_verified: form.elements.fulfillment_verified?.checked === true,
+    fulfillment_verification_note: (form.elements.fulfillment_verification_note?.value || "").trim(),
+    neutral_shipping_confirmed: form.elements.neutral_shipping_confirmed?.checked === true,
+    dispatch_time_hours: optionalNumber(form.elements.dispatch_time_hours),
+    supplier_return_policy: (form.elements.supplier_return_policy?.value || "").trim(),
+    damage_liability_note: (form.elements.damage_liability_note?.value || "").trim(),
+    images: splitListField(form.elements.images?.value),
+    image_rights_type: (form.elements.image_rights_type?.value || "").trim(),
+    image_rights_evidence: (form.elements.image_rights_evidence?.value || "").trim(),
+    competitor_links: splitListField(form.elements.competitor_links?.value, /,/),
+    competitor_price_min: optionalNumber(form.elements.competitor_price_min),
+    competitor_price_max: optionalNumber(form.elements.competitor_price_max),
+    competitor_checked_at: toServerTimestamp(form.elements.competitor_checked_at?.value),
+    estimated_demand_signal: (form.elements.estimated_demand_signal?.value || "").trim(),
+  };
+  try {
+    const result = await api(`/resale/candidates/${candidateId}/activation-packet`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    state.candidateActivationPacket = result.activation_packet;
+    const notice = result.manual_decision_invalidated
+      ? "候选事实已变化，旧人工决策已失效；证据完成后需要重新决策。"
+      : "候选证据已保存并重新核验。";
+    renderCandidateActivationPacket(result.activation_packet, notice);
+    renderResult({ type: "candidate_activation_packet", result });
+    await refreshResaleCandidates();
+  } catch (error) {
+    showEvidenceFormError(error.message);
+  }
+}
+
+function showEvidenceFormError(message) {
+  const errorBox = $("#evidence-form-error");
+  if (errorBox) {
+    errorBox.textContent = message || "";
+    errorBox.hidden = !message;
+  }
+}
+
+function setCommercialTermsFormError(message) {
+  const errorBox = $("#commercial-terms-form-error");
+  if (!errorBox) return;
+  errorBox.textContent = message || "";
+  errorBox.hidden = !message;
+}
+
+function populateCommercialTermsModal(snapshot = null, context = {}) {
+  const form = $("#commercial-terms-form");
+  if (!form) return;
+  form.reset();
+  const source = snapshot || {};
+  const set = (name, value) => {
+    const control = form.elements[name];
+    if (!control) return;
+    if (control.type === "checkbox") {
+      control.checked = Boolean(value);
+    } else {
+      control.value = value == null ? "" : value;
+    }
+  };
+  set("cookie_id", context.cookie_id || source.cookie_id || "");
+  set("category", context.category || source.category || "");
+  set("candidate_id", context.candidate_id || "");
+  set("seller_type", source.seller_type || "unknown");
+  set("account_owner_confirmed", source.account_owner_confirmed);
+  set("seller_agreement_confirmed", source.seller_agreement_confirmed);
+  set("payment_service_ready", source.payment_service_ready);
+  set("category_publishable", source.category_publishable);
+  set("return_policy", source.return_policy || "unknown");
+  set("return_exception_basis", source.return_exception_basis || "");
+  set("return_address_ready", source.return_address_ready);
+  set("after_sales_ready", source.after_sales_ready);
+  set("guarantee_required", source.guarantee_required);
+  set("guarantee_ready", source.guarantee_ready);
+  set("guarantee_amount", source.guarantee_amount ?? 0);
+  set("platform_fee_rate", source.platform_fee_rate ?? "");
+  set("platform_fixed_fee", source.platform_fixed_fee ?? 0);
+  set("observed_at", toLocalDatetimeInput(source.observed_at));
+  set("evidence_ref", source.evidence_ref || "");
+  set("evidence_note", source.evidence_note || "");
+  setCommercialTermsFormError("");
+}
+
+async function openCommercialTermsDialog() {
+  const launch = buildCommercialLaunchPayload();
+  if (!launch?.cookie_id || !launch?.candidate_id) {
+    alert("请先选择卖家账号和唯一首发候选。");
+    return;
+  }
+  const candidate = state.commercialCandidates.find(
+    (item) => item.candidate_id === launch.candidate_id
+  );
+  const category = String(candidate?.category || "").trim();
+  if (!category) {
+    alert("首发候选缺少平台类目，先补全候选类目。");
+    return;
+  }
+  const context = {
+    cookie_id: launch.cookie_id,
+    candidate_id: launch.candidate_id,
+    category,
+  };
+  state.commercialTermsContext = context;
+  try {
+    const params = new URLSearchParams({ category, candidate_id: launch.candidate_id });
+    const result = await api(
+      `/accounts/${encodeURIComponent(launch.cookie_id)}/commercial-terms?${params.toString()}`
+    );
+    populateCommercialTermsModal(result.snapshot, context);
+    const modal = $("#commercial-terms-modal");
+    if (modal) modal.hidden = false;
+  } catch (error) {
+    alert(`商业条款读取失败：${error.message}`);
+  }
+}
+
+function closeCommercialTermsModal() {
+  const modal = $("#commercial-terms-modal");
+  if (modal) modal.hidden = true;
+  state.commercialTermsContext = null;
+  setCommercialTermsFormError("");
+}
+
+async function saveCommercialTermsModal() {
+  const form = $("#commercial-terms-form");
+  const context = state.commercialTermsContext;
+  if (!form || !context) return;
+  const feeRate = numberOrDefault(form.elements.platform_fee_rate?.value, Number.NaN);
+  const fixedFee = numberOrDefault(form.elements.platform_fixed_fee?.value, Number.NaN);
+  const guaranteeAmount = numberOrDefault(form.elements.guarantee_amount?.value, Number.NaN);
+  if (!Number.isFinite(feeRate) || feeRate < 0 || feeRate >= 1) {
+    setCommercialTermsFormError("平台比例费率必须是 0 到 1 之间的小数。");
+    return;
+  }
+  if (!Number.isFinite(fixedFee) || fixedFee < 0 || !Number.isFinite(guaranteeAmount) || guaranteeAmount < 0) {
+    setCommercialTermsFormError("固定费用和保证金金额必须是非负数。");
+    return;
+  }
+  const observedAt = toUtcTimestamp(form.elements.observed_at?.value);
+  if (!observedAt) {
+    setCommercialTermsFormError("请填写有效的核验时间。");
+    return;
+  }
+  const payload = {
+    category: context.category,
+    candidate_id: context.candidate_id,
+    seller_type: String(form.elements.seller_type?.value || "unknown"),
+    account_owner_confirmed: form.elements.account_owner_confirmed?.checked === true,
+    seller_agreement_confirmed: form.elements.seller_agreement_confirmed?.checked === true,
+    payment_service_ready: form.elements.payment_service_ready?.checked === true,
+    category_publishable: form.elements.category_publishable?.checked === true,
+    return_policy: String(form.elements.return_policy?.value || "unknown"),
+    return_exception_basis: String(form.elements.return_exception_basis?.value || "").trim(),
+    return_address_ready: form.elements.return_address_ready?.checked === true,
+    after_sales_ready: form.elements.after_sales_ready?.checked === true,
+    guarantee_required: form.elements.guarantee_required?.checked === true,
+    guarantee_ready: form.elements.guarantee_ready?.checked === true,
+    guarantee_amount: guaranteeAmount,
+    platform_fee_rate: feeRate,
+    platform_fixed_fee: fixedFee,
+    observed_at: observedAt,
+    evidence_ref: String(form.elements.evidence_ref?.value || "").trim(),
+    evidence_note: String(form.elements.evidence_note?.value || "").trim(),
+  };
+  try {
+    const result = await api(
+      `/accounts/${encodeURIComponent(context.cookie_id)}/commercial-terms`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    const failed = result.assessment?.failed_gate_codes || [];
+    renderResult({ type: "commercial_terms", result });
+    closeCommercialTermsModal();
+    await Promise.all([refreshResaleCandidates(), refreshCommercialTrials()]);
+    await previewCommercialLaunch();
+    if (failed.length) {
+      alert(`条款已保存并重算利润，仍有 ${failed.length} 个子门禁未通过。`);
+    }
+  } catch (error) {
+    setCommercialTermsFormError(error.message);
   }
 }
 
@@ -1222,10 +2723,29 @@ async function openDecisionDialog(candidateId) {
   }
 }
 
+function chooseListingAccountId() {
+  const accountIds = (state.accountProfiles || [])
+    .filter((profile) => profile && profile.enabled !== false && profile.cookie_id)
+    .map((profile) => profile.cookie_id);
+  if (accountIds.length === 0) return "";
+  if (accountIds.length === 1) return accountIds[0];
+  const selected = prompt(`Seller account for this listing:\n${accountIds.join("\n")}`, accountIds[0]);
+  if (selected === null) return null;
+  const normalized = selected.trim();
+  if (!accountIds.includes(normalized)) {
+    alert("Select one of the configured enabled seller accounts.");
+    return null;
+  }
+  return normalized;
+}
+
 async function createListingDraft(candidateId) {
+  const cookieId = chooseListingAccountId();
+  if (cookieId === null) return;
+  const accountQuery = cookieId ? `?cookie_id=${encodeURIComponent(cookieId)}` : "";
   if (!confirm("确认生成上架草稿？将创建审批单，需人工批准后才会发布。")) return;
   try {
-    const result = await api(`/resale/candidates/${candidateId}/listing-draft`, {
+    const result = await api(`/resale/candidates/${candidateId}/listing-draft${accountQuery}`, {
       method: "POST",
       body: "{}",
     });
@@ -1233,7 +2753,22 @@ async function createListingDraft(candidateId) {
     await refreshResaleCandidates();
     await refreshWorkOrders();
   } catch (error) {
-    alert("生成失败: " + error.message);
+    const detail = error.detail || {};
+    const failed = (detail.gates || []).filter((g) => g.status === "fail").map((g) => g.code);
+    const reason = failed.length ? `未通过: ${failed.join(", ")}` : error.message;
+    alert("发布被阻止（409）: " + reason);
+    renderResult({ type: "resale_preflight_blocked", result: detail });
+  }
+}
+
+async function checkPublishPreflight(candidateId) {
+  const cookieId = chooseListingAccountId();
+  if (cookieId === null) return;
+  const accountQuery = cookieId ? `?cookie_id=${encodeURIComponent(cookieId)}` : "";
+  try {
+    const result = await api(`/resale/candidates/${candidateId}/publish-preflight${accountQuery}`);
+    renderResult({ type: "resale_preflight", result });
+  } catch (error) {
     renderResult({ type: "error", result: { message: error.message } });
   }
 }
@@ -1288,12 +2823,47 @@ function renderDashboard(data) {
 $("#resale-form")?.addEventListener("submit", submitResaleForm);
 $("#refresh-resale")?.addEventListener("click", refreshResaleCandidates);
 $("#refresh-dashboard")?.addEventListener("click", loadDashboard);
+$("#refresh-discovery-inbox")?.addEventListener("click", refreshDiscoveryInbox);
 $("#resale-filter-scope")?.addEventListener("change", refreshResaleCandidates);
 $("#resale-filter-source")?.addEventListener("change", refreshResaleCandidates);
 $("#resale-filter-status")?.addEventListener("change", refreshResaleCandidates);
 
+// Wire up the commercial evidence modal
+$("#evidence-form")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveEvidenceModal();
+});
+$("#upload-candidate-evidence")?.addEventListener("click", uploadCandidateEvidenceArtifact);
+document.querySelectorAll("[data-close-evidence-modal]").forEach((button) => {
+  button.addEventListener("click", closeEvidenceModal);
+});
+$("#evidence-modal")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) {
+    closeEvidenceModal();
+  }
+});
+$("#commercial-terms-form")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveCommercialTermsModal();
+});
+document.querySelectorAll("[data-close-commercial-terms-modal]").forEach((button) => {
+  button.addEventListener("click", closeCommercialTermsModal);
+});
+$("#commercial-terms-modal")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closeCommercialTermsModal();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#evidence-modal")?.hidden) {
+    closeEvidenceModal();
+  }
+  if (event.key === "Escape" && !$("#commercial-terms-modal")?.hidden) {
+    closeCommercialTermsModal();
+  }
+});
+
 // Load resale candidates and dashboard on startup
 refreshResaleCandidates().catch(() => {});
+refreshDiscoveryInbox().catch(() => {});
 loadDashboard().catch(() => {});
 refreshPurchaseTasks().catch(() => {});
 
@@ -1497,6 +3067,8 @@ function renderOrders(orders) {
           ${o.buyer_note ? `<div class="snapshot-field">买家备注: ${escapeHtml(o.buyer_note)}</div>` : ""}
           ${o.supplier_note ? `<div class="snapshot-field">供应商备注: ${escapeHtml(o.supplier_note)}</div>` : ""}
           ${o.aftersale_note ? `<div class="snapshot-field">售后备注: ${escapeHtml(o.aftersale_note)}</div>` : ""}
+          ${o.financial_evidence_note ? `<div class="snapshot-field">财务核对: ${escapeHtml(o.financial_evidence_note)}</div>` : ""}
+          ${o.financial_evidence_ref ? `<div class="snapshot-field">财务凭证: ${escapeHtml(o.financial_evidence_ref)}</div>` : ""}
         </div>
         <div class="order-actions">
           <select onchange="updateOrderStatus('${o.resale_order_id}', this.value)">
@@ -1514,13 +3086,53 @@ function renderOrders(orders) {
 
 async function updateOrderStatus(orderId, newStatus) {
   try {
+    const order = await api(`/resale/orders/${encodeURIComponent(orderId)}`);
+    const payload = { status: newStatus };
+    if (order.commercial_trial_id && ["shipped", "completed"].includes(newStatus)) {
+      const supplierOrderId = prompt("供应商订单号:", order.supplier_order_id || "");
+      if (supplierOrderId === null) { await refreshOrders(); return; }
+      const supplierTracking = prompt("供应商物流号:", order.supplier_tracking_number || "");
+      if (supplierTracking === null) { await refreshOrders(); return; }
+      const xianyuTracking = prompt("闲鱼物流号:", order.xianyu_tracking_number || "");
+      if (xianyuTracking === null) { await refreshOrders(); return; }
+      payload.supplier_order_id = String(supplierOrderId).trim();
+      payload.supplier_tracking_number = String(supplierTracking).trim();
+      payload.xianyu_tracking_number = String(xianyuTracking).trim();
+    }
+    if (order.commercial_trial_id && newStatus === "completed") {
+      const financeFields = [
+        ["sale_amount", "闲鱼实际实收", order.sale_amount],
+        ["supplier_cost", "供应商实际付款", order.supplier_cost],
+        ["shipping_cost", "实际运费", order.shipping_cost],
+        ["platform_fee", "平台实际费用", order.platform_fee],
+      ];
+      for (const [field, label, current] of financeFields) {
+        const raw = prompt(`${label}（元）:`, String(current ?? 0));
+        if (raw === null) { await refreshOrders(); return; }
+        const value = Number(raw);
+        if (!Number.isFinite(value) || (field === "sale_amount" || field === "supplier_cost" ? value <= 0 : value < 0)) {
+          alert(`${label}无效。`);
+          await refreshOrders();
+          return;
+        }
+        payload[field] = value;
+      }
+      const evidenceNote = prompt("财务核对备注（至少 8 个字符）:", order.financial_evidence_note || "");
+      if (evidenceNote === null) { await refreshOrders(); return; }
+      const evidenceRef = prompt("财务凭证引用（账单截图或文件名）:", order.financial_evidence_ref || "");
+      if (evidenceRef === null) { await refreshOrders(); return; }
+      payload.financial_evidence_note = String(evidenceNote).trim();
+      payload.financial_evidence_ref = String(evidenceRef).trim();
+    }
     await api(`/resale/orders/${orderId}/status`, {
       method: "POST",
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify(payload),
     });
-    await refreshOrders();
+    await Promise.all([refreshOrders(), refreshCommercialTrials()]);
   } catch (error) {
-    alert("更新失败: " + error.message);
+    const reasons = Array.isArray(error.detail?.reasons) ? error.detail.reasons.join("、") : error.message;
+    alert("更新失败: " + reasons);
+    await refreshOrders();
   }
 }
 
@@ -1885,9 +3497,558 @@ refreshAftersalesCases().catch(() => {});
 loadStealthTemplates().catch(() => {});
 
 // OPC Dashboard
+function renderOPCNextActions(actions = []) {
+  const list = Array.isArray(actions) ? actions : [];
+  if (!list.length) {
+    return `
+      <div class="opc-section">
+        <h4>下一步动作</h4>
+        <p class="opc-muted">暂无待处理动作。</p>
+      </div>
+    `;
+  }
+  const labelMap = { high: "高", medium: "中", low: "低" };
+  const items = list.map((action) => {
+    const priority = String(action.priority || "low").replace(/[^a-z_-]/g, "") || "low";
+    const count = Number(action.count || 0);
+    return `
+      <div class="opc-action opc-action-${priority}">
+        <span class="opc-priority">${escapeHtml(labelMap[priority] || priority)}</span>
+        <div class="opc-action-body">
+          <strong>${escapeHtml(action.title || action.kind || "-")}</strong>
+          <span>${escapeHtml(action.detail || "")}</span>
+        </div>
+        ${count ? `<span class="opc-action-count">${count}</span>` : ""}
+      </div>
+    `;
+  }).join("");
+  return `
+    <div class="opc-section">
+      <h4>下一步动作</h4>
+      <div class="opc-action-list">${items}</div>
+    </div>
+  `;
+}
+
+function renderOPCReadiness(account = {}, adapter = {}) {
+  const adapterReady = adapter.ready ? "就绪" : "未就绪";
+  const adapterMissing = (adapter.missing || []).join(", ") || "无";
+  const syncCapabilities = adapter.sync_capabilities || {};
+  const syncText = [
+    syncCapabilities.orders ? "订单同步" : "",
+    syncCapabilities.listings ? "商品同步" : "",
+  ].filter(Boolean).join(" / ") || "未声明";
+  const recommendations = account.recommendations || [];
+  const recommendationHtml = recommendations.length
+    ? recommendations.slice(0, 3).map((item) => {
+      const actions = (item.actions || []).join(" / ");
+      return `<li>${escapeHtml(item.cookie_id || "-")}: ${escapeHtml(actions || "待检查")}</li>`;
+    }).join("")
+    : "<li>账号准备度暂无异常。</li>";
+  return `
+    <div class="opc-section">
+      <h4>准备度</h4>
+      <div class="opc-readiness-grid">
+        <div>
+          <span class="opc-muted">账号</span>
+          <strong>${Number(account.ready_for_seller_ops || 0)} / ${Number(account.total_accounts || 0)}</strong>
+          <small>可进入 seller ops</small>
+        </div>
+        <div>
+          <span class="opc-muted">AI 回复</span>
+          <strong>${Number(account.ai_enabled_accounts || 0)}</strong>
+          <small>已启用账号</small>
+        </div>
+        <div>
+          <span class="opc-muted">执行适配器</span>
+          <strong>${escapeHtml(adapter.adapter || "unknown")} · ${adapterReady}</strong>
+          <small>缺失: ${escapeHtml(adapterMissing)} · ${escapeHtml(syncText)}</small>
+        </div>
+      </div>
+      <ul class="opc-readiness-notes">${recommendationHtml}</ul>
+    </div>
+  `;
+}
+
+function renderOPCMessageImportScheduler(scheduler = {}) {
+  const last = scheduler.last_result || {};
+  const profiles = scheduler.profiles || {};
+  const dueProfiles = scheduler.due_profiles || [];
+  const health = scheduler.health || {};
+  const healthActions = Array.isArray(health.actions) ? health.actions : [];
+  const healthLabel = {
+    unconfigured: "setup",
+    critical: "critical",
+    attention: "attention",
+    healthy: "healthy",
+  }[health.status] || "setup";
+  const status = scheduler.enabled ? (scheduler.due ? "due" : "active") : "paused";
+  const error = scheduler.last_error || "";
+  const profileItems = Object.entries(profiles).slice(0, 4).map(([key, profile]) => {
+    const profileStatus = profile.enabled ? (profile.due ? "due" : "active") : "paused";
+    return `<li><strong>${escapeHtml(profile.account || key)} / ${escapeHtml(profileStatus)}</strong><span>runs ${Number(profile.run_count || 0)} / backoff ${Number(profile.backoff_seconds || 0)}s</span></li>`;
+  }).join("");
+  const healthItems = healthActions.slice(0, 6).map((item) => `
+    <li data-priority="${escapeHtml(item.priority || "low")}">
+      <strong>${escapeHtml(item.account || "-")} / ${escapeHtml(item.title || item.kind || "review")}</strong>
+      <span>${escapeHtml(item.suggested_action || item.detail || "")}</span>
+    </li>
+  `).join("");
+  return `
+    <div class="opc-section">
+      <h4>Message Import Scheduler</h4>
+      <div class="opc-runtime-grid">
+        <div><span class="opc-muted">status</span><strong>${escapeHtml(status)}</strong></div>
+        <div><span class="opc-muted">health</span><strong>${escapeHtml(healthLabel)}</strong></div>
+        <div><span class="opc-muted">account</span><strong>${escapeHtml(scheduler.account || "-")}</strong></div>
+        <div><span class="opc-muted">profiles</span><strong>${Number(scheduler.total_profiles || Object.keys(profiles).length || 0)}</strong></div>
+        <div><span class="opc-muted">due profiles</span><strong>${dueProfiles.length}</strong></div>
+        <div><span class="opc-muted">missing profiles</span><strong>${(health.missing_profiles || []).length}</strong></div>
+        <div><span class="opc-muted">interval</span><strong>${Number(scheduler.interval_seconds || 0)}s</strong></div>
+        <div><span class="opc-muted">runs</span><strong>${Number(scheduler.run_count || 0)}</strong></div>
+        <div><span class="opc-muted">failures</span><strong>${Number(scheduler.consecutive_failures || 0)}</strong></div>
+        <div><span class="opc-muted">backoff</span><strong>${Number(scheduler.backoff_seconds || 0)}s</strong></div>
+        <div><span class="opc-muted">created</span><strong>${Number(last.created || 0)}</strong></div>
+        <div><span class="opc-muted">failed</span><strong>${Number(last.failed || 0)}</strong></div>
+      </div>
+      <ul class="opc-evidence-list">
+        <li>
+          <strong>${scheduler.last_run_at ? escapeHtml(scheduler.last_run_at) : "no import yet"}</strong>
+          <span>${error ? escapeHtml(error) : `selected ${Number(last.conversations_selected || 0)} conversation(s)`}</span>
+        </li>
+        ${profileItems}
+      </ul>
+      <div class="opc-scheduler-health">
+        <span class="opc-muted">Account actions</span>
+        <ul class="opc-evidence-list opc-scheduler-health-list">
+          ${healthItems || "<li><strong>scheduler profiles healthy</strong><span>No account action is required.</span></li>"}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+function renderOPCOrderRuntime(order_runtime = {}) {
+  const byStatus = order_runtime.by_status || {};
+  const statusItems = Object.entries(byStatus).map(([status, count]) => `
+    <span>${escapeHtml(status)} ${Number(count || 0)}</span>
+  `).join("");
+  const actionItems = (order_runtime.next_actions || []).slice(0, 5).map((item) => `
+    <li>
+      <strong>${escapeHtml(item.order_id || "-")} · ${escapeHtml(item.status || "-")}</strong>
+      <span>${escapeHtml(item.pending_blocker || item.operator_next_action || "")}</span>
+    </li>
+  `).join("");
+  return `
+    <div class="opc-section">
+      <h4>Order Runtime</h4>
+      <div class="opc-runtime-grid">
+        <div><span class="opc-muted">operational</span><strong>${Number(order_runtime.operational_orders ?? order_runtime.total_orders ?? 0)}</strong></div>
+        <div><span class="opc-muted">synthetic</span><strong>${Number(order_runtime.synthetic_orders || 0)}</strong></div>
+        <div><span class="opc-muted">fulfillment</span><strong>${Number(order_runtime.needs_fulfillment || 0)}</strong></div>
+        <div><span class="opc-muted">after sales</span><strong>${Number(order_runtime.after_sales || 0)}</strong></div>
+        <div><span class="opc-muted">blocked</span><strong>${Number(order_runtime.blocked || 0)}</strong></div>
+        <div><span class="opc-muted">locked</span><strong>${Number(order_runtime.locked || 0)}</strong></div>
+      </div>
+      <div class="opc-runtime-statuses">${statusItems || "<span>none</span>"}</div>
+      <ul class="opc-evidence-list">${actionItems || "<li><strong>no active order actions</strong><span></span></li>"}</ul>
+    </div>
+  `;
+}
+
+function renderOPCExecutionEvidence(execution_evidence = {}) {
+  const blockers = Array.isArray(execution_evidence.recent_blockers)
+    ? execution_evidence.recent_blockers
+    : [];
+  const items = blockers.slice(0, 5).map((item) => `
+    <li>
+      <strong>${escapeHtml(item.detected_blocker || "-")}</strong>
+      <span>${escapeHtml(item.action || item.job_id || "-")} · ${escapeHtml(item.operator_next_action || "")}</span>
+    </li>
+  `).join("");
+  return `
+    <div class="opc-section">
+      <h4>Execution Evidence</h4>
+      <div class="opc-runtime-grid">
+        <div><span class="opc-muted">blocked failures</span><strong>${Number(execution_evidence.failed_with_blocker || 0)}</strong></div>
+      </div>
+      <ul class="opc-evidence-list">${items || "<li><strong>no captured blockers</strong><span></span></li>"}</ul>
+    </div>
+  `;
+}
+
+function getPrimaryAccountId() {
+  const profiles = Array.isArray(state.accountProfiles) ? state.accountProfiles : [];
+  const enabled = profiles.find((profile) => profile && profile.enabled !== false && profile.cookie_id);
+  const fallback = profiles.find((profile) => profile && profile.cookie_id);
+  return (enabled || fallback || {}).cookie_id || "";
+}
+
+function focusAccountBootstrapForm() {
+  const onboarding = $("#browser-account-onboarding");
+  if (!onboarding) {
+    return;
+  }
+  onboarding.scrollIntoView({ behavior: "smooth", block: "center" });
+  $("#open-xianyu-login-browser")?.focus();
+}
+
+function renderFirstRunGateAction(gate = {}, cookieId = "") {
+  const gateId = gate.id || "";
+  if (!gateId) {
+    return "";
+  }
+  if (gate.passed && gateId !== "ready") {
+    return "";
+  }
+  const labels = {
+    account_enabled: "Enable account",
+    account_configured: "导入账号",
+    prompt_ready: "初始化 Prompt",
+    inventory_context: "同步订单/商品",
+    sync_current: "同步订单/商品",
+    no_unassigned_work: "预览归属修复",
+    adapter_ready: "刷新仪表板",
+    sync_capabilities: "刷新仪表板",
+    runtime_connected: "检查运行时",
+    runtime_fresh: "刷新运行时",
+    runtime_unblocked: "处理验证",
+    ready: "生成日快照",
+  };
+  const label = labels[gateId] || "查看下一步";
+  return `
+    <button
+      type="button"
+      class="first-run-gate-action"
+      data-gate-id="${escapeHtml(gateId)}"
+      data-cookie-id="${escapeHtml(cookieId)}"
+      onclick="handleFirstRunGateAction(this.dataset.gateId, this.dataset.cookieId)"
+    >${escapeHtml(label)}</button>
+  `;
+}
+
+function renderFirstRunReadiness(readiness = {}) {
+  const gates = Array.isArray(readiness.gates) ? readiness.gates : [];
+  const next = readiness.next_step || {};
+  const selected = readiness.selected_account || {};
+  const selectedCookieId = selected.cookie_id || "";
+  const status = readiness.ready_for_first_run ? "可以试跑" : "待补齐";
+  const items = gates.map((gate) => {
+    const cls = gate.passed ? "first-run-gate-ok" : "first-run-gate-warn";
+    return `
+      <div class="first-run-gate ${cls}">
+        <span>${gate.passed ? "PASS" : "TODO"}</span>
+        <div>
+          <strong>${escapeHtml(gate.title || gate.id || "-")}</strong>
+          <small>${escapeHtml(gate.detail || "")}</small>
+          ${renderFirstRunGateAction(gate, selectedCookieId)}
+        </div>
+      </div>
+    `;
+  }).join("");
+  return `
+    <div class="opc-section">
+      <h4>首轮实盘试跑</h4>
+      <div class="first-run-summary">
+        <strong>${escapeHtml(status)}</strong>
+        <span>${escapeHtml(next.title || "")}</span>
+        ${selectedCookieId ? `<span>Account ${escapeHtml(selectedCookieId)}: ${Number(selected.passed_count || 0)}/${Number(selected.total_gates || 0)}</span>` : ""}
+      </div>
+      <div class="first-run-gates">${items}</div>
+    </div>
+  `;
+}
+
+async function handleFirstRunGateAction(gateId, selectedCookieId = "") {
+  if (gateId === "account_configured") {
+    focusAccountBootstrapForm();
+    return;
+  }
+  if (gateId === "account_enabled") {
+    if (!selectedCookieId) {
+      focusAccountBootstrapForm();
+      return;
+    }
+    await api(`/accounts/${encodeURIComponent(selectedCookieId)}/toggle`, { method: "POST" });
+    await refreshOPCDashboard();
+    return;
+  }
+  if (gateId === "prompt_ready") {
+    const cookieId = selectedCookieId || getPrimaryAccountId();
+    if (!cookieId) {
+      alert("先导入账号，再初始化 Prompt。");
+      focusAccountBootstrapForm();
+      return;
+    }
+    await bootstrapAccountPromptProfile(cookieId);
+    return;
+  }
+  if (gateId === "inventory_context" || gateId === "sync_current") {
+    const cookieId = selectedCookieId || getPrimaryAccountId();
+    if (!cookieId) {
+      alert("先导入账号，再同步订单/商品。");
+      focusAccountBootstrapForm();
+      return;
+    }
+    await syncAccountQueue(cookieId);
+    return;
+  }
+  if (gateId === "no_unassigned_work") {
+    await repairAccountAttribution();
+    return;
+  }
+  if (gateId === "ready") {
+    await runDailyReview();
+    return;
+  }
+  await refreshOPCDashboard();
+}
+
+function renderUnassignedWorkReview(review = null) {
+  if (!review) return "";
+  const items = Array.isArray(review.items) ? review.items : [];
+  const accounts = (state.accountProfiles || []).filter((profile) => profile?.cookie_id && profile.enabled !== false);
+  const accountOptions = accounts
+    .map((profile) => `<option value="${escapeHtml(profile.cookie_id)}">${escapeHtml(profile.cookie_id)}${profile.remark ? ` · ${escapeHtml(profile.remark)}` : ""}</option>`)
+    .join("");
+  const recommendationLabels = {
+    claim: "可认领",
+    quarantine: "建议隔离",
+    manual_audit: "需人工审计",
+  };
+  const rows = items.map((item) => {
+    const actions = (item.actions || []).join(" / ") || "无平台动作";
+    const sourceAccounts = (item.source_cookie_ids || []).join(" / ") || "缺少账号";
+    const disabled = !item.resolution_allowed;
+    return `
+      <label class="account-attribution-review-item ${disabled ? "is-blocked" : ""}">
+        <input type="checkbox" class="account-attribution-choice" value="${escapeHtml(item.work_order_id || "")}" ${disabled ? "disabled" : ""} />
+        <span class="account-attribution-review-body">
+          <strong>${escapeHtml(item.kind || "work_order")} · ${escapeHtml(item.work_order_id || "-")}</strong>
+          <span>${escapeHtml(actions)} · 当前归属 ${escapeHtml(sourceAccounts)}</span>
+          <small>
+            ${Number(item.age_hours || 0)} 小时 · 待审批 ${Number(item.pending_approvals || 0)} ·
+            ${escapeHtml(recommendationLabels[item.recommended_resolution] || item.recommended_resolution || "待审阅")}
+            ${(item.blocked_reasons || []).length ? ` · ${escapeHtml(item.blocked_reasons.join("、"))}` : ""}
+          </small>
+        </span>
+      </label>
+    `;
+  }).join("");
+  return `
+    <div class="account-attribution-review">
+      <div class="account-attribution-review-summary">
+        <strong>历史未归属任务 ${Number(review.count || 0)}</strong>
+        <span>建议隔离 ${Number(review.summary?.quarantine || 0)} · 可认领 ${Number(review.summary?.claim || 0)} · 人工审计 ${Number(review.summary?.manual_audit || 0)}</span>
+      </div>
+      <div class="account-attribution-review-list">${rows || '<span class="opc-muted">没有待处理的历史任务。</span>'}</div>
+      ${items.length ? `
+        <div class="account-attribution-resolution-controls">
+          <label>认领到账号
+            <select id="account-attribution-target">
+              <option value="">选择已启用账号</option>
+              ${accountOptions}
+            </select>
+          </label>
+          <button type="button" onclick="resolveAccountAttribution('claim')" ${accountOptions ? "" : "disabled"}>认领已选</button>
+          <button type="button" class="danger-btn" onclick="resolveAccountAttribution('quarantine')">隔离已选</button>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+function renderAccountQueueDrilldown(accountQueues = [], unassigned = {}) {
+  const accounts = Array.isArray(accountQueues) ? accountQueues : [];
+  const unassignedQueues = unassigned.queues || {};
+  const hasUnassigned = Object.values(unassignedQueues).some((value) => Number(value || 0) > 0);
+  const cards = accounts.map((account_queue) => renderAccountQueueCard(account_queue)).join("");
+  const unassignedCard = hasUnassigned ? renderAccountQueueCard(unassigned, true) : "";
+  const repairTools = hasUnassigned ? `
+    <div class="account-attribution-tools">
+      <button type="button" onclick="repairAccountAttribution()">审阅历史任务</button>
+    </div>
+  ` : "";
+  return `
+    <div class="opc-section">
+      <h4>账号队列</h4>
+      ${repairTools}
+      ${renderUnassignedWorkReview(state.unassignedWorkReview)}
+      <div class="account-queue-grid">
+        ${cards || `<div class="empty-state">暂无账号队列数据</div>`}
+        ${unassignedCard}
+      </div>
+    </div>
+  `;
+}
+
+async function repairAccountAttribution() {
+  try {
+    state.unassignedWorkReview = await api("/dashboard/account-queues/unassigned-work");
+    await refreshOPCDashboard();
+  } catch (error) {
+    alert("历史任务审阅失败: " + error.message);
+  }
+}
+
+async function resolveAccountAttribution(mode) {
+  const review = state.unassignedWorkReview;
+  if (!review?.preview_token) {
+    await repairAccountAttribution();
+    return;
+  }
+  const workOrderIds = [...document.querySelectorAll(".account-attribution-choice:checked")]
+    .map((input) => input.value)
+    .filter(Boolean);
+  if (!workOrderIds.length) {
+    alert("请先勾选要处理的工作单。");
+    return;
+  }
+  const normalizedMode = mode === "quarantine" ? "quarantine" : "claim";
+  const cookieId = normalizedMode === "claim" ? String($("#account-attribution-target")?.value || "") : "";
+  if (normalizedMode === "claim" && !cookieId) {
+    alert("请选择这些工作单实际所属的卖家账号。");
+    return;
+  }
+  const actionLabel = normalizedMode === "claim" ? `认领到 ${cookieId}` : "隔离且禁止执行";
+  if (!confirm(`确认${actionLabel}这 ${workOrderIds.length} 条历史工作单？该操作只处理已勾选 ID。`)) return;
+  try {
+    const result = await api("/dashboard/account-queues/repair-attribution", {
+      method: "POST",
+      body: JSON.stringify({
+        dry_run: false,
+        mode: normalizedMode,
+        cookie_id: cookieId,
+        work_order_ids: workOrderIds,
+        preview_token: review.preview_token,
+        confirmation: `${normalizedMode.toUpperCase()} ${workOrderIds.length}`,
+      }),
+    });
+    renderResult({ type: "unassigned_work_resolution", result });
+    state.unassignedWorkReview = null;
+    await refreshOPCDashboard();
+  } catch (error) {
+    const reason = error.detail?.reason || error.message;
+    alert(`历史任务处理被阻止：${reason}。请重新审阅后再操作。`);
+    await repairAccountAttribution();
+  }
+}
+
+async function syncAccountQueue(cookieId) {
+  if (!cookieId) return;
+  if (!confirm(`同步账号 ${cookieId} 的订单和商品？`)) {
+    return;
+  }
+  try {
+    const data = await api(`/adapter/sync-persist?cookie_id=${encodeURIComponent(cookieId)}`, {
+      method: "POST",
+    });
+    renderResult({ type: "account_sync", result: data });
+    await refreshOPCDashboard();
+    await loadAccountProfiles();
+  } catch (error) {
+    alert(`同步失败：${error.message}`);
+  }
+}
+
+function renderAccountSyncFreshness(sync_freshness = {}) {
+  const resources = Object.keys(sync_freshness || {}).sort();
+  if (!resources.length) {
+    return `<div class="account-sync-freshness"><span class="account-sync-stale">sync_freshness: none</span></div>`;
+  }
+  const items = resources.map((resource) => {
+    const state = sync_freshness[resource] || {};
+    const status = state.fresh ? "fresh" : "stale";
+    const cls = state.fresh ? "account-sync-fresh" : "account-sync-stale";
+    const count = Number(state.last_count || 0);
+    const adapter = state.adapter || "";
+    return `<span class="${cls}">${escapeHtml(resource)} ${status} · ${count}${adapter ? ` · ${escapeHtml(adapter)}` : ""}</span>`;
+  }).join("");
+  return `<div class="account-sync-freshness">${items}</div>`;
+}
+
+function renderAccountRuntimeBadge(account_runtime = {}) {
+  const status = account_runtime.connection_status || "unknown";
+  const tokenFresh = account_runtime.token_fresh === true;
+  const cookieFresh = account_runtime.cookie_fresh === true;
+  const blocked = Boolean(account_runtime.pending_verification_reason || account_runtime.last_error);
+  const connected = ["connected", "degraded"].includes(status);
+  const good = connected && tokenFresh && cookieFresh && !blocked;
+  const cls = good ? "account-runtime-good" : "account-runtime-warn";
+  const manualCount = Number(account_runtime.manual_takeover_count || 0);
+  const heartbeat = Number(account_runtime.last_heartbeat_at || 0);
+  const heartbeatText = heartbeat ? `heartbeat ${Math.round(heartbeat)}` : "heartbeat none";
+  const freshness = [
+    tokenFresh ? "token fresh" : "token stale",
+    cookieFresh ? "cookie fresh" : "cookie stale",
+  ].join(" · ");
+  const blocker = account_runtime.pending_verification_reason || account_runtime.last_error || "";
+  return `
+    <div class="account-runtime-badges">
+      <span class="${cls}">runtime ${escapeHtml(status)}</span>
+      <span class="${tokenFresh && cookieFresh ? "account-runtime-good" : "account-runtime-warn"}">${escapeHtml(freshness)}</span>
+      <span class="${heartbeat ? "account-runtime-good" : "account-runtime-warn"}">${escapeHtml(heartbeatText)}</span>
+      ${manualCount ? `<span class="account-runtime-warn">manual ${manualCount}</span>` : ""}
+      ${blocker ? `<span class="account-runtime-warn">${escapeHtml(blocker)}</span>` : ""}
+    </div>
+  `;
+}
+
+function renderAccountQueueCard(account_queue = {}, isUnassigned = false) {
+  const queues = account_queue.queues || {};
+  const prompt = account_queue.prompt_profile || {};
+  const actions = Array.isArray(account_queue.next_actions) ? account_queue.next_actions : [];
+  const enabled = account_queue.enabled !== false;
+  const statusClass = enabled && prompt.ready ? "account-queue-ok" : "account-queue-warn";
+  const title = isUnassigned ? "未分配队列" : (account_queue.remark || account_queue.cookie_id || "-");
+  const subtitle = isUnassigned ? "缺少 cookie_id 的任务" : (account_queue.cookie_id || "-");
+  const cookieId = account_queue.cookie_id || "";
+  const runtimeBadge = renderAccountRuntimeBadge(account_queue.account_runtime || {});
+  const syncFreshness = renderAccountSyncFreshness(account_queue.sync_freshness || {});
+  const syncActions = !isUnassigned && cookieId ? `
+    <div class="account-sync-actions">
+      <button type="button" data-cookie-id="${escapeHtml(cookieId)}" onclick="syncAccountQueue(this.dataset.cookieId)">同步订单/商品</button>
+    </div>
+  ` : "";
+  const actionItems = actions.slice(0, 3).map((action) => `
+    <li>
+      <strong>${escapeHtml(action.title || action.kind || "-")}</strong>
+      <span>${escapeHtml(action.detail || "")}</span>
+    </li>
+  `).join("");
+  return `
+    <div class="account-queue-card ${statusClass}">
+      <div class="account-queue-header">
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(subtitle)}</span>
+        </div>
+        <span class="account-queue-status">${enabled ? (prompt.ready ? "就绪" : "需配置") : "停用"}</span>
+      </div>
+      <div class="account-queue-metrics">
+        <span>审批 ${Number(queues.pending_approvals || 0)}</span>
+        <span>执行 ${Number(queues.queued_execution || 0)}</span>
+        <span>失败 ${Number(queues.failed_jobs || 0)}</span>
+        <span>回复 ${Number(queues.pending_reply_drafts || 0)}</span>
+        <span>商品 ${Number(queues.items || 0)}</span>
+      </div>
+      ${runtimeBadge}
+      ${syncFreshness}
+      ${syncActions}
+      <ul class="account-queue-actions">
+        ${actionItems || "<li><strong>无待办</strong><span>保持当前运营节奏。</span></li>"}
+      </ul>
+    </div>
+  `;
+}
+
 async function refreshOPCDashboard() {
   try {
-    const data = await api("/dashboard/opc-daily");
+    const [data, accountQueueData, firstRunReadiness] = await Promise.all([
+      api("/dashboard/opc-daily"),
+      api("/dashboard/account-queues"),
+      api("/dashboard/first-run-readiness"),
+    ]);
     const el = $("#opc-dashboard-content");
     if (!el) return;
 
@@ -1896,8 +4057,22 @@ async function refreshOPCDashboard() {
     const bottleneck = data.bottleneck || {};
     const categories = data.category_performance || [];
     const notes = data.source_notes || [];
+    const accountReadiness = data.account_readiness || {};
+    const adapterHealth = data.adapter_health || {};
+    const messageImportScheduler = data.message_import_scheduler || {};
+    const orderRuntime = data.order_runtime || {};
+    const executionEvidence = data.execution_evidence || {};
+    const nextActions = data.next_actions || [];
 
-    let html = '<div class="opc-section">';
+    let html = "";
+    html += renderFirstRunReadiness(firstRunReadiness);
+    html += renderOPCNextActions(nextActions);
+    html += renderOPCReadiness(accountReadiness, adapterHealth);
+    html += renderOPCMessageImportScheduler(messageImportScheduler);
+    html += renderOPCOrderRuntime(orderRuntime);
+    html += renderOPCExecutionEvidence(executionEvidence);
+    html += renderAccountQueueDrilldown(accountQueueData.accounts || [], accountQueueData.unassigned || {});
+    html += '<div class="opc-section">';
     html += '<h4>今日待办</h4>';
     html += '<div class="approval-count-badges">';
     html += `<span class="badge">待审批 ${actions.pending_approvals || 0}</span>`;
@@ -1967,8 +4142,904 @@ async function runWeeklyReview() {
   }
 }
 
+async function runDailyReview() {
+  try {
+    const data = await api("/dashboard/daily-review", { method: "POST" });
+    alert(`日快照已保存：${data.file || '未知路径'}`);
+  } catch (e) {
+    alert(`生成失败：${e.message}`);
+  }
+}
+
 $("#refresh-opc-dashboard")?.addEventListener("click", refreshOPCDashboard);
+$("#run-daily-review")?.addEventListener("click", runDailyReview);
 $("#run-weekly-review")?.addEventListener("click", runWeeklyReview);
 
 // Load OPC dashboard on startup
 refreshOPCDashboard().catch(() => {});
+
+// ===== Commercial Alpha Trial (Phase 19) =====
+
+async function refreshCommercialTrials() {
+  try {
+    const [activeResp, listResp, candidatesResp, accountsResp] = await Promise.all([
+      api("/commercial-trials/active"),
+      api("/commercial-trials"),
+      api("/resale/candidates"),
+      api("/accounts"),
+    ]);
+    const el = $("#commercial-trial-summary");
+    if (!el) return;
+    const activeTrials = Array.isArray(activeResp.trials)
+      ? activeResp.trials
+      : (activeResp.trial ? [activeResp.trial] : []);
+    const allTrials = listResp.trials || [];
+    const candidates = Array.isArray(candidatesResp) ? candidatesResp : (candidatesResp.candidates || []);
+    state.commercialCandidates = candidates;
+    populateCommercialTrialInputs(accountsResp, candidates);
+    const launchForm = $("#commercial-trial-create-form");
+    const launchPreview = $("#commercial-launch-preview");
+    if (launchForm) launchForm.hidden = activeTrials.length > 0;
+    if (launchPreview) {
+      launchPreview.hidden = activeTrials.length > 0 || !state.commercialLaunchPreview;
+      launchPreview.innerHTML = state.commercialLaunchPreview
+        ? renderCommercialLaunchPreview(state.commercialLaunchPreview)
+        : "";
+    }
+    if (!activeTrials.length) {
+      el.innerHTML = renderCommercialTrial(null, allTrials, candidates);
+      return;
+    }
+    el.innerHTML = activeTrials
+      .map((trial) => renderCommercialTrial(trial, allTrials, candidates))
+      .join("");
+  } catch (e) {
+    const el = $("#commercial-trial-summary");
+    if (el) el.innerHTML = `<p style="color:#f87171;">加载失败：${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function populateCommercialTrialInputs(accounts, candidates) {
+  const accountSelect = $("#ct-account-select");
+  if (accountSelect) {
+    const previous = accountSelect.value;
+    const enabledAccounts = (Array.isArray(accounts) ? accounts : []).filter(
+      (account) => account && account.enabled !== false && account.cookie_id
+    );
+    accountSelect.innerHTML = [
+      '<option value="">选择已启用账号</option>',
+      ...enabledAccounts.map((account) => {
+        const label = account.remark
+          ? `${account.cookie_id} · ${account.remark}`
+          : account.cookie_id;
+        return `<option value="${escapeHtml(account.cookie_id)}">${escapeHtml(label)}</option>`;
+      }),
+    ].join("");
+    if (enabledAccounts.some((account) => account.cookie_id === previous)) {
+      accountSelect.value = previous;
+    } else if (enabledAccounts.length === 1) {
+      accountSelect.value = enabledAccounts[0].cookie_id;
+    }
+  }
+
+  const candidateSelect = $("#ct-candidate-select");
+  if (candidateSelect) {
+    const previous = candidateSelect.value;
+    const candidateRows = (Array.isArray(candidates) ? [...candidates] : [])
+      .filter((candidate) => (
+        candidate?.candidate_id
+        && String(candidate.sales_platform || "xianyu").toLowerCase() === "xianyu"
+        && String(candidate.market_scope || "domestic").toLowerCase() === "domestic"
+      ))
+      .sort((left, right) => {
+        const leftReady = left.manual_decision === "approve" && left.status === "approved" ? 1 : 0;
+        const rightReady = right.manual_decision === "approve" && right.status === "approved" ? 1 : 0;
+        return rightReady - leftReady || String(left.title || "").localeCompare(String(right.title || ""), "zh-CN");
+      });
+    candidateSelect.innerHTML = [
+      '<option value="">选择一个候选</option>',
+      ...candidateRows.map((candidate) => {
+        const decision = candidate.manual_decision === "approve" && candidate.status === "approved" ? "已批准" : "待决策";
+        const title = String(candidate.title || candidate.candidate_id).slice(0, 48);
+        return `<option value="${escapeHtml(candidate.candidate_id)}">${escapeHtml(title)} · ${escapeHtml(decision)}</option>`;
+      }),
+    ].join("");
+    if (candidateRows.some((candidate) => candidate.candidate_id === previous)) {
+      candidateSelect.value = previous;
+    } else if (candidateRows.filter((candidate) => candidate.manual_decision === "approve" && candidate.status === "approved").length === 1) {
+      candidateSelect.value = candidateRows.find(
+        (candidate) => candidate.manual_decision === "approve" && candidate.status === "approved"
+      ).candidate_id;
+    }
+  }
+  updateCommercialLaunchCategory();
+}
+
+function updateCommercialLaunchCategory() {
+  const candidateId = String($("#ct-candidate-select")?.value || "");
+  const candidate = (state.commercialCandidates || []).find((item) => item.candidate_id === candidateId);
+  const categoryInput = $("#ct-category");
+  if (categoryInput) categoryInput.value = candidate?.category || "";
+}
+
+function renderCommercialTrialOrders(trial) {
+  const orderLinks = Array.isArray(trial.order_links) ? trial.order_links : [];
+  if (!orderLinks.length) return "";
+  const trialId = escapeHtml(trial.trial_id || "");
+  const rows = orderLinks.map((link) => {
+    const orderId = escapeHtml(link.order_id || "");
+    const handoff = link.handoff || null;
+    const fulfillmentAudit = link.fulfillment_audit || {};
+    const profitAudit = link.profit_audit || {};
+    const releaseAllowed = ["shipped", "delivered", "refund_requested", "disputed", "closed"].includes(link.status)
+      || handoff?.approval_status === "rejected";
+    const lockText = link.locked ? `已锁定 · ${escapeHtml(link.lock_owner || "-")}` : "未锁定";
+    const handoffBody = handoff
+      ? `
+        <div class="trial-handoff-evidence">
+          <span>采购审批 ${escapeHtml(handoff.approval_id || "-")}</span>
+          <span>审批状态 ${escapeHtml(handoff.approval_status || "-")}</span>
+          <span>任务单 ${escapeHtml(handoff.work_order_id || "-")}</span>
+          <span>采购承诺 ¥${Number(handoff.total_cost || 0).toFixed(2)}</span>
+          <span>${handoff.released_at ? "履约锁已释放" : lockText}</span>
+        </div>
+        ${link.locked && releaseAllowed ? `
+          <button type="button" class="text-btn" data-trial-id="${trialId}" data-order-id="${orderId}"
+            onclick="releaseCommercialFulfillmentHandoff(this.dataset.trialId, this.dataset.orderId)">释放履约锁</button>
+        ` : ""}
+      `
+      : `
+        <form class="trial-fulfillment-form" data-trial-id="${trialId}" data-order-id="${orderId}"
+          onsubmit="submitCommercialFulfillmentHandoff(event)">
+          <label>数量
+            <input name="quantity" type="number" min="1" max="100" value="1" required />
+          </label>
+          <label>收货地摘要
+            <input name="buyer_address_summary" maxlength="80" placeholder="上海浦东新区***" required />
+          </label>
+          <div class="trial-confirmation-grid">
+            <label><input name="specs_confirmed" type="checkbox" required />规格已核对</label>
+            <label><input name="address_confirmed" type="checkbox" required />地址已核对</label>
+            <label><input name="supplier_stock_reconfirmed" type="checkbox" required />库存已复核</label>
+            <label><input name="supplier_quote_reconfirmed" type="checkbox" required />报价已复核</label>
+          </div>
+          <label class="trial-handoff-note">交接备注
+            <input name="operator_note" maxlength="500" placeholder="平台付款状态和供应商时效已复核" />
+          </label>
+          <button type="submit" class="primary">创建履约交接</button>
+        </form>
+      `;
+    return `
+      <div class="trial-order-row">
+        <div class="trial-order-head">
+          <strong>订单 ${orderId}</strong>
+          <span>${escapeHtml(link.status || "-")} · ¥${Number(link.amount || 0).toFixed(2)}</span>
+          <span>候选 ${escapeHtml(link.candidate_id || "-")}</span>
+        </div>
+        ${handoffBody}
+        <div class="trial-order-audit">
+          <span class="${fulfillmentAudit.ready ? "is-ready" : "is-gap"}">
+            履约证据 ${fulfillmentAudit.ready ? "完整" : escapeHtml((fulfillmentAudit.gaps || []).join("、") || "待补齐")}
+          </span>
+          <span class="${profitAudit.ready ? "is-ready" : "is-gap"}">
+            利润证据 ${profitAudit.ready ? "完整" : escapeHtml((profitAudit.gaps || []).join("、") || "待补齐")}
+          </span>
+        </div>
+      </div>
+    `;
+  }).join("");
+  return `
+    <section class="trial-orders">
+      <h4>付款后履约</h4>
+      ${rows}
+    </section>
+  `;
+}
+
+function renderCommercialTrialTraffic(trial) {
+  const items = Array.isArray(trial.item_performance) ? trial.item_performance : [];
+  if (!items.length) return "";
+  const trialId = escapeHtml(trial.trial_id || "");
+  const variableLabels = {
+    title: "标题",
+    cover: "首图",
+    price: "价格",
+    description: "详情",
+    location: "所在地",
+    shipping_promise: "交付承诺",
+  };
+  const decisionLabels = {
+    keep_change: "保留改动",
+    revert: "回退改动",
+    stop_listing: "停止商品",
+  };
+  const rows = items.map((item) => {
+    const itemId = escapeHtml(item.item_id || "");
+    const latest = item.latest_observation || null;
+    const recommendation = item.recommendation || {};
+    const active = item.active_experiment || null;
+    const latestExperiment = item.latest_experiment || null;
+    const pending = item.pending_experiment || (latestExperiment?.status === "proposed" ? latestExperiment : null);
+    const observationForm = ["active", "paused"].includes(trial.lifecycle) ? `
+      <form class="trial-traffic-form" data-trial-id="${trialId}" data-item-id="${itemId}"
+        onsubmit="submitCommercialTrafficObservation(event)">
+        <label>浏览
+          <input name="views" type="number" min="0" value="${Number(item.views || 0)}" required />
+        </label>
+        <label>想要
+          <input name="wants" type="number" min="0" value="${Number(item.wants || 0)}" required />
+        </label>
+        <label class="trial-traffic-note">凭证备注
+          <input name="evidence_note" minlength="4" maxlength="300" placeholder="闲鱼商品页 08-11 09:30" required />
+        </label>
+        <label class="trial-traffic-note">凭证引用
+          <input name="evidence_ref" maxlength="300" placeholder="截图文件名或同步批次" />
+        </label>
+        <button type="submit" class="text-btn">记录快照</button>
+      </form>
+    ` : "";
+    const pendingBody = pending ? `
+      <div class="trial-experiment-pending">
+        <div class="trial-experiment-head">
+          <strong>${escapeHtml(variableLabels[pending.variable] || pending.variable)}</strong>
+          <span>变更待确认</span>
+          <span>审批 ${escapeHtml(pending.approval_status || "missing")}</span>
+          <span>执行 ${escapeHtml(pending.job_status || pending.approval_execution_status || "未执行")}</span>
+        </div>
+        <div class="trial-experiment-change">
+          <span>原值：${escapeHtml(pending.before_value || "-")}</span>
+          <span>目标值：${escapeHtml(pending.after_value || "-")}</span>
+        </div>
+        <div class="trial-experiment-audit">
+          <span>审批 ${escapeHtml(pending.approval_id || "-")}</span>
+          <span>任务单 ${escapeHtml(pending.work_order_id || "-")}</span>
+        </div>
+        ${pending.approval_status === "approved" ? `
+          <form class="trial-experiment-activation" data-trial-id="${trialId}"
+            data-experiment-id="${escapeHtml(pending.experiment_id || "")}"
+            data-manual-required="${pending.manual_required ? "true" : "false"}"
+            onsubmit="submitCommercialExperimentActivation(event)">
+            <label class="trial-experiment-confirmation">
+              <input name="manual_confirmation" type="checkbox" ${pending.manual_required ? "required" : ""} />
+              平台改动已确认
+            </label>
+            <label>确认备注
+              <input name="evidence_note" maxlength="500" ${pending.manual_required ? 'minlength="8" required' : ""}
+                placeholder="${pending.manual_required ? "人工编辑时间及核对内容" : "自动执行失败时填写人工确认"}" />
+            </label>
+            <label>凭证引用
+              <input name="evidence_ref" maxlength="300" ${pending.manual_required ? "required" : ""}
+                placeholder="截图文件名或同步批次" />
+            </label>
+            <button type="submit" class="primary">确认变更并开始计时</button>
+          </form>
+        ` : ""}
+        <button type="button" class="text-btn trial-experiment-cancel"
+          onclick="cancelCommercialExperiment('${trialId}', '${escapeHtml(pending.experiment_id || "")}')">取消提案</button>
+      </div>
+    ` : "";
+    const experimentBody = active ? `
+      <div class="trial-experiment-active">
+        <div class="trial-experiment-head">
+          <strong>${escapeHtml(variableLabels[active.variable] || active.variable)}</strong>
+          <span>${item.experiment_due ? "已到复核时间" : `运行 ${Number(active.planned_days || 0)} 天`}</span>
+        </div>
+        <div class="trial-experiment-change">
+          <span>原值：${escapeHtml(active.before_value || "-")}</span>
+          <span>改为：${escapeHtml(active.after_value || "-")}</span>
+        </div>
+        <form class="trial-experiment-decision" data-trial-id="${trialId}"
+          data-experiment-id="${escapeHtml(active.experiment_id || "")}"
+          onsubmit="submitCommercialExperimentDecision(event)">
+          <input name="note" minlength="4" maxlength="500" placeholder="结论依据" required />
+          <label><input name="allow_early" type="checkbox" />提前结束</label>
+          ${Object.entries(decisionLabels).map(([value, label]) => `
+            <button type="submit" class="text-btn" name="decision" value="${value}" ${item.has_result_observation ? "" : "disabled"}>${label}</button>
+          `).join("")}
+        </form>
+      </div>
+    ` : (pending ? pendingBody : (latest && trial.lifecycle === "active" ? `
+      <form class="trial-experiment-form" data-trial-id="${trialId}" data-item-id="${itemId}"
+        onsubmit="submitCommercialExperimentStart(event)">
+        <label>实验变量
+          <select name="variable" required>
+            ${Object.entries(variableLabels).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
+          </select>
+        </label>
+        <label>原值
+          <input name="before_value" maxlength="300" required />
+        </label>
+        <label>改为
+          <input name="after_value" maxlength="300" required />
+        </label>
+        <label>假设
+          <input name="hypothesis" minlength="4" maxlength="300" required />
+        </label>
+        <label>天数
+          <input name="planned_days" type="number" min="1" max="14" value="${Number(trial.controls?.experiment_days || 3)}" required />
+        </label>
+        <button type="submit" class="text-btn">提交变更审批</button>
+      </form>
+    ` : ""));
+    const latestResult = latestExperiment?.status === "decided" ? `
+      <div class="trial-experiment-result">
+        上次结论 ${escapeHtml(decisionLabels[latestExperiment.decision] || latestExperiment.decision || "-")} ·
+        浏览 ${Number(latestExperiment.result?.views_delta || 0) >= 0 ? "+" : ""}${Number(latestExperiment.result?.views_delta || 0)} ·
+        想要 ${Number(latestExperiment.result?.wants_delta || 0) >= 0 ? "+" : ""}${Number(latestExperiment.result?.wants_delta || 0)} ·
+        咨询 ${Number(latestExperiment.result?.inquiries_delta || 0) >= 0 ? "+" : ""}${Number(latestExperiment.result?.inquiries_delta || 0)}
+      </div>
+    ` : "";
+    return `
+      <div class="trial-performance-row">
+        <div class="trial-performance-head">
+          <strong>商品 ${itemId}</strong>
+          <span>候选 ${escapeHtml(item.candidate_id || "-")}</span>
+          <span>${latest ? `${escapeHtml(latest.local_date || "-")} · ${escapeHtml(latest.source || "-")}` : "未记录流量"}</span>
+        </div>
+        <div class="trial-performance-metrics">
+          <span>浏览 <strong>${Number(item.views || 0)}</strong></span>
+          <span>想要 <strong>${Number(item.wants || 0)}</strong></span>
+          <span>咨询 <strong>${Number(item.inquiries || 0)}</strong></span>
+          <span>付款 <strong>${Number(item.paid_orders || 0)}</strong></span>
+        </div>
+        <div class="trial-performance-action">${escapeHtml(recommendation.message || "-")}</div>
+        ${observationForm}
+        ${experimentBody}
+        ${latestResult}
+      </div>
+    `;
+  }).join("");
+  return `
+    <section class="trial-performance">
+      <h4>商品日观察</h4>
+      ${rows}
+    </section>
+  `;
+}
+
+function renderCommercialTrial(trial, allTrials, candidates) {
+  if (!trial) {
+    return `
+      <div class="commercial-trial-empty">
+        <p>暂无活跃批次。请在上方选择账号和一个候选，检查通过后启动首批 Commercial Alpha 试运行。</p>
+        ${allTrials.length ? `<p style="margin-top:6px;">历史批次：${allTrials.length}</p>` : ""}
+      </div>
+    `;
+  }
+  const stages = trial.stages || [];
+  const stopReasons = trial.stop_reasons || [];
+  const nextAction = trial.next_action || {};
+  const controls = trial.controls || {};
+  const candidateIds = trial.candidate_ids || [];
+  const committedCandidateIds = trial.committed_candidate_ids || [];
+  const stageLabels = {
+    account_ready: "账号就绪",
+    candidate_pool: "候选池",
+    publish_ready: "发布预检",
+    approval_created: "发布审批",
+    publish_confirmed: "平台发布",
+    inquiry_observed: "有效咨询",
+    inquiry_responded: "咨询回复",
+    paid_order: "付款订单",
+    fulfillment_observed: "履约发货",
+    profit_reconciled: "利润对账",
+    review_decision: "复盘决策",
+  };
+  const lifecycleLabels = {
+    active: "运行中",
+    paused: "已暂停",
+    stopped: "已停止",
+    completed: "已完成",
+  };
+  const eligible = (candidates || []).filter(
+    (c) =>
+      String(c.category || "").trim() === String(trial.category || "").trim() &&
+      !candidateIds.includes(c.candidate_id)
+  );
+
+  const stageHtml = stages
+    .map(
+      (stage) => `
+    <div class="trial-stage-row ${stage.status === "pass" ? "is-pass" : "is-pending"}">
+      <span class="trial-stage-code">${escapeHtml(stageLabels[stage.code] || stage.code)}</span>
+      <span class="trial-stage-status">${stage.status === "pass" ? "✓ 通过" : "待办"}</span>
+      <span class="trial-stage-evidence">${escapeHtml(stage.evidence || "")}</span>
+    </div>
+  `
+    )
+    .join("");
+
+  const stopHtml = trial.stop_required
+    ? `
+    <div class="trial-stop-alert">
+      <strong>停止条件已触发</strong>
+      <div>${stopReasons.map(escapeHtml).join("；") || "请立即复核"}</div>
+    </div>
+  `
+    : "";
+
+  const attachHtml =
+    eligible.length > 0 && candidateIds.length < Number(controls.max_candidates || 0)
+      ? `
+    <div class="trial-attach">
+      <select id="trial-candidate-select-${escapeHtml(trial.trial_id)}">
+        ${eligible
+          .map(
+            (c) =>
+              `<option value="${escapeHtml(c.candidate_id)}">${escapeHtml(String(c.title || c.candidate_id).slice(0, 40))}</option>`
+          )
+          .join("")}
+      </select>
+      <button type="button" class="text-btn" onclick="attachTrialCandidate('${escapeHtml(trial.trial_id)}')">添加候选</button>
+    </div>
+  `
+      : `<span class="trial-attach-empty">暂无可添加的同品类候选</span>`;
+
+  const draftHtml = candidateIds
+    .map(
+      (cid) => {
+        const blocked = Boolean(trial.batch_draft_blocked) || committedCandidateIds.includes(cid);
+        const reason = committedCandidateIds.includes(cid)
+          ? "该候选已有发布审批"
+          : (trial.batch_draft_blocked_reason || "当前可创建发布草稿");
+        return `<button type="button" class="text-btn trial-draft-btn" title="${escapeHtml(reason)}" ${blocked ? "disabled" : ""} onclick="createTrialListingDraft('${escapeHtml(trial.trial_id)}', '${escapeHtml(cid)}')">草稿 ${escapeHtml(cid)}</button>`;
+      }
+    )
+    .join("");
+
+  const decisionButtons = `
+    ${trial.lifecycle === "paused" ? `<button type="button" class="text-btn" onclick="decideCommercialTrial('${escapeHtml(trial.trial_id)}', 'continue')">继续</button>` : ""}
+    ${trial.lifecycle === "active" ? `<button type="button" class="text-btn" onclick="decideCommercialTrial('${escapeHtml(trial.trial_id)}', 'pause')">暂停</button>` : ""}
+    <button type="button" class="text-btn" onclick="decideCommercialTrial('${escapeHtml(trial.trial_id)}', 'stop')">停止</button>
+    <button type="button" class="text-btn" ${trial.review_eligible ? "" : "disabled"} onclick="decideCommercialTrial('${escapeHtml(trial.trial_id)}', 'complete')">完成</button>
+    <button type="button" class="text-btn" onclick="reportCommercialTrial('${escapeHtml(trial.trial_id)}')">生成报告</button>
+  `;
+
+  return `
+    <div class="commercial-trial-card">
+      <div class="commercial-trial-header">
+        <strong>${escapeHtml(trial.trial_id)}</strong>
+        <span class="commercial-trial-lifecycle">${escapeHtml(lifecycleLabels[trial.lifecycle] || trial.lifecycle)}</span>
+      </div>
+      <div class="commercial-trial-meta">
+        <span>账号 ${escapeHtml(trial.cookie_id || "-")}</span>
+        <span>品类 ${escapeHtml(trial.category || "-")}</span>
+        <span>开始 ${escapeHtml(trial.started_at || "-")}</span>
+      </div>
+      <div class="trial-controls-grid">
+        <span>候选 ${Number(trial.candidate_ids?.length || 0)}/${Number(controls.max_candidates || 0)}</span>
+        <span>发布承诺 ${Number(trial.publish_commitment_count || 0)}/${Number(controls.max_published || 0)}</span>
+        <span>真实发布 ${Number(trial.published_count || 0)}</span>
+        <span>采购敞口 ¥${Number(trial.exposure || 0)}/${Number(controls.cash_budget || 0)}</span>
+        <span>发布备货 ¥${Number(trial.committed_cash_requirement || 0)}</span>
+        <span>履约采购 ¥${Number(trial.procurement_commitment || 0)}</span>
+        <span>已实现利润 ¥${Number(trial.realized_profit || 0)}</span>
+        <span>咨询 ${Number(trial.inquiry_count || 0)}/${Number(controls.target_inquiries || 0)}</span>
+        <span>已回复 ${Number(trial.inquiry_response_count || 0)}/${Number(controls.target_inquiries || 0)}</span>
+        <span>售后率 ${(Number(trial.after_sales_ratio || 0) * 100).toFixed(0)}%</span>
+        <span>付款 ${Number(trial.paid_order_count || 0)}/${Number(controls.target_paid_orders || 0)}</span>
+      </div>
+      ${stopHtml}
+      <div class="trial-next-action">
+        <strong>下一步：${escapeHtml(nextAction.action || "-")}</strong>
+        <span>${escapeHtml(nextAction.message || "")}</span>
+        ${nextAction.detail ? `<span class="trial-next-detail">${escapeHtml(nextAction.detail)}</span>` : ""}
+      </div>
+      <div class="trial-stage-list">
+        ${stageHtml}
+      </div>
+      <div class="trial-attach-block">
+        ${attachHtml}
+      </div>
+      <div class="trial-draft-actions">${draftHtml || "<span>暂无已添加候选</span>"}</div>
+      ${renderCommercialTrialTraffic(trial)}
+      ${renderCommercialTrialOrders(trial)}
+      <div class="trial-decision-actions">${decisionButtons}</div>
+    </div>
+  `;
+}
+
+function buildCommercialLaunchPayload(form = $("#commercial-trial-create-form")) {
+  if (!form) return null;
+  const fd = new FormData(form);
+  return {
+    cookie_id: String(fd.get("ct_cookie_id") || "").trim(),
+    candidate_id: String(fd.get("ct_candidate_id") || "").trim(),
+    controls: {
+      max_candidates: 1,
+      target_candidates: 1,
+      max_published: 1,
+      cash_budget: Number(fd.get("ct_cash_budget") || 1000),
+      max_realized_loss: Number(fd.get("ct_max_realized_loss") || 100),
+      max_after_sales_rate: Number(fd.get("ct_max_after_sales_rate") || 0.5),
+      target_inquiries: Number(fd.get("ct_target_inquiries") || 3),
+      target_paid_orders: 1,
+      monitor_days: Number(fd.get("ct_monitor_days") || 14),
+      min_observation_hours: Number(fd.get("ct_min_observation_hours") || 24),
+      min_views_for_diagnosis: Number(fd.get("ct_min_views_for_diagnosis") || 20),
+      experiment_days: Number(fd.get("ct_experiment_days") || 3),
+    },
+  };
+}
+
+function renderCommercialLaunchPreview(preview = {}) {
+  const gates = Array.isArray(preview.gates) ? preview.gates : [];
+  const rows = gates.map((gate) => `
+    <div class="commercial-launch-gate ${gate.status === "pass" ? "is-pass" : "is-blocked"}">
+      <span>${gate.status === "pass" ? "通过" : "阻断"}</span>
+      <strong>${escapeHtml(gate.title || gate.code || "-")}</strong>
+      <small>${escapeHtml(gate.evidence || "")}</small>
+    </div>
+  `).join("");
+  const termsGates = Array.isArray(preview.commercial_terms?.gates)
+    ? preview.commercial_terms.gates
+    : [];
+  const termsRows = termsGates.map((gate) => `
+    <div class="commercial-terms-gate ${gate.status === "pass" ? "is-pass" : "is-blocked"}">
+      <span>${gate.status === "pass" ? "通过" : "待补"}</span>
+      <strong>${escapeHtml(gate.message || gate.code || "-")}</strong>
+      <small>${escapeHtml(gate.evidence || "")}</small>
+    </div>
+  `).join("");
+  const activationSteps = Array.isArray(preview.activation_plan?.steps)
+    ? preview.activation_plan.steps.filter((step) => step.status !== "pass")
+    : [];
+  const activationRows = activationSteps.map((step) => `
+    <div class="commercial-activation-step">
+      <span>${Number(step.sequence || 0)}</span>
+      <div>
+        <strong>${escapeHtml(step.stage || "待处理")} · ${escapeHtml(step.title || step.code || "-")}</strong>
+        <small>${step.owner === "system" ? "系统" : "人工"} · ${escapeHtml(step.evidence_required || "")}</small>
+        <small>验收：${escapeHtml(step.verification || "重新检查")}</small>
+      </div>
+    </div>
+  `).join("");
+  const next = preview.next_step || {};
+  const actionButton = preview.ready
+    ? `<button type="button" class="primary" onclick="startCommercialLaunch()">启动 1 个商品批次</button>`
+    : `<button type="button" class="text-btn" data-action="${escapeHtml(next.action || "")}" onclick="handleCommercialLaunchGateAction(this.dataset.action)">处理下一门禁</button>`;
+  return `
+    <div class="commercial-launch-head">
+      <div>
+        <strong>${preview.ready ? "Day-0 可以启动" : "Day-0 尚未放行"}</strong>
+        <span>${escapeHtml(preview.candidate_title || preview.candidate_id || "未选择候选")}</span>
+      </div>
+      <span class="${preview.ready ? "is-ready" : "is-gap"}">${Number(gates.length - (preview.failed_gate_codes || []).length)}/${gates.length}</span>
+    </div>
+    <div class="commercial-launch-next">
+      <strong>${escapeHtml(next.title || "-")}</strong>
+      <span>${escapeHtml(next.detail || "")}</span>
+    </div>
+    <div class="commercial-launch-gates">${rows}</div>
+    ${termsRows ? `
+      <details class="commercial-terms-detail" ${preview.failed_gate_codes?.includes("account_commercial_terms_ready") ? "open" : ""}>
+        <summary>账号商业条款子门禁 ${termsGates.filter((gate) => gate.status === "pass").length}/${termsGates.length}</summary>
+        <div class="commercial-terms-gates">${termsRows}</div>
+      </details>
+    ` : ""}
+    <div class="commercial-activation-plan">
+      <div class="commercial-activation-head">
+        <strong>首批次激活工单</strong>
+        <span>${Number(preview.activation_plan?.completed_steps || 0)}/${Number(preview.activation_plan?.total_steps || gates.length)}</span>
+      </div>
+      ${activationRows || '<div class="commercial-activation-ready">全部激活证据已就绪</div>'}
+    </div>
+    <div class="commercial-launch-actions">
+      ${actionButton}
+      <button type="button" class="text-btn" onclick="previewCommercialLaunch()">重新检查</button>
+    </div>
+  `;
+}
+
+async function previewCommercialLaunch(form = $("#commercial-trial-create-form")) {
+  const payload = buildCommercialLaunchPayload(form);
+  if (!payload?.cookie_id || !payload?.candidate_id) {
+    alert("请选择一个已启用卖家账号和一个首发候选。");
+    return;
+  }
+  try {
+    state.commercialLaunchPreview = await api("/commercial-launch/preview", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const previewNode = $("#commercial-launch-preview");
+    if (previewNode) {
+      previewNode.hidden = false;
+      previewNode.innerHTML = renderCommercialLaunchPreview(state.commercialLaunchPreview);
+      previewNode.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  } catch (error) {
+    alert(`启动检查失败：${error.message}`);
+  }
+}
+
+async function startCommercialLaunch() {
+  const preview = state.commercialLaunchPreview;
+  const payload = buildCommercialLaunchPayload();
+  if (!preview?.ready || !preview.preview_token || !payload) {
+    await previewCommercialLaunch();
+    return;
+  }
+  if (!confirm(`确认用账号 ${payload.cookie_id} 和候选 ${payload.candidate_id} 启动唯一首发批次？`)) return;
+  try {
+    const result = await api("/commercial-launch/start", {
+      method: "POST",
+      body: JSON.stringify({
+        ...payload,
+        preview_token: preview.preview_token,
+        confirmation: "START 1",
+      }),
+    });
+    renderResult({ type: "commercial_launch", result });
+    state.commercialLaunchPreview = null;
+    await refreshCommercialTrials();
+    await refreshOPCDashboard();
+  } catch (error) {
+    const reason = error.detail?.reason || error.message;
+    alert(`启动被阻止：${reason}。系统将重新检查当前证据。`);
+    await previewCommercialLaunch();
+  }
+}
+
+async function handleCommercialLaunchGateAction(action) {
+  const payload = buildCommercialLaunchPayload() || {};
+  if (action === "review_unassigned_work") {
+    await repairAccountAttribution();
+    $("#opc-dashboard-content")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  if (action === "configure_account" || action === "enable_account") {
+    focusAccountBootstrapForm();
+    return;
+  }
+  if (action === "bootstrap_prompt" && payload.cookie_id) {
+    await bootstrapAccountPromptProfile(payload.cookie_id);
+    return;
+  }
+  if (action === "complete_commercial_terms") {
+    await openCommercialTermsDialog();
+    return;
+  }
+  if (action === "sync_account" && payload.cookie_id) {
+    await syncAccountQueue(payload.cookie_id);
+    return;
+  }
+  if (["select_candidate", "approve_candidate", "complete_candidate_category", "complete_candidate_preflight", "complete_candidate_cost"].includes(action)) {
+    document.querySelector(".resale-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (action === "increase_budget_or_change_candidate" || action === "fix_launch_controls") {
+    $("#commercial-trial-create-form [name='ct_cash_budget']")?.focus();
+    return;
+  }
+  await refreshOPCDashboard();
+  await previewCommercialLaunch();
+}
+
+async function submitCommercialTrialCreate(event) {
+  event.preventDefault();
+  await previewCommercialLaunch(event.currentTarget);
+}
+
+async function attachTrialCandidate(trialId) {
+  const select = $(`#trial-candidate-select-${trialId}`);
+  if (!select || !select.value) return;
+  try {
+    await api(`/commercial-trials/${trialId}/candidates/${encodeURIComponent(select.value)}`, { method: "POST" });
+    await refreshCommercialTrials();
+  } catch (e) {
+    alert(`添加候选失败：${e.message}`);
+  }
+}
+
+async function createTrialListingDraft(trialId, candidateId) {
+  try {
+    await api(`/commercial-trials/${trialId}/candidates/${encodeURIComponent(candidateId)}/listing-draft`, {
+      method: "POST",
+    });
+    alert("上架草稿已创建，需审批后才能发布。");
+    await refreshCommercialTrials();
+  } catch (e) {
+    const detail = e.detail;
+    if (detail && detail.error === "batch_listing_draft_blocked") {
+      alert(`批次草稿被阻断：${detail.reason || "未知原因"}`);
+    } else {
+      alert(`创建草稿失败：${e.message}`);
+    }
+  }
+}
+
+async function submitCommercialTrafficObservation(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fd = new FormData(form);
+  const payload = {
+    views: Number(fd.get("views") || 0),
+    wants: Number(fd.get("wants") || 0),
+    evidence_note: String(fd.get("evidence_note") || "").trim(),
+    evidence_ref: String(fd.get("evidence_ref") || "").trim(),
+  };
+  try {
+    await api(
+      `/commercial-trials/${encodeURIComponent(form.dataset.trialId || "")}/items/${encodeURIComponent(form.dataset.itemId || "")}/traffic-observations`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    await refreshCommercialTrials();
+  } catch (e) {
+    alert(`记录流量失败：${e.message}`);
+  }
+}
+
+async function submitCommercialExperimentStart(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fd = new FormData(form);
+  const payload = {
+    variable: String(fd.get("variable") || ""),
+    hypothesis: String(fd.get("hypothesis") || "").trim(),
+    before_value: String(fd.get("before_value") || "").trim(),
+    after_value: String(fd.get("after_value") || "").trim(),
+    planned_days: Number(fd.get("planned_days") || 3),
+  };
+  try {
+    await api(
+      `/commercial-trials/${encodeURIComponent(form.dataset.trialId || "")}/items/${encodeURIComponent(form.dataset.itemId || "")}/experiments`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    alert("实验变更已提交审批，平台确认后才开始计时。");
+    await refreshCommercialTrials();
+  } catch (e) {
+    alert(`提交实验变更失败：${e.message}`);
+  }
+}
+
+async function submitCommercialExperimentActivation(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fd = new FormData(form);
+  const payload = {
+    manual_confirmation: fd.get("manual_confirmation") === "on",
+    evidence_note: String(fd.get("evidence_note") || "").trim(),
+    evidence_ref: String(fd.get("evidence_ref") || "").trim(),
+  };
+  const submit = form.querySelector('button[type="submit"]');
+  if (submit) submit.disabled = true;
+  try {
+    await api(
+      `/commercial-trials/${encodeURIComponent(form.dataset.trialId || "")}/experiments/${encodeURIComponent(form.dataset.experimentId || "")}/activate`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    alert("平台变更证据已确认，实验计时已开始。");
+    await Promise.all([refreshCommercialTrials(), refreshWorkOrders()]);
+  } catch (e) {
+    const detail = e.detail;
+    const reason = detail && typeof detail === "object" ? detail.reason : e.message;
+    alert(`实验尚未开始：${reason || "平台变更证据不足"}`);
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+async function cancelCommercialExperiment(trialId, experimentId) {
+  const note = prompt("取消原因（至少 4 个字符）");
+  if (note === null) return;
+  if (String(note).trim().length < 4) {
+    alert("取消原因至少需要 4 个字符。");
+    return;
+  }
+  try {
+    await api(
+      `/commercial-trials/${encodeURIComponent(trialId)}/experiments/${encodeURIComponent(experimentId)}/cancel`,
+      { method: "POST", body: JSON.stringify({ note: String(note).trim() }) }
+    );
+    await refreshCommercialTrials();
+  } catch (e) {
+    alert(`取消实验提案失败：${e.message}`);
+  }
+}
+
+async function submitCommercialExperimentDecision(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const fd = new FormData(form);
+  const payload = {
+    decision: String(event.submitter?.value || ""),
+    note: String(fd.get("note") || "").trim(),
+    allow_early: fd.get("allow_early") === "on",
+  };
+  try {
+    await api(
+      `/commercial-trials/${encodeURIComponent(form.dataset.trialId || "")}/experiments/${encodeURIComponent(form.dataset.experimentId || "")}/decision`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    await refreshCommercialTrials();
+  } catch (e) {
+    alert(`实验决策失败：${e.message}`);
+  }
+}
+
+async function submitCommercialFulfillmentHandoff(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const trialId = form.dataset.trialId || "";
+  const orderId = form.dataset.orderId || "";
+  const fd = new FormData(form);
+  const payload = {
+    quantity: Number(fd.get("quantity") || 1),
+    buyer_address_summary: String(fd.get("buyer_address_summary") || "").trim(),
+    specs_confirmed: fd.get("specs_confirmed") === "on",
+    address_confirmed: fd.get("address_confirmed") === "on",
+    supplier_stock_reconfirmed: fd.get("supplier_stock_reconfirmed") === "on",
+    supplier_quote_reconfirmed: fd.get("supplier_quote_reconfirmed") === "on",
+    operator_note: String(fd.get("operator_note") || "").trim(),
+  };
+  const submit = form.querySelector('button[type="submit"]');
+  if (submit) submit.disabled = true;
+  try {
+    const result = await api(
+      `/commercial-trials/${encodeURIComponent(trialId)}/orders/${encodeURIComponent(orderId)}/fulfillment-handoff`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    alert(result.idempotent ? "该订单已有履约交接。" : "履约交接已创建，采购仍需人工审批。");
+    await Promise.all([refreshCommercialTrials(), refreshWorkOrders(), refreshPurchaseTasks(), refreshOrders()]);
+  } catch (e) {
+    const detail = e.detail;
+    const reason = detail && typeof detail === "object" ? detail.reason : e.message;
+    alert(`履约交接失败：${reason || "未知原因"}`);
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+async function releaseCommercialFulfillmentHandoff(trialId, orderId) {
+  try {
+    await api(
+      `/commercial-trials/${encodeURIComponent(trialId)}/orders/${encodeURIComponent(orderId)}/fulfillment-release`,
+      { method: "POST" }
+    );
+    await refreshCommercialTrials();
+  } catch (e) {
+    const detail = e.detail;
+    const reason = detail && typeof detail === "object" ? detail.reason : e.message;
+    alert(`释放履约锁失败：${reason || "未知原因"}`);
+  }
+}
+
+async function decideCommercialTrial(trialId, decision) {
+  const note = prompt(`请输入决策备注（${decision}）`, "");
+  if (note === null) return;
+  try {
+    await api(`/commercial-trials/${trialId}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, note }),
+    });
+    await refreshCommercialTrials();
+  } catch (e) {
+    alert(`决策失败：${e.message}`);
+  }
+}
+
+async function reportCommercialTrial(trialId) {
+  try {
+    const data = await api(`/commercial-trials/${trialId}/report`, { method: "POST" });
+    alert(`报告已保存：${data.file || "未知路径"}`);
+  } catch (e) {
+    alert(`生成报告失败：${e.message}`);
+  }
+}
+
+$("#refresh-commercial-trials")?.addEventListener("click", refreshCommercialTrials);
+$("#record-commercial-terms")?.addEventListener("click", openCommercialTermsDialog);
+$("#commercial-trial-create-form")?.addEventListener("submit", submitCommercialTrialCreate);
+$("#commercial-trial-create-form")?.addEventListener("input", (event) => {
+  if (event.target?.id === "ct-candidate-select") updateCommercialLaunchCategory();
+  state.commercialLaunchPreview = null;
+  const previewNode = $("#commercial-launch-preview");
+  if (previewNode) {
+    previewNode.hidden = true;
+    previewNode.innerHTML = "";
+  }
+});
+
+// Load commercial alpha trial panel on startup
+refreshCommercialTrials().catch(() => {});

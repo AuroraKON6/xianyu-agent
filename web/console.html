@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>闲鱼 OpenClaw 控制台</title>
+    <title>闲鱼 Pi Agent 控制台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/console/style.css" />
   </head>
@@ -13,8 +13,8 @@
         <div class="brand">
           <div class="mark">闲</div>
           <div>
-            <h1>闲鱼 OpenClaw</h1>
-            <p>OpenClaw · DeepSeek V4</p>
+            <h1>闲鱼 Pi Agent</h1>
+            <p>Pi · DeepSeek V4</p>
           </div>
         </div>
         <nav class="nav">
@@ -42,7 +42,7 @@
       <main class="main">
         <header class="topbar">
           <div>
-            <h2>OpenClaw 指令</h2>
+            <h2>Pi 运营指令</h2>
             <p id="guard-line">风控状态读取中</p>
           </div>
           <div class="top-actions">
@@ -57,9 +57,9 @@
           <div class="command-actions">
             <label class="switch">
               <input id="publish-toggle" type="checkbox" checked />
-              <span>允许提交到当前适配器</span>
+              <span>记录提交意图（仍需审批）</span>
             </label>
-            <button id="send-btn" class="primary">发送给OpenClaw</button>
+            <button id="send-btn" class="primary">发送给Pi</button>
           </div>
         </section>
 
@@ -140,16 +140,74 @@
               <h3>消息入站</h3>
               <div class="top-actions">
                 <button id="run-message-intake-dry-run" class="text-btn">Dry-run检查</button>
+                <button id="import-browser-messages" class="text-btn">导入浏览器消息</button>
+                <button id="import-browser-conversations" class="text-btn">导入未读会话</button>
+                <button id="configure-message-import-scheduler" class="text-btn">配置轮询</button>
+                <button id="run-message-import-scheduler" class="text-btn">立即轮询</button>
                 <button id="export-message-intake-bundle" class="text-btn">导出事件包</button>
                 <button id="prune-message-intake" class="text-btn">裁剪留存</button>
                 <button id="refresh-message-intake" class="text-btn">刷新</button>
               </div>
             </div>
             <div id="message-intake-metrics" class="approval-count-badges"></div>
+            <div id="message-import-scheduler" class="message-intake-health"></div>
+            <form id="message-import-scheduler-profile-form" class="scheduler-profile-form">
+              <input name="scheduler_cookie_id" placeholder="seller_main" autocomplete="off" />
+              <select name="scheduler_preset" id="message-import-scheduler-preset" class="scheduler-preset-control" aria-label="scheduler preset">
+                <option value="high_touch">客服高频</option>
+                <option value="observe">低频观察</option>
+                <option value="paused">暂停账号</option>
+              </select>
+              <button id="apply-message-import-scheduler-preset" type="button" class="text-btn">套用模板</button>
+              <button id="bootstrap-message-import-scheduler-profiles" type="button" class="text-btn scheduler-bootstrap-control">Bootstrap accounts</button>
+              <input name="scheduler_interval_seconds" type="number" min="30" step="30" value="300" aria-label="interval seconds" />
+              <input name="scheduler_max_conversations" type="number" min="1" step="1" value="20" aria-label="max conversations" />
+              <input name="scheduler_messages_per_conversation" type="number" min="1" step="1" value="20" aria-label="messages per conversation" />
+              <label class="scheduler-profile-toggle">
+                <input name="scheduler_enabled" type="checkbox" checked />
+                <span>enabled</span>
+              </label>
+              <label class="scheduler-profile-toggle">
+                <input name="scheduler_overwrite" type="checkbox" />
+                <span>overwrite</span>
+              </label>
+              <button type="submit" class="text-btn">保存轮询账号</button>
+            </form>
+            <div id="message-import-scheduler-profiles" class="scheduler-profile-list"></div>
             <div id="message-intake-health" class="message-intake-health"></div>
             <div id="message-intake-alerts" class="message-intake-alerts"></div>
             <div id="message-intake-runbooks" class="message-intake-runbooks"></div>
             <div id="message-intake-feed" class="message-intake-feed">暂无入站消息</div>
+          </article>
+
+          <article id="account-profile-panel" class="panel account-profile-panel">
+            <div class="panel-head">
+              <h3>账号画像</h3>
+              <button id="refresh-account-profiles" class="text-btn">刷新</button>
+            </div>
+            <div id="browser-account-onboarding" class="browser-account-onboarding">
+              <div class="browser-account-actions">
+                <button id="open-xianyu-login-browser" type="button" class="text-btn">打开登录浏览器</button>
+                <button id="preview-browser-account" type="button" class="primary">检测当前账号</button>
+              </div>
+              <div id="browser-account-import-preview" class="browser-account-import-preview" hidden></div>
+            </div>
+            <details id="manual-account-bootstrap" class="manual-account-bootstrap">
+              <summary>手工 Cookie 导入</summary>
+              <form id="account-bootstrap-form" class="account-bootstrap-form">
+                <label>账号ID
+                  <input name="cookie_id" required placeholder="seller_main" autocomplete="off" />
+                </label>
+                <label>备注
+                  <input name="remark" placeholder="主账号 / 厨具垂直" autocomplete="off" />
+                </label>
+                <label>Cookie
+                  <textarea name="cookie_value" required rows="2" spellcheck="false" autocomplete="off" placeholder="粘贴当前卖家账号 cookie"></textarea>
+                </label>
+                <button type="submit" class="primary">导入账号</button>
+              </form>
+            </details>
+            <div id="account-profile-list" class="account-profile-list">暂无账号画像</div>
           </article>
 
           <article class="panel sourcing-panel">
@@ -276,6 +334,13 @@
               </div>
             </div>
             <div id="resale-dashboard" class="resale-dashboard">加载中...</div>
+            <div class="discovery-inbox-panel">
+              <div class="panel-subhead">
+                <h4>Discovery Inbox</h4>
+                <button id="refresh-discovery-inbox" class="text-btn">刷新线索</button>
+              </div>
+              <div id="discovery-inbox-feed" class="discovery-inbox-feed">暂无线索</div>
+            </div>
             <form id="resale-form" class="resale-form">
               <label>商品标题 *
                 <input name="title" required placeholder="蓝牙耳机 TWS" />
@@ -314,14 +379,20 @@
               <label>目标售价 *
                 <input name="target_sale_price" type="number" step="0.01" min="0" required placeholder="59.00" />
               </label>
-              <label>平台费率
-                <input name="platform_fee_rate" type="number" step="0.01" min="0" max="1" value="0.08" />
+              <label>平台比例费率（估算）
+                <input name="platform_fee_rate" type="number" step="0.0001" min="0" max="0.9999" value="0.08" />
+              </label>
+              <label>平台每单固定费用（估算）
+                <input name="platform_fixed_fee" type="number" step="0.01" min="0" value="0" />
               </label>
               <label>退款损耗率
                 <input name="expected_refund_rate" type="number" step="0.01" min="0" max="1" value="0.02" />
               </label>
               <label>规格 (JSON)
                 <input name="specifications" placeholder='{"color":"black"}' />
+              </label>
+              <label>图片 URL（每行一个或用逗号分隔）
+                <textarea name="images" rows="2" placeholder="https://example.com/img/1.jpg"></textarea>
               </label>
               <div class="resale-form-actions">
                 <button type="submit" class="primary">录入候选</button>
@@ -367,13 +438,356 @@
               <h3>OPC 仪表板</h3>
               <div class="top-actions">
                 <button id="refresh-opc-dashboard" class="text-btn">刷新</button>
+                <button id="run-daily-review" class="text-btn">生成日快照</button>
                 <button id="run-weekly-review" class="text-btn">生成周复盘</button>
               </div>
             </div>
             <div id="opc-dashboard-content" class="resale-dashboard">加载中...</div>
           </article>
+
+          <article id="commercial-trial-panel" class="panel commercial-trial-panel">
+            <div class="panel-header">
+              <h3>Commercial Alpha 试运行</h3>
+              <div class="top-actions">
+                <button id="refresh-commercial-trials" class="text-btn">刷新</button>
+              </div>
+            </div>
+            <form id="commercial-trial-create-form" class="commercial-trial-form">
+              <label>卖家账号 *
+                <select id="ct-account-select" name="ct_cookie_id" required>
+                  <option value="">选择已启用账号</option>
+                </select>
+              </label>
+              <label>首发候选 *
+                <select id="ct-candidate-select" name="ct_candidate_id" required>
+                  <option value="">选择一个候选</option>
+                </select>
+              </label>
+              <label>品类
+                <input id="ct-category" name="ct_category" readonly placeholder="随候选确定" />
+              </label>
+              <label>采购预算
+                <input name="ct_cash_budget" type="number" min="1" step="1" value="1000" />
+              </label>
+              <label>最大亏损
+                <input name="ct_max_realized_loss" type="number" min="1" step="1" value="100" />
+              </label>
+              <label>售后率止损
+                <input name="ct_max_after_sales_rate" type="number" min="0.01" max="1" step="0.01" value="0.5" />
+              </label>
+              <label>咨询目标
+                <input name="ct_target_inquiries" type="number" min="1" max="100" step="1" value="3" />
+              </label>
+              <label>监控天数
+                <input name="ct_monitor_days" type="number" min="1" max="90" step="1" value="14" />
+              </label>
+              <label>观察间隔（小时）
+                <input name="ct_min_observation_hours" type="number" min="6" max="168" step="1" value="24" />
+              </label>
+              <label>诊断浏览门槛
+                <input name="ct_min_views_for_diagnosis" type="number" min="1" max="100000" step="1" value="20" />
+              </label>
+              <label>实验天数
+                <input name="ct_experiment_days" type="number" min="1" max="14" step="1" value="3" />
+              </label>
+              <input name="ct_max_candidates" type="hidden" value="1" />
+              <input name="ct_target_candidates" type="hidden" value="1" />
+              <input name="ct_max_published" type="hidden" value="1" />
+              <input name="ct_target_paid_orders" type="hidden" value="1" />
+              <button type="button" id="record-commercial-terms" class="text-btn">记录账号商业条款</button>
+              <button type="submit" class="primary">检查启动门禁</button>
+            </form>
+            <div id="commercial-launch-preview" class="commercial-launch-preview" hidden></div>
+            <div id="commercial-trial-summary" class="commercial-trial-summary">暂无活跃批次</div>
+          </article>
         </section>
       </main>
+    </div>
+    <div id="evidence-modal" class="modal-overlay" hidden>
+      <div class="modal-card candidate-activation-modal-card" role="dialog" aria-modal="true" aria-labelledby="evidence-modal-title">
+        <div class="modal-head">
+          <h3 id="evidence-modal-title">一品启动包</h3>
+          <button type="button" class="text-btn" data-close-evidence-modal aria-label="关闭">关闭</button>
+        </div>
+        <form id="evidence-form" class="evidence-form">
+          <div id="candidate-activation-summary" class="candidate-activation-summary">正在读取候选证据...</div>
+          <section class="candidate-evidence-archive" aria-labelledby="candidate-evidence-archive-title">
+            <div class="candidate-evidence-archive-head">
+              <div>
+                <h4 id="candidate-evidence-archive-title">候选证据存档</h4>
+                <span>单文件不超过 10 MiB；新版本会保留并替代旧版本</span>
+              </div>
+              <span id="candidate-evidence-archive-count">0 份</span>
+            </div>
+            <div class="candidate-evidence-upload-grid">
+              <label>证据类型
+                <select id="candidate-evidence-kind">
+                  <option value="supplier_quote">供应商报价</option>
+                  <option value="supplier_stock">供应商库存</option>
+                  <option value="supplier_fulfillment">供应商履约</option>
+                  <option value="image_rights">图片使用权</option>
+                  <option value="market_baseline">竞品基线</option>
+                </select>
+              </label>
+              <label>实际观察时间
+                <input id="candidate-evidence-observed-at" type="datetime-local" />
+              </label>
+              <label class="candidate-evidence-file-label">证据文件
+                <input id="candidate-evidence-file" type="file" accept=".png,.jpg,.jpeg,.webp,.pdf,.html,.htm,.txt,.md,.json" />
+              </label>
+              <label>来源页面（可选）
+                <input id="candidate-evidence-source-url" type="url" maxlength="1000" placeholder="对应供应商或平台页面" />
+              </label>
+              <label class="candidate-evidence-note-label">存档备注（可选）
+                <input id="candidate-evidence-note" maxlength="500" placeholder="写明精确 SKU、页面或沟通场景" />
+              </label>
+              <button id="upload-candidate-evidence" type="button" class="resale-btn">上传并绑定</button>
+            </div>
+            <div id="candidate-evidence-artifact-list" class="candidate-evidence-artifact-list">
+              <span class="snapshot-field">暂无存档</span>
+            </div>
+          </section>
+          <div class="evidence-grid">
+            <h4 class="evidence-section-title">商品与供应商身份</h4>
+            <label>商品标题
+              <input name="title" maxlength="160" />
+            </label>
+            <label>闲鱼发布类目
+              <input name="category" maxlength="120" />
+            </label>
+            <label>来源平台
+              <select name="source_platform">
+                <option value="pdd">拼多多</option>
+                <option value="1688">1688</option>
+              </select>
+            </label>
+            <label>供应商商品链接
+              <input name="source_url" type="url" placeholder="当前真实商品页 URL" />
+            </label>
+            <label>供应商简称
+              <input name="supplier_name" maxlength="160" placeholder="用于内部追溯，不填手机号" />
+            </label>
+            <label>精确 SKU / 货号
+              <input name="supplier_sku" maxlength="160" />
+            </label>
+            <label class="evidence-wide">规格 JSON
+              <textarea name="specifications" rows="3" placeholder='{"材质":"304不锈钢","尺寸":"120x60x80cm"}'></textarea>
+            </label>
+            <label>当前供应价
+              <input name="supplier_price" type="number" min="0" step="0.01" />
+            </label>
+            <label>当前供应商运费
+              <input name="supplier_shipping" type="number" min="0" step="0.01" />
+            </label>
+            <label>目标售价
+              <input name="target_sale_price" type="number" min="0" step="0.01" />
+            </label>
+
+            <h4 class="evidence-section-title">报价与库存</h4>
+            <label class="evidence-check">
+              <input type="checkbox" name="supplier_verified" />
+              <span>供应商已验证</span>
+            </label>
+            <label>供应商验证备注
+              <textarea name="supplier_verification_note" rows="2" placeholder="写明核对对象、沟通渠道和结论"></textarea>
+            </label>
+            <label>供应商报价核验时间
+              <input type="datetime-local" name="supplier_quote_checked_at" />
+            </label>
+            <label>报价证据引用
+              <input name="supplier_quote_evidence_ref" maxlength="300" readonly placeholder="上传证据后由系统生成" />
+            </label>
+            <label>最低采购量
+              <input name="minimum_order_quantity" type="number" min="1" step="1" />
+            </label>
+            <label>库存状态
+              <select name="stock_status">
+                <option value="">请选择</option>
+                <option value="in_stock">现货</option>
+                <option value="limited">库存有限</option>
+                <option value="preorder">预售</option>
+                <option value="unknown">未知</option>
+              </select>
+            </label>
+            <label>已确认可发数量
+              <input name="stock_quantity" type="number" min="1" step="1" />
+            </label>
+            <label>库存核验时间
+              <input type="datetime-local" name="stock_checked_at" />
+            </label>
+            <label>库存证据引用
+              <input name="stock_evidence_ref" maxlength="300" readonly placeholder="上传证据后由系统生成" />
+            </label>
+
+            <h4 class="evidence-section-title">履约与售后</h4>
+            <label class="evidence-check">
+              <input type="checkbox" name="fulfillment_verified" />
+              <span>履约已验证</span>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="neutral_shipping_confirmed" />
+              <span>可正常无价格信息发货</span>
+            </label>
+            <label>履约验证备注
+              <textarea name="fulfillment_verification_note" rows="2" placeholder="发货方式、破损责任和时效已确认"></textarea>
+            </label>
+            <label>履约证据引用
+              <input name="fulfillment_evidence_ref" maxlength="300" readonly placeholder="上传证据后由系统生成" />
+            </label>
+            <label>承诺出库时效（小时）
+              <input name="dispatch_time_hours" type="number" min="1" max="168" step="1" />
+            </label>
+            <label>供应商退换政策
+              <select name="supplier_return_policy">
+                <option value="">请选择</option>
+                <option value="supported">支持退换</option>
+                <option value="conditional">有条件支持</option>
+                <option value="not_supported">不支持，已计入风险</option>
+              </select>
+            </label>
+            <label class="evidence-wide">破损/错货责任说明
+              <textarea name="damage_liability_note" rows="2" placeholder="写明举证要求、责任方和处理方式"></textarea>
+            </label>
+
+            <h4 class="evidence-section-title">图片与使用权</h4>
+            <label>图片 URL（每行一个或用逗号分隔）
+              <textarea name="images" rows="3" placeholder="真实图片 URL 或本地图片路径"></textarea>
+            </label>
+            <label>图片授权类型
+              <select name="image_rights_type">
+                <option value="">请选择</option>
+                <option value="owned">自有实拍</option>
+                <option value="supplier_authorized">供应商授权</option>
+                <option value="licensed">可商用授权</option>
+              </select>
+            </label>
+            <label>图片授权证据
+              <textarea name="image_rights_evidence" rows="2" placeholder="写明图片来源和授权结论"></textarea>
+            </label>
+            <label>图片授权证据引用
+              <input name="image_rights_evidence_ref" maxlength="300" readonly placeholder="上传证据后由系统生成" />
+            </label>
+
+            <h4 class="evidence-section-title">竞品与需求基线</h4>
+            <label>竞品链接（逗号分隔）
+              <textarea name="competitor_links" rows="2" placeholder="至少两个当前可比闲鱼商品链接"></textarea>
+            </label>
+            <label>竞品最低价
+              <input type="number" name="competitor_price_min" step="0.01" min="0" />
+            </label>
+            <label>竞品最高价
+              <input type="number" name="competitor_price_max" step="0.01" min="0" />
+            </label>
+            <label>竞品核验时间
+              <input type="datetime-local" name="competitor_checked_at" />
+            </label>
+            <label>竞品证据引用
+              <input name="competitor_evidence_ref" maxlength="300" readonly placeholder="上传证据后由系统生成" />
+            </label>
+            <label class="evidence-wide">需求信号
+              <textarea name="estimated_demand_signal" rows="2" placeholder="只写可观察事实和推断边界，不把展示价当成交价"></textarea>
+            </label>
+          </div>
+          <div id="evidence-form-error" class="evidence-form-error" hidden></div>
+          <div class="evidence-form-actions">
+            <button type="button" class="resale-btn resale-btn--secondary" data-close-evidence-modal>取消</button>
+            <button type="submit" class="resale-btn">保存并重新验真</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="commercial-terms-modal" class="modal-overlay" hidden>
+      <div class="modal-card commercial-terms-modal-card" role="dialog" aria-modal="true" aria-labelledby="commercial-terms-modal-title">
+        <div class="modal-head">
+          <h3 id="commercial-terms-modal-title">账号商业条款核验</h3>
+          <button type="button" class="text-btn" data-close-commercial-terms-modal aria-label="关闭">关闭</button>
+        </div>
+        <form id="commercial-terms-form" class="evidence-form">
+          <div class="evidence-grid commercial-terms-grid">
+            <label>卖家账号
+              <input name="cookie_id" readonly />
+            </label>
+            <label>平台类目
+              <input name="category" readonly />
+            </label>
+            <label>首发候选
+              <input name="candidate_id" readonly />
+            </label>
+            <label>经营身份
+              <select name="seller_type" required>
+                <option value="unknown">尚未确认</option>
+                <option value="business">经营性卖家</option>
+                <option value="personal_nonbusiness">非经营性个人卖家</option>
+              </select>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="account_owner_confirmed" />
+              <span>账号所有权或运营授权已确认</span>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="seller_agreement_confirmed" />
+              <span>当前卖家服务协议已确认</span>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="payment_service_ready" />
+              <span>收款与支付服务可用</span>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="category_publishable" />
+              <span>当前账号可发布该类目</span>
+            </label>
+            <label>退货规则
+              <select name="return_policy" required>
+                <option value="unknown">尚未确认</option>
+                <option value="seven_day">支持七日无理由</option>
+                <option value="lawful_exception">依法适用类目例外</option>
+              </select>
+            </label>
+            <label>类目例外依据
+              <input name="return_exception_basis" maxlength="300" placeholder="仅选择类目例外时填写" />
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="return_address_ready" />
+              <span>有效退货地址已配置</span>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="after_sales_ready" />
+              <span>售后处理能力已就绪</span>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="guarantee_required" />
+              <span>该账号类目要求保证金/买保</span>
+            </label>
+            <label class="evidence-check">
+              <input type="checkbox" name="guarantee_ready" />
+              <span>保证金/买保要求已满足</span>
+            </label>
+            <label>保证金金额
+              <input name="guarantee_amount" type="number" min="0" step="0.01" value="0" required />
+            </label>
+            <label>平台比例费率（5%=0.05）
+              <input name="platform_fee_rate" type="number" min="0" max="0.9999" step="0.0001" required />
+            </label>
+            <label>平台每单固定费用
+              <input name="platform_fixed_fee" type="number" min="0" step="0.01" value="0" required />
+            </label>
+            <label>核验时间
+              <input name="observed_at" type="datetime-local" required />
+            </label>
+            <label class="commercial-terms-wide">证据引用
+              <input name="evidence_ref" maxlength="300" required placeholder="本地截图或平台页面记录编号" />
+            </label>
+            <label class="commercial-terms-wide">核验备注
+              <textarea name="evidence_note" rows="3" minlength="4" maxlength="500" required placeholder="记录页面名称、类目与关键条款"></textarea>
+            </label>
+          </div>
+          <div id="commercial-terms-form-error" class="evidence-form-error" hidden></div>
+          <div class="evidence-form-actions">
+            <button type="button" class="resale-btn resale-btn--secondary" data-close-commercial-terms-modal>取消</button>
+            <button type="submit" class="resale-btn">保存并重算利润</button>
+          </div>
+        </form>
+      </div>
     </div>
     <script src="/console/app.js"></script>
   </body>
