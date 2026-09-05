@@ -23,13 +23,18 @@
 XiānYu Agent is a local operating system for a one-person Xianyu business. **Pi is the sole natural-language operator harness**. The existing Python/FastAPI application remains the business system of record for candidates, commercial terms, evidence gates, WorkOrders, approvals, execution jobs, account state, orders, and realized profit.
 
 ```
-Account readiness -> Candidate-bound evidence archive -> One-product packet (12 gates)
+Offline one-SKU intake preflight -> Account readiness -> Candidate-bound evidence archive
+-> One-product packet (12 gates)
 -> Current account/category terms
 -> Manual candidate decision -> 20-gate Commercial Alpha preview
 -> Listing draft -> Human approval -> Execution evidence
 -> Inquiry -> Paid order -> Procurement -> Dual tracking
 -> Delivery -> After-sales -> Realized-profit reconciliation
 ```
+
+Prepare the first real SKU while services remain stopped with
+`scripts/commercial_alpha_intake.py`; the operating procedure and exact pass
+criteria are in `docs/ops/commercial-alpha-intake-bundle.md`.
 
 Pi receives only `read` plus project-specific typed Xianyu tools. It has no shell, file-edit, approval, execution, send-message, or refund tool. Platform actions still pass through `WorkOrder -> Approval -> ExecutionJobQueue -> ActionExecutor`.
 

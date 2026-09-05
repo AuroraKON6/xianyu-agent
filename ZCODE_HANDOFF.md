@@ -1,10 +1,62 @@
 # Zcode 接管总说明：Xianyu Pi 一人公司项目
 
-> 生成时间：2026-08-29（Asia/Shanghai）  
+> 生成时间：2026-08-29，最近更新：2026-09-05（Asia/Shanghai）
 > 工作区：`E:\闲鱼\xianyu`  
 > 接管对象：Zcode 及后续本地编码代理  
-> 本文件优先级：高于 2026-08-29 之前的 `PROJECT_STATUS.md` 和 `docs/PROJECT_PLAN.md` 状态描述  
-> 当前结论：技术底座通过本地验收，真实商业 Alpha 尚未开始；先完成 P0 数据库路径修复和 Git 基线，再接入真实账号与一个真实商品。
+> 本文件优先级：低于 2026-09-05 的 `PROJECT_STATUS.md`，高于更早的历史状态描述
+> 当前结论：数据库边界、单一执行路径、外部动作 lease/fencing、Reply Outbox、浏览器写入失败证据及审批作用域绑定已完成首轮硬化；真实商业 Alpha 尚未开始，下一业务目标仍是接入一个真实账号和一个真实商品。
+
+---
+
+## 2026-09-05 当前增量（覆盖本文旧快照）
+
+本文第 3、13 和 14 节保留了 2026-08-29 的接管现场与原计划，阅读时必须用本节覆盖其中已经过期的结论。
+
+### 已完成
+
+1. SQLite singleton 已改为延迟初始化，并在服务组合根绑定 `Settings.db_path`。
+2. 旧库和 `data/live/xianyu_data.db` 的表行数已核对一致；迁移备份和哈希记录保留。
+3. Phase 9-29 核心代码、测试、UI、Pi 和文档已经形成可恢复 Git 提交基线。
+4. 候选证据完整性不再使用 mtime/size 缓存；每次检查都重新计算 SHA-256。
+5. `/agents/dispatch`、OpenClaw 和 Hermes HTTP 路由已经返回 HTTP `410`。
+6. 旧 listing/physical API 只生成草稿和审批工单；核心 workflow 不再直发商品。
+7. 自动擦亮调度和直接擦亮 API 已退役。
+8. Pi 只保留 12 个 Xianyu Typed Tools，移除了任意路径 `read`，并过滤子进程环境变量。
+9. 服务默认绑定 `127.0.0.1`，CORS 仅允许本地控制台来源。
+10. 执行任务新增本机文件锁、租约、per-claim token 和递增 fencing token；过期任务进入 `verification_required`，不会自动重试。
+11. 控制台和 API 可把未知平台结果核验为 `confirmed_completed` 或 `confirmed_not_executed`；前者要求平台编号、页面或截图证据。
+12. 发布、修改、回复、删除、退款和履约的 adapter 异常可进入未知结果闭环。
+13. Reply Outbox 已把回复草稿、Approval、ExecutionJob、平台回执和人工核验投影为同一操作者视图，没有增加第二条发送链。
+14. 新回复绑定账号、买家、会话、商品、来源事件、修订和文本哈希；执行前重算 action digest。
+15. 入站事件可幂等重放；人工显式 key 被不同内容复用时返回 HTTP `409`；未知发送结果禁止直接重试。
+16. 浏览器写入失败会按账号哈希保存脱敏 manifest 和尽力截图，记录 adapter 状态、失败阶段及是否已尝试平台写入；证据会投影到 ExecutionJob、Reply Outbox 和 OPC Dashboard。
+17. 所有新 Approval 都携带作用域 envelope，绑定账号、目标、参数、快照、金额、版本、有效期、确定性幂等键和唯一 correlation ID；人工批准绑定当前 action digest。
+18. 批准前、入队前、执行前和未知结果核验关闭前都会重算作用域；发布还绑定落盘草稿和图片内容版本，任何失配均在 Adapter 前阻断。
+19. 历史账号改绑会清空原批准并回到待审批；有 ExecutionJob 的工单不能直接改绑。
+20. Commercial Alpha 单品资料新增离线预检包：严格收一个 SKU、五类证据和真实图片，共用正式归档的文件校验，并只读投影候选 12 项门禁。
+21. 预检拒绝目录穿越、符号链接、重复/缺失证据、伪装图片、超大文件、敏感文本以及过期/未来时间；通过仍明确为 `commercial_ready=false`。
+22. 2026-09-05 全量隔离回归为 `996/996` 通过，测试进程耗时 `37.385s`；`data/live` 的 15 个文件前后长度和 SHA-256 变化数均为 `0`。
+
+### 当前没有运行
+
+- FastAPI、Pi 和浏览器适配器当前未启动。
+- 不得把 2026-08-29 的 health、Pi handshake 或 UI 结果称为当前运行证明。
+- 当前没有平台写动作，也没有真实业务数据新增。
+
+### 当前真实业务阻塞
+
+1. 卖家账号仍为 0。
+2. 唯一候选仍是占位商品 `T`，启动包 `1/12`。
+3. 五类候选证据仍为 0。
+4. 没有目标账号和类目的当天商业条款。
+5. 没有真实发布、询盘、付款订单、采购、物流或利润。
+6. 已初始化 `E:\闲鱼\商业资料\commercial-alpha-001`；空模板预检正确返回 exit `2`、`bundle_ready=false`，等待操作者填写真实资料。
+
+### 当前下一步唯一目标
+
+> 完成 Phase 29C-E：一个真实账号 + 一个精确 SKU + 五类证据，达到候选 `12/12`、Day-0 `20/20`，创建一个不自动发布的 Commercial Alpha batch。
+
+未来组织、12 个月走势、KPI、现金模型和架构改进见 `docs/strategy/GENERAL_MANAGER_BLUEPRINT_2026-08-30.md`。
 
 ---
 
@@ -20,20 +72,26 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_tests_isolated
 node --check web\app.js
 node --check .pi\extensions\xianyu-ops.ts
 git diff --check
-Invoke-RestMethod http://127.0.0.1:8788/health
-Invoke-RestMethod http://127.0.0.1:8788/dashboard/first-run-readiness
+# 当前服务默认停止。只有准备做真实登录时才启动，然后执行：
+# .\scripts\start_xianyu_workflow.ps1
+# Invoke-RestMethod http://127.0.0.1:8788/health
+# Invoke-RestMethod http://127.0.0.1:8788/dashboard/first-run-readiness
 ```
 
 硬性接管规则：
 
 1. 不得运行 `git reset --hard`、`git clean -fd`、`git checkout -- .` 或删除当前未跟踪代码。
-2. 当前大量功能尚未提交，Git 的旧 `HEAD` 不是当前系统真实能力。
+2. 当前核心能力已有 Git 基线；继续保留和审阅本轮未提交的硬化及战略文档，不要清理。
 3. 测试只能使用 `scripts/run_tests_isolated.ps1`，不得让测试写入 `data/live`。
-4. 在修复第 13 节的 SQLite 初始化顺序问题之前，不得导入真实卖家账号或真实 Cookie。
+4. SQLite 初始化问题已解决；真实账号导入前仍要验证当前服务显示的 live 数据库绝对路径。
 5. 不得把占位候选 `T`、历史测试工单、synthetic 订单或 mock 回执写成真实经营结果。
 6. 平台动作继续走 `WorkOrder -> Approval -> ExecutionJobQueue -> ActionExecutor`，不得增加第二条直连执行路径。
 7. Pi 是唯一主要自然语言基座；不要重新引入 OpenClaw 作为主运行时。
 8. 闲鱼和跨境电商是两个平行项目，不能合并账号、数据库、候选、审批或执行队列。
+9. `verification_required` 不是普通失败；必须按 `docs/ops/execution-recovery-runbook.md` 核验平台后才能关闭或重试。
+10. 真实回复还必须按 `docs/ops/reply-outbox-runbook.md` 依次完成草稿、审批、入队、发送回执或未知结果核验。
+11. 浏览器失败证据按 `docs/ops/browser-write-evidence-runbook.md` 处理；自动截图不是平台成功回执，提交后未知结果仍禁止直接重试。
+12. 旧审批缺少作用域或发布草稿版本时必须重建；不得手改 JSON 后继续批准、入队、核验关闭或重试。详见 `docs/ops/action-scope-approval-runbook.md`。
 
 ---
 
@@ -79,7 +137,7 @@ Invoke-RestMethod http://127.0.0.1:8788/dashboard/first-run-readiness
 - 当前 Pi provider/model 为 `deepseek/deepseek-v4-flash`，thinking 为 `low`。
 - FastAPI 是业务事实源；Pi 不能自行定义通过、审批或执行结果。
 - Python 专家 Agent 保留在 FastAPI 后面，不再为每个专家启动一个独立 Agent 运行时。
-- `/agents/openclaw/message` 和 `/agents/hermes/message` 仅为历史兼容入口，后续应在 Pi 实盘稳定后退役。
+- `/agents/dispatch`、`/agents/openclaw/message` 和 `/agents/hermes/message` 已以 HTTP `410` 退役。
 
 ### 2.3 商业决策
 
@@ -258,13 +316,12 @@ flowchart TD
 
 ## 6. Pi 运行时现状
 
-### 6.1 13 个允许工具
+### 6.1 12 个允许工具
 
-Pi 实际工具面为 `read` 加 12 个项目工具：
+Pi 实际工具面为 12 个项目 Typed Tools；任意路径 `read` 已经移除：
 
 | 工具 | 作用 | 是否产生外部平台动作 |
 |---|---|---|
-| `read` | 读取项目文档和 playbook | 否 |
 | `xianyu_business_snapshot` | 读取账号、候选、队列、readiness 和下一步 | 否 |
 | `xianyu_market_search` | 有界读取当前市场搜索和可观察价格 | 否 |
 | `xianyu_candidates` | 读取候选、评分和核算 | 否 |
@@ -278,7 +335,7 @@ Pi 实际工具面为 `read` 加 12 个项目工具：
 | `xianyu_prepare_listing` | 创建本地草稿和审批工单 | 否，不发布 |
 | `xianyu_prepare_customer_reply` | 创建回复草稿 | 否，不发送 |
 
-Pi 没有 shell、编辑、写文件、审批、运行队列、发送消息、退款、删除或履约工具。健康接口必须持续返回 `external_action_tools=false`。
+Pi 没有任意路径读取、shell、编辑、写文件、审批、运行队列、发送消息、退款、删除或履约工具。子进程环境只保留模型凭据和系统运行变量；健康接口必须持续返回 `external_action_tools=false`。
 
 ### 6.2 8 个项目 Skills
 
@@ -475,10 +532,12 @@ POST /commercial-launch/start
 | `xianyu_agent/db_manager.py` | SQLite 账号、商品、订单、会话等；当前有初始化顺序缺陷 |
 | `xianyu_agent/resale.py` | 候选、评分、计划、草稿、采购、转售订单 |
 | `xianyu_agent/work_orders.py` | WorkOrder、ActionPlan、Approval |
-| `xianyu_agent/execution_queue.py` | 执行队列和状态 |
+| `xianyu_agent/execution_queue.py` | 执行队列、lease/fencing、未知结果和证据投影 |
 | `xianyu_agent/action_executor.py` | 唯一平台动作执行分发器 |
 | `xianyu_agent/adapters.py` | adapter contract 和实现选择 |
 | `xianyu_agent/browser_adapter.py` | Playwright/CDP 闲鱼浏览器适配 |
+| `xianyu_agent/browser_write_evidence.py` | 浏览器写失败的脱敏 manifest、截图和完整性哈希 |
+| `xianyu_agent/action_scope.py` | 审批账号、目标、参数、版本、时效、幂等键和 action digest 绑定 |
 | `xianyu_agent/browser_control.py` | 专用登录浏览器生命周期 |
 
 ### 9.2 商业证据
@@ -512,6 +571,7 @@ POST /commercial-launch/start
 | `xianyu_agent/opc_dashboard.py` | 每日 cockpit、瓶颈和 next actions |
 | `xianyu_agent/message_intake.py` | 消息 ledger、去重、健康和重试 |
 | `xianyu_agent/message_import_scheduler.py` | 多账号消息导入调度状态 |
+| `xianyu_agent/reply_outbox.py` | 回复草稿、审批、执行、回执和核验的只读生命周期投影 |
 | `web/console.html` | Console 页面结构 |
 | `web/app.js` | 交互、API 调用和渲染 |
 | `web/style.css` | 桌面/移动布局 |
@@ -519,7 +579,7 @@ POST /commercial-launch/start
 | `scripts/stop_xianyu_workflow.ps1` | 仅停止属于本项目的已记录进程 |
 | `scripts/run_tests_isolated.ps1` | 临时 DATA_DIR/DB_PATH 全量测试 |
 
-当前规模参考：64 个顶层 Python 模块、70 个 `test_*.py` 文件、211 个 FastAPI 路由。数量不是完成证明，只用于帮助 Zcode 估算改动影响面。
+当前规模参考：68 个顶层 Python 模块、76 个 `test_*.py` 文件、215 个 FastAPI 路由。数量不是完成证明，只用于帮助 Zcode 估算改动影响面。
 
 ---
 
@@ -590,6 +650,8 @@ POST /approvals/{approval_id}/execute
 GET  /execution-jobs
 POST /execution-jobs/run-next
 POST /execution-jobs/{job_id}/retry
+POST /execution-jobs/{job_id}/verification
+GET  /reply-outbox
 POST /message-intake/envelope
 GET  /message-intake/metrics
 GET  /orders/runtime
@@ -614,6 +676,7 @@ GET  /resale/orders
 - `order_runtime_state.json`
 - `commercial_trials.json`（存在批次时创建）
 - `candidate_evidence/index.json` 和 `candidate_evidence/blobs/...`（上传后创建）
+- `browser_write_evidence/<account_scope>/<UTC-date>/*.json|*.png`（浏览器写失败时创建）
 - `agent_collaboration.jsonl`
 - `events.jsonl`
 - `pi_sessions/*.jsonl`
@@ -695,7 +758,7 @@ SQLite 保存账号 Cookie、账号配置、商品、订单、会话、同步数
 4. OPC dashboard 的 `asset_updates` 明确为 TODO。
 5. 当前 dashboard 报告 `new_candidates_this_week=1`，但唯一候选创建于 2026-08-02；需要检查周窗口计算或旧数据时间解析。
 6. README 有一些历史营销式能力描述，不能作为实盘验收依据。
-7. `legacy_openclaw_available=true` 仍存在，应在 Pi 真实 Alpha 稳定后退役，而不是现在冒险删除。
+7. `legacy_openclaw_available=false`，通用 dispatch、OpenClaw 和 Hermes HTTP 路由已退役；剩余历史文件只作为以后清理项。
 
 ### P3：首单后再做
 
@@ -744,7 +807,7 @@ SQLite 保存账号 Cookie、账号配置、商品、订单、会话、同步数
 2. 检查 `.gitignore`，明确排除 `.env`、`data/`、浏览器 profile、日志、PID 和临时 Playwright 状态。
 3. 选择性保留真正需要的 QA 截图，不提交无意义运行缓存。
 4. 按功能域分组检查并提交；每组提交前运行相关测试。
-5. 最后运行 926+ 全量套件和静态检查。
+5. 最后运行 983+ 全量套件和静态检查。
 
 验收：
 
@@ -767,13 +830,14 @@ SQLite 保存账号 Cookie、账号配置、商品、订单、会话、同步数
 
 ### 14.4 工作包 D：真实一品启动包
 
-1. 操作者选择一个真实 SKU 和供应商。
-2. Zcode 不代填事实，只修复验证或 UI 问题。
-3. 五类文件逐一上传，验证 active、候选绑定和 hash。
-4. 保存事实后确认旧决策自动失效。
-5. 记录目标账号+类目条款并重算。
-6. Agent review 后由操作者 approve。
-7. 达到 12/12。
+1. 服务关闭时先运行 `scripts/commercial_alpha_intake.py init`，为一个真实 SKU 和供应商建立独立资料目录。
+2. 填入商品事实、五类当前证据和至少一张授权图片，运行 `validate` 直到 `bundle_ready=true`、投影 `11/12` 且只缺 `manual_decision_current`。
+3. Zcode 不代填事实；离线投影不算候选、存档或批准，只用于在登录前消除资料错误。
+4. 创建正式候选，五类原文件逐一上传，验证 active、候选绑定和 hash 与预检包一致。
+5. 保存事实后确认旧决策自动失效。
+6. 记录目标账号+类目条款并重算。
+7. Agent review 后由操作者 approve。
+8. 达到 12/12。
 
 ### 14.5 工作包 E：20/20 Day-0 准备
 
@@ -791,6 +855,8 @@ Phase 29 完成条件：数据路径正确、Git 基线可恢复、真实账号 
 
 ### Phase 30：首个真实发布
 
+工程前置已于 2026-09-02 完成首轮：发布、修改、回复、删除和发货的 BrowserAdapter 失败会保存每账号哈希隔离的脱敏证据包；提交后断连仍由 `verification_required` 阻止重复写入。它只证明本地故障处理，不满足真实发布完成条件。
+
 - 从 trial 生成一个 listing draft。
 - 操作者逐字段核对并审批。
 - 队列执行一次，保存真实 external item ID。
@@ -800,6 +866,8 @@ Phase 29 完成条件：数据路径正确、Git 基线可恢复、真实账号 
 完成条件：一个真实发布 ID、批准快照、execution evidence 和平台确认全部强关联。
 
 ### Phase 31：流量和询盘闭环
+
+工程前置已于 2026-09-02 完成首轮：Reply Outbox、强绑定幂等键、冲突检测、回执脱敏和未知发送结果核验已有 API、控制台、运行手册及测试。它只证明本地代码闭环，不满足本阶段的真实业务完成条件。
 
 - 建立第一份浏览/想要基线。
 - 至少观察一个预设窗口，不提前修改多个变量。
@@ -891,7 +959,7 @@ Invoke-RestMethod 'http://127.0.0.1:8788/agents/pi/status?active=false'
 
 - Git 有可恢复基线。
 - SQLite 和 JSON 均位于明确的 live 数据边界。
-- 926+ 全量测试、静态检查和 UI 回归通过。
+- 983+ 全量测试、静态检查和 UI 回归通过。
 - 服务和 Pi 可稳定启动，慢握手可解释且不重复进程。
 - 无测试污染真实数据。
 
@@ -954,7 +1022,7 @@ Invoke-RestMethod 'http://127.0.0.1:8788/agents/pi/status?active=false'
 ## 20. 必读文档顺序
 
 1. `ZCODE_HANDOFF.md`（本文件）
-2. `PROJECT_STATUS.md`（2026-08-26 快照，注意可能落后于本文件）
+2. `PROJECT_STATUS.md`（2026-08-31 当前状态）
 3. `docs/PROJECT_PLAN.md`（完整历史和 Phase 1-28）
 4. `docs/ops/commercial-alpha-runbook.md`（真实业务顺序）
 5. `docs/ops/xianyu/candidate-evidence-archive.md`（五类证据 SOP）
@@ -964,8 +1032,10 @@ Invoke-RestMethod 'http://127.0.0.1:8788/agents/pi/status?active=false'
 9. `docs/research/github-reference-projects.md`（GitHub 学习路线）
 10. `docs/research/github-and-pi-ecosystem-review-2026-08-30.md`（最新 GitHub/Pi 生态决策）
 11. `docs/PI_SKILL_PROVENANCE.md`（Skills 与 Packages 来源）
+12. `docs/strategy/GENERAL_MANAGER_BLUEPRINT_2026-08-30.md`（总经理目标架构与 12 个月路线）
+13. `docs/ops/commercial-alpha-intake-bundle.md`（账号登录前的一品资料预检）
 
-事实源优先级：当前只读 API/平台回执 > 当前 live 数据 > 本交接文件 > PROJECT_STATUS > PROJECT_PLAN 历史章节 > README 功能描述。
+事实源优先级：当前平台回执/只读 API > 当前 live 数据 > `PROJECT_STATUS.md` > 本文件的 2026-08-31 增量 > 本文件旧章节 > PROJECT_PLAN 历史章节 > README 功能描述。
 
 ---
 
@@ -973,8 +1043,8 @@ Invoke-RestMethod 'http://127.0.0.1:8788/agents/pi/status?active=false'
 
 项目现在并不缺更多 Agent，也不缺更多页面。核心商业状态机、证据门禁、审批队列、Pi 工具和运营界面已经相当完整。当前真正阻止落地的是三件事：
 
-1. 先把 SQLite 数据边界和 Git 基线修稳。
-2. 让操作者提供一个真实账号和一个真实 SKU 的可验证输入。
+1. SQLite 数据边界、Git 基线和旧直连执行路径已经完成工程收口。
+2. 系统现可先离线校验一个真实 SKU 的资料；随后仍需要操作者提供真实账号，并把同一包文件正式归档。
 3. 严格跑一次从 12/12、20/20 到发布、询盘、订单和实际利润的单商品闭环。
 
-Zcode 下一步不要继续横向增加功能。先完成 Phase 29，把系统从“本地技术 READY”推进到“一个真实账号和商品可以启动 Commercial Alpha”。
+Zcode 下一步不要继续横向增加功能。先完成 Phase 29C-E，把系统从“代码 READY、运行待重验”推进到“一个真实账号和商品可以启动 Commercial Alpha”。
