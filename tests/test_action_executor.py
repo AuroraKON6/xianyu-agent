@@ -30,6 +30,7 @@ class ActionExecutorTests(unittest.TestCase):
 
     def test_publish_listing_handler_reads_draft_and_calls_adapter(self):
         from xianyu_agent.action_executor import ActionExecutor
+        from xianyu_agent.action_scope import listing_draft_revision
 
         executor = ActionExecutor()
 
@@ -83,7 +84,11 @@ class ActionExecutorTests(unittest.TestCase):
 
             approval = {
                 "action": "publish_listing",
-                "payload": {"draft_id": "draft_abc", "cookie_id": "seller_b"},
+                "payload": {
+                    "draft_id": "draft_abc",
+                    "cookie_id": "seller_b",
+                    "expected_draft_revision": listing_draft_revision(draft_data),
+                },
                 "draft_snapshot": {},
             }
 

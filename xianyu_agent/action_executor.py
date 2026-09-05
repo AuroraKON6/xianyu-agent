@@ -7,6 +7,8 @@ import math
 from pathlib import Path
 from typing import Any, Callable, Dict
 
+from .action_scope import listing_draft_revision
+
 logger = logging.getLogger(__name__)
 
 # Type for a handler: (approval, context) -> dict or coroutine
@@ -111,6 +113,36 @@ async def handle_publish_listing(approval: Dict[str, Any], context: Dict[str, An
         return {"ok": False, "action": action, "draft_id": draft_id, "error": f"Draft not found: {draft_id}"}
 
     draft_data = json.loads(draft_path.read_text(encoding="utf-8"))
+    expected_draft_revision = str(payload.get("expected_draft_revision") or "")
+    if not expected_draft_revision:
+        return {
+            "ok": False,
+            "action": action,
+            "draft_id": draft_id,
+            "error": "Listing approval has no expected draft revision",
+            "scope_validation": {"ok": False, "code": "draft_revision_missing"},
+            "operator_next_action": "recreate_listing_approval",
+            "evidence": {
+                "detected_blocker": "draft_revision_missing",
+                "write_attempted": False,
+                "operator_next_action": "recreate_listing_approval",
+            },
+        }
+    actual_draft_revision = listing_draft_revision(draft_data)
+    if expected_draft_revision and expected_draft_revision != actual_draft_revision:
+        return {
+            "ok": False,
+            "action": action,
+            "draft_id": draft_id,
+            "error": "Listing draft changed after approval",
+            "scope_validation": {"ok": False, "code": "draft_revision_mismatch"},
+            "operator_next_action": "recreate_listing_approval",
+            "evidence": {
+                "detected_blocker": "draft_revision_mismatch",
+                "write_attempted": False,
+                "operator_next_action": "recreate_listing_approval",
+            },
+        }
 
     # Backfill draft_snapshot if missing
     if not approval.get("draft_snapshot"):
@@ -149,11 +181,17 @@ async def handle_publish_listing(approval: Dict[str, Any], context: Dict[str, An
         raw_text=draft_data.get("raw_text", ""),
     )
 
-    result = await adapter.publish_listing(draft, cookie_id=cookie_id)
+    try:
+        result = await adapter.publish_listing(draft, cookie_id=cookie_id)
+    except Exception as exc:
+        logger.exception("publish_listing adapter raised for draft '%s'", draft_id)
+        return _unknown_external_result(action, exc, draft_id=draft_id, cookie_id=cookie_id)
     if result.ok:
         workflow.storage.save_publish_result(result, draft)
 
-    return {
+    result_raw = getattr(result, "raw", {})
+    result_raw = dict(result_raw or {}) if isinstance(result_raw, dict) else {}
+    response = {
         "ok": result.ok,
         "action": action,
         "draft_id": draft_id,
@@ -163,8 +201,21 @@ async def handle_publish_listing(approval: Dict[str, Any], context: Dict[str, An
             "external_id": result.external_id,
             "adapter": result.adapter,
             "message": result.message,
+            "raw": result_raw,
         },
     }
+    if not result.ok and (
+        result_raw.get("outcome_uncertain") or result_raw.get("verification_required")
+    ):
+        response.update({
+            "verification_required": True,
+            "outcome_uncertain": True,
+            "verification_reason": str(
+                result_raw.get("verification_reason") or "publish_result_not_confirmed"
+            ),
+            "operator_next_action": "verify_platform_before_retry",
+        })
+    return response
 
 
 async def handle_edit_listing(approval: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
@@ -238,12 +289,22 @@ async def handle_edit_listing(approval: Dict[str, Any], context: Dict[str, Any])
     adapter = getattr(workflow, "adapter", None) if workflow is not None else None
     if adapter is None:
         return {"ok": False, "action": action, "error": "adapter not available"}
-    if hasattr(adapter, "polish_listing"):
-        result = adapter.polish_listing(item_id, {variable: clean_value}, cookie_id=cookie_id)
-    else:
-        result = adapter.polish(item_id, {variable: clean_value})
-    if asyncio.iscoroutine(result) or asyncio.isfuture(result):
-        result = await result
+    try:
+        if hasattr(adapter, "polish_listing"):
+            result = adapter.polish_listing(item_id, {variable: clean_value}, cookie_id=cookie_id)
+        else:
+            result = adapter.polish(item_id, {variable: clean_value})
+        if asyncio.iscoroutine(result) or asyncio.isfuture(result):
+            result = await result
+    except Exception as exc:
+        logger.exception("edit_listing adapter raised for item '%s'", item_id)
+        return _unknown_external_result(
+            action,
+            exc,
+            item_id=item_id,
+            cookie_id=cookie_id,
+            variable=variable,
+        )
     result = dict(result or {})
     submitted = bool(result.get("ok"))
     return {
@@ -283,7 +344,7 @@ async def handle_fulfill_order(approval: Dict[str, Any], context: Dict[str, Any]
         result = workflow.fulfill_order(payload)
     except Exception as exc:
         logger.exception("fulfill_order handler raised for order '%s'", order_id)
-        return {"ok": False, "action": action, "order_id": order_id, "error": str(exc)}
+        return _unknown_external_result(action, exc, order_id=order_id, cookie_id=cookie_id)
 
     return {
         "ok": result.get("ok", False),
@@ -291,7 +352,9 @@ async def handle_fulfill_order(approval: Dict[str, Any], context: Dict[str, Any]
         "order_id": order_id,
         "cookie_id": cookie_id,
         "fulfillment_result": result,
-        "error": None if result.get("ok") else result.get("message", "fulfill_order failed"),
+        "error": None if result.get("ok") else str(
+            result.get("error") or result.get("message") or "fulfill_order failed"
+        ),
     }
 
 
@@ -327,11 +390,55 @@ async def _send_message_action(
     if adapter is None:
         return {"ok": False, "action": action, "buyer_id": buyer_id, "error": "adapter not available"}
 
+    reply_idempotency_key = str(payload.get("reply_idempotency_key") or "")
+    reply_action_digest = str(payload.get("reply_action_digest") or "")
+    if reply_action_digest:
+        from .reply_outbox import build_reply_metadata
+
+        expected = build_reply_metadata(
+            action=action,
+            cookie_id=str(cookie_id or ""),
+            buyer_id=str(buyer_id or ""),
+            message=str(message or ""),
+            chat_id=str(payload.get("chat_id") or ""),
+            item_id=str(payload.get("item_id") or ""),
+            order_id=str(payload.get("order_id") or ""),
+            dispute_id=str(dispute_id or ""),
+            source=str(payload.get("reply_source") or payload.get("source") or "manual"),
+            source_event_key=str(payload.get("reply_source_event_key") or ""),
+            source_message_id=str(payload.get("reply_source_message_id") or ""),
+            reply_revision=payload.get("reply_revision") or 1,
+            idempotency_key=reply_idempotency_key,
+        )
+        if expected["reply_action_digest"] != reply_action_digest:
+            return {
+                "ok": False,
+                "action": action,
+                "buyer_id": buyer_id,
+                "error": "reply action digest mismatch",
+                "operator_next_action": "recreate_reply_approval",
+            }
+        claim = context.get("execution_claim") if isinstance(context.get("execution_claim"), dict) else {}
+        if claim and str(claim.get("idempotency_key") or "") != reply_idempotency_key:
+            return {
+                "ok": False,
+                "action": action,
+                "buyer_id": buyer_id,
+                "error": "reply execution idempotency key mismatch",
+                "operator_next_action": "inspect_execution_claim",
+            }
+
     try:
         result = await adapter.send_message(buyer_id=buyer_id, message=message, cookie_id=cookie_id)
     except Exception as exc:
         logger.exception("%s handler raised for buyer '%s'", action, buyer_id)
-        return {"ok": False, "action": action, "buyer_id": buyer_id, "error": str(exc)}
+        return _unknown_external_result(
+            action,
+            exc,
+            buyer_id=buyer_id,
+            cookie_id=cookie_id,
+            dispute_id=dispute_id,
+        )
 
     response = {
         "ok": result.get("ok", False),
@@ -339,6 +446,8 @@ async def _send_message_action(
         "buyer_id": buyer_id,
         "send_result": result,
         "error": None if result.get("ok") else result.get("error", f"{action} failed"),
+        "reply_idempotency_key": reply_idempotency_key,
+        "reply_action_digest": reply_action_digest,
     }
     if dispute_id:
         response["dispute_id"] = dispute_id
@@ -377,7 +486,7 @@ async def handle_delete_item(approval: Dict[str, Any], context: Dict[str, Any]) 
         result = await _maybe_await(result)
     except Exception as exc:
         logger.exception("delete_item handler raised for item '%s'", item_id)
-        return {"ok": False, "action": action, "item_id": item_id, "error": str(exc)}
+        return _unknown_external_result(action, exc, item_id=item_id, cookie_id=cookie_id)
 
     _append_workflow_event(workflow, "listing.deleted", {"item_id": item_id, "result": result})
     return {
@@ -428,10 +537,10 @@ async def handle_refund_order(approval: Dict[str, Any], context: Dict[str, Any])
             result = await _maybe_await(result)
         except Exception as exc:
             logger.exception("refund_order handler raised for order '%s'", order_id)
-            return {"ok": False, "action": action, "order_id": order_id, "error": str(exc)}
+            return _unknown_external_result(action, exc, order_id=order_id)
     except Exception as exc:
         logger.exception("refund_order handler raised for order '%s'", order_id)
-        return {"ok": False, "action": action, "order_id": order_id, "error": str(exc)}
+        return _unknown_external_result(action, exc, order_id=order_id)
 
     return {
         "ok": result.get("ok", False),
@@ -506,6 +615,24 @@ def _make_stub(action: str) -> ActionHandler:
             "error": f"Action handler not implemented: {action}",
         }
     return _stub
+
+
+def _unknown_external_result(action: str, exc: Exception, **fields: Any) -> Dict[str, Any]:
+    result = {
+        "ok": False,
+        "action": action,
+        "error": str(exc),
+        "verification_required": True,
+        "outcome_uncertain": True,
+        "verification_reason": "external_adapter_exception",
+        "operator_next_action": "verify_platform_before_retry",
+        "evidence": {
+            "detected_blocker": "external_result_unknown",
+            "operator_next_action": "verify_platform_before_retry",
+        },
+    }
+    result.update({key: value for key, value in fields.items() if value not in ("", None)})
+    return result
 
 
 async def _maybe_await(value: Any) -> Any:

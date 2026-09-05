@@ -75,6 +75,9 @@ def build_account_ops_queues(
         if status in ACTIVE_EXECUTION_STATUSES:
             bucket["queues"]["queued_execution"] += 1
             _append_recent(bucket, "execution_jobs", _job_summary(job))
+        elif status == "verification_required":
+            bucket["queues"]["verification_required"] += 1
+            _append_recent(bucket, "execution_jobs", _job_summary(job))
         elif status == "failed":
             bucket["queues"]["failed_jobs"] += 1
             _append_recent(bucket, "execution_jobs", _job_summary(job))
@@ -137,6 +140,7 @@ def _new_bucket(cookie_id: str, *, enabled: bool, sync_capabilities: Dict[str, A
         "queues": {
             "pending_approvals": 0,
             "queued_execution": 0,
+            "verification_required": 0,
             "failed_jobs": 0,
             "pending_reply_drafts": 0,
             "items": 0,
@@ -322,6 +326,16 @@ def _next_actions(bucket: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "priority": "high",
                 "title": "账号未启用",
                 "detail": "先启用账号或确认它只作为备用账号。",
+            }
+        )
+    if queues.get("verification_required", 0):
+        actions.append(
+            {
+                "kind": "verification_required",
+                "priority": "high",
+                "title": "核对平台实际结果",
+                "detail": "先在闲鱼确认动作是否发生，再记录已执行或未执行；不要直接重试。",
+                "count": int(queues.get("verification_required") or 0),
             }
         )
     if queues.get("failed_jobs", 0):

@@ -182,6 +182,7 @@ class OPCDashboard:
             "pending_execution": 0,
             "pending_reply_drafts": 0,
             "failed_jobs": 0,
+            "verification_required": 0,
             "new_discoveries": 0,
         }
 
@@ -204,6 +205,10 @@ class OPCDashboard:
                 jobs = self._exec_queue.list_jobs(limit=500)
                 result["pending_execution"] = _safe_count(jobs, lambda j: j.get("status") == "queued")
                 result["failed_jobs"] = _safe_count(jobs, lambda j: j.get("status") == "failed")
+                result["verification_required"] = _safe_count(
+                    jobs,
+                    lambda j: j.get("status") == "verification_required",
+                )
             except Exception:
                 source_notes.append("execution_queue: 数据读取失败")
         else:
@@ -504,6 +509,8 @@ class OPCDashboard:
         """Summarize failed execution jobs with captured blocker evidence."""
         result = {
             "failed_with_blocker": 0,
+            "verification_with_evidence": 0,
+            "artifact_count": 0,
             "recent_blockers": [],
         }
         if self._exec_queue is None:
@@ -515,19 +522,31 @@ class OPCDashboard:
             source_notes.append(f"execution_evidence: read failed ({exc})")
             return result
         blockers = []
+        verification_with_evidence = 0
+        artifact_count = 0
         for job in jobs:
             evidence = job.get("evidence") if isinstance(job.get("evidence"), dict) else {}
             blocker = str(evidence.get("detected_blocker") or "").strip()
-            if job.get("status") == "failed" and blocker:
+            has_artifact = bool(evidence.get("after_screenshot") or evidence.get("evidence_manifest"))
+            if has_artifact:
+                artifact_count += 1
+            if job.get("status") == "verification_required" and has_artifact:
+                verification_with_evidence += 1
+            if job.get("status") in {"failed", "verification_required"} and blocker:
                 blockers.append(
                     {
                         "job_id": str(job.get("job_id") or ""),
                         "action": str(job.get("action") or ""),
+                        "status": str(job.get("status") or ""),
                         "detected_blocker": blocker,
                         "operator_next_action": str(job.get("operator_next_action") or ""),
+                        "evidence_manifest": str(evidence.get("evidence_manifest") or ""),
+                        "after_screenshot": str(evidence.get("after_screenshot") or ""),
                     }
                 )
-        result["failed_with_blocker"] = len(blockers)
+        result["failed_with_blocker"] = sum(1 for item in blockers if item["status"] == "failed")
+        result["verification_with_evidence"] = verification_with_evidence
+        result["artifact_count"] = artifact_count
         result["recent_blockers"] = blockers[-5:]
         return result
 
@@ -556,6 +575,7 @@ class OPCDashboard:
 
         pending_approvals = int(today_actions.get("pending_approvals") or 0)
         failed_jobs = int(today_actions.get("failed_jobs") or 0)
+        verification_required = int(today_actions.get("verification_required") or 0)
         pending_replies = int(today_actions.get("pending_reply_drafts") or 0)
         pending_execution = int(today_actions.get("pending_execution") or 0)
         new_discoveries = int(today_actions.get("new_discoveries") or 0)
@@ -575,6 +595,13 @@ class OPCDashboard:
 
         if pending_approvals:
             add("high", "pending_approvals", "Review pending approvals", count=pending_approvals)
+        if verification_required:
+            add(
+                "high",
+                "verification_required",
+                "Verify unknown platform outcomes before retrying",
+                count=verification_required,
+            )
         if failed_jobs:
             add("high", "failed_jobs", "Inspect failed execution jobs", count=failed_jobs)
         if failed_with_blocker:
@@ -774,6 +801,7 @@ class OPCDashboard:
             f"| 待审批 | {actions.get('pending_approvals', 0)} |",
             f"| 待执行 | {actions.get('pending_execution', 0)} |",
             f"| 待回复草稿 | {actions.get('pending_reply_drafts', 0)} |",
+            f"| 待核验外部结果 | {actions.get('verification_required', 0)} |",
             f"| 失败任务 | {actions.get('failed_jobs', 0)} |",
             f"| 今日新发现 | {actions.get('new_discoveries', 0)} |",
             "",
@@ -877,6 +905,7 @@ class OPCDashboard:
             f"| pending_approvals | {actions.get('pending_approvals', 0)} |",
             f"| pending_execution | {actions.get('pending_execution', 0)} |",
             f"| pending_reply_drafts | {actions.get('pending_reply_drafts', 0)} |",
+            f"| verification_required | {actions.get('verification_required', 0)} |",
             f"| failed_jobs | {actions.get('failed_jobs', 0)} |",
             f"| new_discoveries | {actions.get('new_discoveries', 0)} |",
             "",
@@ -892,8 +921,8 @@ class OPCDashboard:
             "",
             "## Account Queues",
             "",
-            "| Account | Approvals | Execution | Failed | Replies | Items | Orders | sync_freshness |",
-            "|---|---:|---:|---:|---:|---:|---:|---|",
+            "| Account | Approvals | Execution | Verify | Failed | Replies | Items | Orders | sync_freshness |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
 
         if accounts:
@@ -904,6 +933,7 @@ class OPCDashboard:
                     + str(account.get("cookie_id") or "-")
                     + f" | {queues.get('pending_approvals', 0)}"
                     + f" | {queues.get('queued_execution', 0)}"
+                    + f" | {queues.get('verification_required', 0)}"
                     + f" | {queues.get('failed_jobs', 0)}"
                     + f" | {queues.get('pending_reply_drafts', 0)}"
                     + f" | {queues.get('items', 0)}"
@@ -911,7 +941,7 @@ class OPCDashboard:
                     + f" | {OPCDashboard._format_sync_freshness(account.get('sync_freshness') or {})} |"
                 )
         else:
-            lines.append("| none | 0 | 0 | 0 | 0 | 0 | 0 | none |")
+            lines.append("| none | 0 | 0 | 0 | 0 | 0 | 0 | 0 | none |")
 
         unassigned_queues = unassigned.get("queues") if isinstance(unassigned, dict) else {}
         if unassigned_queues:
@@ -921,6 +951,7 @@ class OPCDashboard:
                 "",
                 f"- pending_approvals: {unassigned_queues.get('pending_approvals', 0)}",
                 f"- queued_execution: {unassigned_queues.get('queued_execution', 0)}",
+                f"- verification_required: {unassigned_queues.get('verification_required', 0)}",
                 f"- pending_reply_drafts: {unassigned_queues.get('pending_reply_drafts', 0)}",
             ])
 

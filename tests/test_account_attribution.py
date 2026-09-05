@@ -170,6 +170,8 @@ class AccountAttributionTests(unittest.TestCase):
                 }
             ],
         )
+        approval_id = manager.get_work_order(work_order["work_order_id"])["approvals"][0]["approval_id"]
+        manager.decide_approval(approval_id, "approved", "legacy approval before account claim")
 
         preview = repair_work_order_account_attribution(
             work_order_manager=manager,
@@ -204,6 +206,12 @@ class AccountAttributionTests(unittest.TestCase):
         self.assertEqual(stored_after_apply["context"]["cookie_id"], "seller_auto")
         self.assertEqual(approval["payload"]["cookie_id"], "seller_auto")
         self.assertEqual(approval["draft_snapshot"]["cookie_id"], "seller_auto")
+        self.assertEqual(approval["status"], "pending")
+        self.assertEqual(approval["approved_action_digest"], "")
+        self.assertEqual(approval["scope_envelope"]["cookie_id"], "seller_auto")
+        self.assertTrue(approval["scope_envelope"]["action_digest"])
+        self.assertEqual(stored_after_apply["status"], "needs_approval")
+        self.assertEqual(stored_after_apply["action_plan"]["status"], "needs_approval")
 
     def test_repair_account_attribution_skips_ambiguous_accounts_without_target(self):
         from xianyu_agent.account_attribution import repair_work_order_account_attribution

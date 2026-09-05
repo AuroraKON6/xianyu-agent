@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import quote_plus, unquote_plus
 
+from .browser_write_evidence import capture_browser_write_evidence
 from .models import ListingDraft, Order, PublishResult
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,30 @@ class BrowserAdapter:
         self._sync_loop: Optional[asyncio.AbstractEventLoop] = None
         self._sync_thread: Optional[threading.Thread] = None
         self._sync_lock = threading.Lock()
+
+    async def _capture_write_failure(
+        self,
+        page: Any,
+        *,
+        action: str,
+        cookie_id: str,
+        stage: str,
+        write_attempted: bool,
+        error: Any = "",
+        blocker: str = "",
+        target_ref: str = "",
+    ) -> Dict[str, Any]:
+        return await capture_browser_write_evidence(
+            page,
+            data_dir=Path(self.settings.data_dir),
+            action=action,
+            cookie_id=cookie_id,
+            stage=stage,
+            write_attempted=write_attempted,
+            error=str(error or ""),
+            blocker=blocker,
+            target_ref=target_ref,
+        )
 
     # ============================================================
     # ListingAdapter sync contract
@@ -1009,16 +1034,68 @@ class BrowserAdapter:
         - <INPUT> placeholder=搜索地点 - location
         - Radio buttons for shipping options
         """
-        page = await self._ensure_session(cookie_id)
+        try:
+            page = await self._ensure_session(cookie_id)
+        except Exception as exc:
+            evidence = await self._capture_write_failure(
+                None,
+                action="publish_listing",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error=exc,
+                blocker="browser_session_start_failed",
+                target_ref=draft.id,
+            )
+            return PublishResult(
+                ok=False,
+                adapter=self.name,
+                listing_id=draft.id,
+                message=evidence.get("error_summary") or "Browser session start failed",
+                raw={"evidence": evidence},
+            )
         if not page:
-            return PublishResult(ok=False, adapter=self.name, listing_id=draft.id, message="No browser")
+            evidence = await self._capture_write_failure(
+                None,
+                action="publish_listing",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error="No browser",
+                blocker="browser_unavailable",
+                target_ref=draft.id,
+            )
+            return PublishResult(
+                ok=False,
+                adapter=self.name,
+                listing_id=draft.id,
+                message="No browser",
+                raw={"evidence": evidence},
+            )
 
+        submit_attempted = False
         try:
             await page.goto(URL["publish"], wait_until="domcontentloaded", timeout=30000)
             await asyncio.sleep(3)
 
             if "login" in page.url.lower():
-                return PublishResult(ok=False, adapter=self.name, listing_id=draft.id, message="Not logged in")
+                evidence = await self._capture_write_failure(
+                    page,
+                    action="publish_listing",
+                    cookie_id=cookie_id,
+                    stage="session_check",
+                    write_attempted=False,
+                    error="Not logged in",
+                    blocker="login_required",
+                    target_ref=draft.id,
+                )
+                return PublishResult(
+                    ok=False,
+                    adapter=self.name,
+                    listing_id=draft.id,
+                    message="Not logged in",
+                    raw={"evidence": evidence},
+                )
 
             # Fill description (contenteditable div - title + description combined)
             desc_text = draft.title
@@ -1065,41 +1142,143 @@ class BrowserAdapter:
             if pre_submit_result and not pre_submit_result.ok:
                 codes = {item.get("code") for item in pre_submit_result.raw.get("blockers", [])}
                 if "unsupported_web_category" in codes:
+                    pre_submit_result.raw["evidence"] = await self._capture_write_failure(
+                        page,
+                        action="publish_listing",
+                        cookie_id=cookie_id,
+                        stage="pre_submit",
+                        write_attempted=False,
+                        error=pre_submit_result.message,
+                        blocker="unsupported_web_category",
+                        target_ref=draft.id,
+                    )
                     return pre_submit_result
 
             # Submit
             btn = page.locator('button:has-text("发布"), [class*="submit"]').first
             if await btn.count() > 0:
+                submit_attempted = True
                 await btn.click()
                 timeout_seconds = int(getattr(self.settings, "browser_publish_confirm_timeout", 12) or 12)
                 for _ in range(max(1, timeout_seconds)):
                     await asyncio.sleep(1)
                     result = await self._publish_result_from_current_page(page, draft)
                     if result:
+                        if not result.ok:
+                            result.raw = dict(result.raw or {})
+                            result.raw.update({
+                                "submit_attempted": True,
+                                "outcome_uncertain": True,
+                                "verification_required": True,
+                                "verification_reason": "publish_result_not_confirmed",
+                            })
+                            result.raw["evidence"] = await self._capture_write_failure(
+                                page,
+                                action="publish_listing",
+                                cookie_id=cookie_id,
+                                stage="post_submit",
+                                write_attempted=True,
+                                error=result.message,
+                                blocker="publish_result_not_confirmed",
+                                target_ref=draft.id,
+                            )
                         return result
 
                 current_url = getattr(page, "url", "") or ""
                 if "/publish" in current_url.lower():
                     blockers = await self._collect_publish_blockers(page)
+                    evidence = await self._capture_write_failure(
+                        page,
+                        action="publish_listing",
+                        cookie_id=cookie_id,
+                        stage="post_submit",
+                        write_attempted=True,
+                        error=self._format_publish_blockers(blockers),
+                        blocker="publish_result_not_confirmed",
+                        target_ref=draft.id,
+                    )
                     return PublishResult(
                         ok=False,
                         adapter=self.name,
                         listing_id=draft.id,
                         message=self._format_publish_blockers(blockers),
-                        raw={"current_url": current_url, "blockers": blockers},
+                        raw={
+                            "current_url": current_url,
+                            "blockers": blockers,
+                            "submit_attempted": True,
+                            "outcome_uncertain": True,
+                            "verification_required": True,
+                            "verification_reason": "publish_result_not_confirmed",
+                            "evidence": evidence,
+                        },
                     )
 
+                evidence = await self._capture_write_failure(
+                    page,
+                    action="publish_listing",
+                    cookie_id=cookie_id,
+                    stage="post_submit",
+                    write_attempted=True,
+                    error="Publish not confirmed; item id was not detected",
+                    blocker="publish_result_not_confirmed",
+                    target_ref=draft.id,
+                )
                 return PublishResult(
                     ok=False,
                     adapter=self.name,
                     listing_id=draft.id,
                     message="Publish not confirmed; item id was not detected",
-                    raw={"current_url": current_url},
+                    raw={
+                        "current_url": current_url,
+                        "submit_attempted": True,
+                        "outcome_uncertain": True,
+                        "verification_required": True,
+                        "verification_reason": "publish_result_not_confirmed",
+                        "evidence": evidence,
+                    },
                 )
 
-            return PublishResult(ok=False, adapter=self.name, listing_id=draft.id, message="Publish failed")
+            evidence = await self._capture_write_failure(
+                page,
+                action="publish_listing",
+                cookie_id=cookie_id,
+                stage="submit_control",
+                write_attempted=False,
+                error="Publish button not found",
+                blocker="publish_button_not_found",
+                target_ref=draft.id,
+            )
+            return PublishResult(
+                ok=False,
+                adapter=self.name,
+                listing_id=draft.id,
+                message="Publish failed",
+                raw={"evidence": evidence},
+            )
         except Exception as e:
-            return PublishResult(ok=False, adapter=self.name, listing_id=draft.id, message=str(e))
+            evidence = await self._capture_write_failure(
+                page,
+                action="publish_listing",
+                cookie_id=cookie_id,
+                stage="post_submit_exception" if submit_attempted else "pre_submit_exception",
+                write_attempted=submit_attempted,
+                error=e,
+                blocker="publish_adapter_exception",
+                target_ref=draft.id,
+            )
+            return PublishResult(
+                ok=False,
+                adapter=self.name,
+                listing_id=draft.id,
+                message=evidence.get("error_summary") or "Browser publish failed",
+                raw={
+                    "submit_attempted": submit_attempted,
+                    "outcome_uncertain": submit_attempted,
+                    "verification_required": submit_attempted,
+                    "verification_reason": "publish_adapter_exception" if submit_attempted else "",
+                    "evidence": evidence,
+                },
+            )
 
     # ============================================================
     # Polish listing
@@ -1117,10 +1296,34 @@ class BrowserAdapter:
                 "error": "browser edit requires exactly one supported variable",
             }
         variable = change_keys[0]
-        page = await self._ensure_session(cookie_id)
+        try:
+            page = await self._ensure_session(cookie_id)
+        except Exception as exc:
+            evidence = await self._capture_write_failure(
+                None,
+                action="edit_listing",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error=exc,
+                blocker="browser_session_start_failed",
+                target_ref=external_id,
+            )
+            return {"ok": False, "error": evidence.get("error_summary"), "evidence": evidence}
         if not page:
-            return {"ok": False, "error": "No browser"}
+            evidence = await self._capture_write_failure(
+                None,
+                action="edit_listing",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error="No browser",
+                blocker="browser_unavailable",
+                target_ref=external_id,
+            )
+            return {"ok": False, "error": "No browser", "evidence": evidence}
 
+        write_attempted = False
         try:
             url = URL["item"].format(id=external_id)
             await page.goto(url, wait_until="networkidle", timeout=30000)
@@ -1144,16 +1347,28 @@ class BrowserAdapter:
                         changed = True
 
                 if not changed:
+                    evidence = await self._capture_write_failure(
+                        page,
+                        action="edit_listing",
+                        cookie_id=cookie_id,
+                        stage="edit_input",
+                        write_attempted=False,
+                        error=f"{variable} input not found",
+                        blocker="edit_input_not_found",
+                        target_ref=external_id,
+                    )
                     return {
                         "ok": False,
                         "external_id": external_id,
                         "variable": variable,
                         "page_url": page.url,
                         "error": f"{variable} input not found",
+                        "evidence": evidence,
                     }
 
                 save = page.locator('button:has-text("保存"), button:has-text("确认")').first
                 if await save.count() > 0:
+                    write_attempted = True
                     await save.click()
                     await asyncio.sleep(2)
                     return {
@@ -1166,15 +1381,43 @@ class BrowserAdapter:
                         "operator_next_action": "sync_listing_and_activate_experiment",
                     }
 
+            evidence = await self._capture_write_failure(
+                page,
+                action="edit_listing",
+                cookie_id=cookie_id,
+                stage="edit_control",
+                write_attempted=False,
+                error="Edit or save control not found",
+                blocker="edit_control_not_found",
+                target_ref=external_id,
+            )
             return {
                 "ok": False,
                 "external_id": external_id,
                 "variable": variable,
                 "page_url": page.url,
                 "message": "Edit button not found",
+                "evidence": evidence,
             }
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            evidence = await self._capture_write_failure(
+                page,
+                action="edit_listing",
+                cookie_id=cookie_id,
+                stage="post_submit_exception" if write_attempted else "pre_submit_exception",
+                write_attempted=write_attempted,
+                error=e,
+                blocker="listing_edit_adapter_exception",
+                target_ref=external_id,
+            )
+            return {
+                "ok": False,
+                "error": evidence.get("error_summary") or "Browser listing edit failed",
+                "outcome_uncertain": write_attempted,
+                "verification_required": write_attempted,
+                "verification_reason": "listing_edit_adapter_exception" if write_attempted else "",
+                "evidence": evidence,
+            }
 
     # ============================================================
     # Orders
@@ -1243,10 +1486,34 @@ class BrowserAdapter:
 
     async def fulfill_order(self, order: Order, cookie_id: str = "default") -> Dict[str, Any]:
         """Ship order by filling tracking info in browser."""
-        page = await self._ensure_session(cookie_id)
+        try:
+            page = await self._ensure_session(cookie_id)
+        except Exception as exc:
+            evidence = await self._capture_write_failure(
+                None,
+                action="fulfill_order",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error=exc,
+                blocker="browser_session_start_failed",
+                target_ref=order.order_id,
+            )
+            return {"ok": False, "error": evidence.get("error_summary"), "evidence": evidence}
         if not page:
-            return {"ok": False, "error": "No browser"}
+            evidence = await self._capture_write_failure(
+                None,
+                action="fulfill_order",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error="No browser",
+                blocker="browser_unavailable",
+                target_ref=order.order_id,
+            )
+            return {"ok": False, "error": "No browser", "evidence": evidence}
 
+        write_attempted = False
         try:
             url = f"{URL['orders']}?orderId={order.order_id}"
             await page.goto(url, wait_until="networkidle", timeout=30000)
@@ -1264,13 +1531,41 @@ class BrowserAdapter:
 
                 submit = page.locator('button:has-text("确认发货"), button:has-text("提交")').first
                 if await submit.count() > 0:
+                    write_attempted = True
                     await submit.click()
                     await asyncio.sleep(2)
                     return {"ok": True, "order_id": order.order_id}
 
-            return {"ok": False, "message": "Ship button not found"}
+            evidence = await self._capture_write_failure(
+                page,
+                action="fulfill_order",
+                cookie_id=cookie_id,
+                stage="fulfillment_control",
+                write_attempted=False,
+                error="Ship or submit button not found",
+                blocker="fulfillment_control_not_found",
+                target_ref=order.order_id,
+            )
+            return {"ok": False, "message": "Ship button not found", "evidence": evidence}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            evidence = await self._capture_write_failure(
+                page,
+                action="fulfill_order",
+                cookie_id=cookie_id,
+                stage="post_submit_exception" if write_attempted else "pre_submit_exception",
+                write_attempted=write_attempted,
+                error=e,
+                blocker="fulfillment_adapter_exception",
+                target_ref=order.order_id,
+            )
+            return {
+                "ok": False,
+                "error": evidence.get("error_summary") or "Browser fulfillment failed",
+                "outcome_uncertain": write_attempted,
+                "verification_required": write_attempted,
+                "verification_reason": "fulfillment_adapter_exception" if write_attempted else "",
+                "evidence": evidence,
+            }
 
     # ============================================================
     # Messages
@@ -1332,10 +1627,34 @@ class BrowserAdapter:
     async def send_message(self, buyer_id: str, message: str,
                           cookie_id: str = "default") -> Dict[str, Any]:
         """Send message to buyer via browser."""
-        page = await self._ensure_session(cookie_id)
+        try:
+            page = await self._ensure_session(cookie_id)
+        except Exception as exc:
+            evidence = await self._capture_write_failure(
+                None,
+                action="send_message",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error=exc,
+                blocker="browser_session_start_failed",
+                target_ref=buyer_id,
+            )
+            return {"ok": False, "error": evidence.get("error_summary"), "evidence": evidence}
         if not page:
-            return {"ok": False, "error": "No browser"}
+            evidence = await self._capture_write_failure(
+                None,
+                action="send_message",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error="No browser",
+                blocker="browser_unavailable",
+                target_ref=buyer_id,
+            )
+            return {"ok": False, "error": "No browser", "evidence": evidence}
 
+        write_attempted = False
         try:
             url = f"{URL['messages']}?buyer={buyer_id}"
             await page.goto(url, wait_until="networkidle", timeout=30000)
@@ -1346,13 +1665,41 @@ class BrowserAdapter:
             if await msg_input.count() > 0:
                 await msg_input.fill(message)
                 await asyncio.sleep(0.5)
+                write_attempted = True
                 await msg_input.press("Enter")
                 await asyncio.sleep(1)
                 return {"ok": True, "buyer_id": buyer_id, "message": message}
 
-            return {"ok": False, "error": "Input not found"}
+            evidence = await self._capture_write_failure(
+                page,
+                action="send_message",
+                cookie_id=cookie_id,
+                stage="message_input",
+                write_attempted=False,
+                error="Input not found",
+                blocker="message_input_not_found",
+                target_ref=buyer_id,
+            )
+            return {"ok": False, "error": "Input not found", "evidence": evidence}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            evidence = await self._capture_write_failure(
+                page,
+                action="send_message",
+                cookie_id=cookie_id,
+                stage="post_submit_exception" if write_attempted else "pre_submit_exception",
+                write_attempted=write_attempted,
+                error=e,
+                blocker="message_send_adapter_exception",
+                target_ref=buyer_id,
+            )
+            return {
+                "ok": False,
+                "error": evidence.get("error_summary") or "Browser message send failed",
+                "outcome_uncertain": write_attempted,
+                "verification_required": write_attempted,
+                "verification_reason": "message_send_adapter_exception" if write_attempted else "",
+                "evidence": evidence,
+            }
 
     # ============================================================
     # Item detail
@@ -1376,10 +1723,34 @@ class BrowserAdapter:
 
     async def delete_item(self, item_id: str, cookie_id: str = "default") -> Dict[str, Any]:
         """Delete a listing via browser."""
-        page = await self._ensure_session(cookie_id)
+        try:
+            page = await self._ensure_session(cookie_id)
+        except Exception as exc:
+            evidence = await self._capture_write_failure(
+                None,
+                action="delete_item",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error=exc,
+                blocker="browser_session_start_failed",
+                target_ref=item_id,
+            )
+            return {"ok": False, "error": evidence.get("error_summary"), "evidence": evidence}
         if not page:
-            return {"ok": False, "error": "No browser"}
+            evidence = await self._capture_write_failure(
+                None,
+                action="delete_item",
+                cookie_id=cookie_id,
+                stage="session_start",
+                write_attempted=False,
+                error="No browser",
+                blocker="browser_unavailable",
+                target_ref=item_id,
+            )
+            return {"ok": False, "error": "No browser", "evidence": evidence}
 
+        write_attempted = False
         try:
             url = URL["item"].format(id=item_id)
             await page.goto(url, wait_until="networkidle", timeout=30000)
@@ -1392,10 +1763,38 @@ class BrowserAdapter:
 
                 confirm = page.locator('button:has-text("确认"), button:has-text("确定")').first
                 if await confirm.count() > 0:
+                    write_attempted = True
                     await confirm.click()
                     await asyncio.sleep(2)
                     return {"ok": True, "item_id": item_id}
 
-            return {"ok": False, "message": "Delete button not found"}
+            evidence = await self._capture_write_failure(
+                page,
+                action="delete_item",
+                cookie_id=cookie_id,
+                stage="delete_control",
+                write_attempted=False,
+                error="Delete or confirm button not found",
+                blocker="delete_control_not_found",
+                target_ref=item_id,
+            )
+            return {"ok": False, "message": "Delete button not found", "evidence": evidence}
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            evidence = await self._capture_write_failure(
+                page,
+                action="delete_item",
+                cookie_id=cookie_id,
+                stage="post_submit_exception" if write_attempted else "pre_submit_exception",
+                write_attempted=write_attempted,
+                error=e,
+                blocker="delete_adapter_exception",
+                target_ref=item_id,
+            )
+            return {
+                "ok": False,
+                "error": evidence.get("error_summary") or "Browser listing delete failed",
+                "outcome_uncertain": write_attempted,
+                "verification_required": write_attempted,
+                "verification_reason": "delete_adapter_exception" if write_attempted else "",
+                "evidence": evidence,
+            }

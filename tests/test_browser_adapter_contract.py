@@ -3,6 +3,7 @@ import sys
 import types
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 from xianyu_agent.browser_adapter import BrowserAdapter
@@ -198,7 +199,13 @@ class BrowserPublishConfirmTests(unittest.IsolatedAsyncioTestCase):
 
 class BrowserPublishResultTests(unittest.IsolatedAsyncioTestCase):
     async def test_publish_listing_fails_when_submit_does_not_leave_publish_page(self):
-        settings = SimpleNamespace(data_dir=Path("data"), browser_cdp_url="", xianyu_cookies="")
+        temp_dir = TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        settings = SimpleNamespace(
+            data_dir=Path(temp_dir.name),
+            browser_cdp_url="",
+            xianyu_cookies="",
+        )
         adapter = BrowserAdapter(settings, storage=None, browser_pool=None)
         draft = ListingDraft(title="test", price=999999)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -93,7 +94,12 @@ class CandidateEvidenceStoreTests(unittest.TestCase):
         artifact_id = staged["artifact"]["artifact_id"]
         self.store.activate(artifact_id)
         path, _ = self.store.resolve_file("rc_candidate_a", artifact_id)
+        original_stat = path.stat()
         path.write_bytes(b"tampered evidence bytes\n")
+        os.utime(
+            path,
+            ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns),
+        )
 
         artifact = self.store.get_artifact("rc_candidate_a", artifact_id)
         self.assertFalse(artifact["integrity"]["ok"])

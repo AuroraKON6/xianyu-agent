@@ -111,7 +111,6 @@ class CandidateEvidenceStore:
         self.blob_root = self.root / "blobs"
         self._lock = RLock()
         self._artifacts: Dict[str, Dict[str, Any]] = {}
-        self._integrity_cache: Dict[str, Tuple[int, int, bool, str]] = {}
         self._load()
 
     def stage_bytes(
@@ -133,36 +132,22 @@ class CandidateEvidenceStore:
         updated the candidate reference and explicitly activates it.
         """
         clean_candidate_id = _candidate_id(candidate_id)
-        clean_kind = str(kind or "").strip()
-        if clean_kind not in EVIDENCE_KINDS:
-            raise CandidateEvidenceError("unsupported evidence kind")
-        if not isinstance(content, bytes):
-            raise CandidateEvidenceError("evidence content must be bytes")
-        if not content:
-            raise CandidateEvidenceError("evidence file is empty")
-        if len(content) > MAX_EVIDENCE_BYTES:
-            raise CandidateEvidenceError("evidence file exceeds 10 MiB")
-
-        filename, extension = _clean_filename(original_filename)
-        clean_mime_type = _validate_file_content(content, extension, mime_type)
-        clean_note = _clean_text(note, "note", 500)
-        clean_source_url = _clean_source_url(source_url)
-        if extension in _TEXT_EXTENSIONS:
-            decoded = _decode_text(content)
-            if _contains_sensitive_text(decoded):
-                raise CandidateEvidenceError(
-                    "text evidence contains credentials or personal identifiers; redact it before upload"
-                )
-
-        current = now or datetime.now(timezone.utc)
-        if current.tzinfo is None:
-            current = current.replace(tzinfo=_LOCAL_TZ)
-        current = current.astimezone(timezone.utc)
-        observed = _parse_observed_at(observed_at)
-        if observed > current + timedelta(seconds=60):
-            raise CandidateEvidenceError("observed_at cannot be in the future")
-
-        digest = hashlib.sha256(content).hexdigest()
+        validated = validate_candidate_evidence_bytes(
+            kind=kind,
+            content=content,
+            original_filename=original_filename,
+            mime_type=mime_type,
+            observed_at=observed_at,
+            note=note,
+            source_url=source_url,
+            now=now,
+        )
+        clean_kind = validated["kind"]
+        filename = validated["original_filename"]
+        clean_mime_type = validated["mime_type"]
+        clean_note = validated["note"]
+        clean_source_url = validated["source_url"]
+        digest = validated["sha256"]
         artifact_id = "cea_" + hashlib.sha256(
             f"{clean_candidate_id}\0{clean_kind}\0{digest}".encode("utf-8")
         ).hexdigest()[:24]
@@ -204,11 +189,11 @@ class CandidateEvidenceStore:
                 "kind": clean_kind,
                 "original_filename": filename,
                 "mime_type": clean_mime_type,
-                "byte_size": len(content),
+                "byte_size": validated["byte_size"],
                 "sha256": digest,
                 "blob_key": blob_key,
-                "created_at": _as_utc_z(current),
-                "observed_at": _as_utc_z(observed),
+                "created_at": validated["validated_at"],
+                "observed_at": validated["observed_at"],
                 "note": clean_note,
                 "source_url": clean_source_url,
                 "status": "pending",
@@ -416,7 +401,6 @@ class CandidateEvidenceStore:
         return result
 
     def _integrity(self, artifact: Mapping[str, Any]) -> Dict[str, Any]:
-        artifact_id = str(artifact.get("artifact_id") or "")
         expected_size = int(artifact.get("byte_size") or 0)
         expected_digest = str(artifact.get("sha256") or "")
         try:
@@ -426,16 +410,12 @@ class CandidateEvidenceStore:
             return {"ok": False, "status": "missing"}
         if stat.st_size != expected_size:
             return {"ok": False, "status": "size_mismatch"}
-        cached = self._integrity_cache.get(artifact_id)
-        if cached and cached[0] == stat.st_mtime_ns and cached[1] == stat.st_size:
-            return {"ok": cached[2], "status": cached[3]}
         try:
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
         except OSError:
             return {"ok": False, "status": "unreadable"}
         ok = digest == expected_digest
         status = "verified" if ok else "hash_mismatch"
-        self._integrity_cache[artifact_id] = (stat.st_mtime_ns, stat.st_size, ok, status)
         return {"ok": ok, "status": status}
 
     def _blob_path(self, blob_key: str) -> Path:
@@ -465,6 +445,71 @@ def parse_artifact_reference(value: Any) -> str:
         return ""
     artifact_id = text.split(":", 1)[1]
     return artifact_id if _ARTIFACT_ID_PATTERN.fullmatch(artifact_id) else ""
+
+
+def validate_candidate_evidence_bytes(
+    *,
+    kind: str,
+    content: bytes,
+    original_filename: str,
+    mime_type: str = "",
+    observed_at: str = "",
+    note: str = "",
+    source_url: str = "",
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Apply the archive's file and metadata rules without persisting data."""
+    clean_kind = str(kind or "").strip()
+    if clean_kind not in EVIDENCE_KINDS:
+        raise CandidateEvidenceError("unsupported evidence kind")
+    if not isinstance(content, bytes):
+        raise CandidateEvidenceError("evidence content must be bytes")
+    if not content:
+        raise CandidateEvidenceError("evidence file is empty")
+    if len(content) > MAX_EVIDENCE_BYTES:
+        raise CandidateEvidenceError("evidence file exceeds 10 MiB")
+
+    filename, extension = _clean_filename(original_filename)
+    clean_mime_type = _validate_file_content(content, extension, mime_type)
+    clean_note = _clean_text(note, "note", 500)
+    clean_source_url = _clean_source_url(source_url)
+    if extension in _TEXT_EXTENSIONS:
+        decoded = _decode_text(content)
+        if _contains_sensitive_text(decoded):
+            raise CandidateEvidenceError(
+                "text evidence contains credentials or personal identifiers; redact it before upload"
+            )
+
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=_LOCAL_TZ)
+    current = current.astimezone(timezone.utc)
+    observed = _parse_observed_at(observed_at)
+    if observed > current + timedelta(seconds=60):
+        raise CandidateEvidenceError("observed_at cannot be in the future")
+
+    return {
+        "kind": clean_kind,
+        "original_filename": filename,
+        "extension": extension,
+        "mime_type": clean_mime_type,
+        "byte_size": len(content),
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "validated_at": _as_utc_z(current),
+        "observed_at": _as_utc_z(observed),
+        "note": clean_note,
+        "source_url": clean_source_url,
+    }
+
+
+def contains_sensitive_evidence_text(value: Any) -> bool:
+    """Return whether free-form evidence text appears to contain secrets or PII."""
+    return _contains_sensitive_text(str(value or ""))
+
+
+def validate_evidence_source_url(value: Any) -> str:
+    """Validate a source URL with the same credential rules as the archive."""
+    return _clean_source_url(value)
 
 
 def _candidate_id(value: Any) -> str:

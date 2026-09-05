@@ -21,7 +21,7 @@ from .image_search import ImageSearchClient
 from .listing_strategy import ListingStrategyEngine, looks_like_listing_strategy_request
 from .llm import DeepSeekClient, heuristic_listing
 from .memory import AgentMemory, looks_like_memory_request, memory_text_from_request
-from .models import ImageCandidate, ListingDraft, Order, PublishResult
+from .models import ImageCandidate, ListingDraft, Order
 from .order_status_handler import OrderStatusHandler, order_status_handler
 from .physical_sourcing import PhysicalSourcingManager, looks_like_sourcing_request, sourcing_payload_from_text
 from .platform_guard import PlatformGuard
@@ -78,31 +78,36 @@ class CommerceWorkflow:
         raw_text: str,
         source: str = "manual",
         product_images: Optional[Iterable[str]] = None,
-        publish: bool = True,
+        publish: bool = False,
     ) -> Dict[str, Any]:
         draft = self._draft_from_text(raw_text=raw_text, source=source, product_images=list(product_images or []))
         self.storage.save_draft(draft)
-        result: Optional[PublishResult] = None
-        if publish:
-            result = self.adapter.publish(draft)
-            if result.ok:
-                self.storage.save_publish_result(result, draft)
-        self.storage.append_event("listing.created", {"draft": draft.to_dict(), "publish_result": result.to_dict() if result else None})
-        if result:
-            self.notifier.send_text(f"已生成并提交上架：{draft.title}\n结果：{result.message}")
-        return {"draft": draft.to_dict(), "publish_result": result.to_dict() if result else None}
+        self.storage.append_event(
+            "listing.created",
+            {
+                "draft": draft.to_dict(),
+                "publish_result": None,
+                "direct_publish_requested": bool(publish),
+                "execution_path": "work_order_approval_queue",
+            },
+        )
+        return {
+            "draft": draft.to_dict(),
+            "publish_result": None,
+            "approval_required": bool(publish),
+            "executed": False,
+            "direct_publish_disabled": bool(publish),
+        }
 
     def polish_all(self) -> Dict[str, Any]:
-        records = self.storage.list_published()
-        results: List[Dict[str, Any]] = []
-        for record in records:
-            external_id = record.get("external_id") or record.get("listing_id")
-            if not external_id:
-                continue
-            results.append(self.adapter.polish(str(external_id), record))
-        self.storage.append_event("listing.polished", {"count": len(results), "results": results})
-        self.notifier.send_text(f"今日擦亮任务完成：{len(results)} 个商品")
-        return {"count": len(results), "results": results}
+        return {
+            "ok": False,
+            "count": 0,
+            "results": [],
+            "approval_required": True,
+            "executed": False,
+            "message": "Direct polish is retired; create an approved execution action instead.",
+        }
 
     def fulfill_order(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         order = Order.from_payload(payload)
@@ -187,7 +192,7 @@ class CommerceWorkflow:
     def save_virtual_product_assets(self, opportunity_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self.arbitrage_agent.save_assets(opportunity_id, payload)
 
-    def create_listing_from_opportunity(self, opportunity_id: str, publish: bool = True) -> Dict[str, Any]:
+    def create_listing_from_opportunity(self, opportunity_id: str, publish: bool = False) -> Dict[str, Any]:
         brief = self.arbitrage_agent.listing_brief(opportunity_id)
         return self.create_listing(
             brief["text"],
@@ -349,9 +354,9 @@ class CommerceWorkflow:
                     "type": "discovery",
                     "result": self.product_discovery.search_products(keyword=keyword),
                 }
-        return {"type": "listing", "result": self.create_listing(text, source="feishu", publish=True)}
+        return {"type": "listing", "result": self.create_listing(text, source="feishu", publish=False)}
 
-    def handle_agent_message(self, text: str, publish: bool = True) -> Dict[str, Any]:
+    def handle_agent_message(self, text: str, publish: bool = False) -> Dict[str, Any]:
         clean = text.strip()
         if not clean:
             return {"type": "empty", "result": {"message": "text is required"}}
@@ -533,7 +538,7 @@ Rules:
 
     # ====== Enhanced Physical Product Listing (NEW) ======
 
-    def create_physical_listing(self, raw_text: str, source: str = "manual", publish: bool = True) -> Dict[str, Any]:
+    def create_physical_listing(self, raw_text: str, source: str = "manual", publish: bool = False) -> Dict[str, Any]:
         """Create a listing for physical product with sourcing integration."""
         # First, evaluate sourcing opportunity
         sourcing_payload = sourcing_payload_from_text(raw_text)

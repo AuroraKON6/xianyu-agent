@@ -102,7 +102,6 @@ async def order_check_loop(agents: Dict) -> None:
 async def start_agent_scheduler(agents: Dict, settings: Settings) -> None:
     """Start all agent scheduler loops."""
     loops = [
-        listing_polish_loop(agents, settings),
         discovery_loop(agents, settings),
         github_scan_loop(agents, settings),
         analytics_daily_loop(agents, settings),

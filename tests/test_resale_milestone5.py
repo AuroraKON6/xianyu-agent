@@ -161,6 +161,8 @@ class TestRunNextWithFakeWorkflow(unittest.TestCase):
 
     def _setup_draft_and_approval(self):
         """Create a draft file and an approved approval pointing to it."""
+        from xianyu_agent.action_scope import listing_draft_revision
+
         # Create draft file
         drafts_dir = self.data_dir / "drafts"
         drafts_dir.mkdir(parents=True, exist_ok=True)
@@ -183,7 +185,10 @@ class TestRunNextWithFakeWorkflow(unittest.TestCase):
         wo = self.wom.create_work_order(kind="resale_listing", title="test", owner="resale")
         self.wom.create_action_plan(wo["work_order_id"], proposed_actions=[{
             "agent": "resale", "action": "publish_listing",
-            "description": "上架", "params": {"draft_id": draft_id},
+            "description": "上架", "params": {
+                "draft_id": draft_id,
+                "expected_draft_revision": listing_draft_revision(draft_data),
+            },
             "requires_approval": True,
         }])
         wo = self.wom.get_work_order(wo["work_order_id"])
@@ -571,6 +576,7 @@ class TestPublishHandlerReadsDraft(unittest.TestCase):
 
     def test_handler_reads_draft_from_data_drafts(self):
         from xianyu_agent.action_executor import handle_publish_listing
+        from xianyu_agent.action_scope import listing_draft_revision
 
         tmpdir = tempfile.mkdtemp()
         data_dir = Path(tmpdir)
@@ -592,7 +598,13 @@ class TestPublishHandlerReadsDraft(unittest.TestCase):
             json.dumps(draft_data, ensure_ascii=False), encoding="utf-8"
         )
 
-        approval = {"action": "publish_listing", "payload": {"draft_id": draft_id}}
+        approval = {
+            "action": "publish_listing",
+            "payload": {
+                "draft_id": draft_id,
+                "expected_draft_revision": listing_draft_revision(draft_data),
+            },
+        }
 
         class FakeResult:
             ok = True

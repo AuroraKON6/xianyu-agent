@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from xianyu_agent.models import ListingDraft
+
 
 class SingleExecutionPathTests(unittest.TestCase):
     def _stores(self):
@@ -95,6 +97,130 @@ class SingleExecutionPathTests(unittest.TestCase):
             "workflow.fulfill_order(",
         ):
             self.assertNotIn(forbidden, source)
+
+    def test_workflow_publish_flag_never_calls_adapter(self):
+        from xianyu_agent import server
+
+        draft = ListingDraft(
+            title="Commercial work table",
+            category="Commercial kitchen equipment",
+            price=699,
+            stock=1,
+            description="Draft only",
+        )
+        with patch.object(server.workflow, "_draft_from_text", return_value=draft), patch.object(
+            server.workflow.storage, "save_draft"
+        ), patch.object(server.workflow.storage, "append_event"), patch.object(
+            server.workflow.adapter, "publish"
+        ) as publish:
+            result = server.workflow.create_listing("Commercial work table", publish=True)
+
+        publish.assert_not_called()
+        self.assertIsNone(result["publish_result"])
+        self.assertTrue(result["approval_required"])
+        self.assertTrue(result["direct_publish_disabled"])
+        self.assertFalse(result["executed"])
+
+    def test_legacy_agent_listing_route_creates_approval(self):
+        from xianyu_agent import server
+
+        db, work_orders = self._stores()
+        draft = {
+            "id": "draft_agent_legacy",
+            "title": "Commercial work table",
+            "price": 699,
+            "stock": 1,
+            "description": "Draft only",
+            "selected_images": [],
+        }
+        with patch.object(server, "db_manager", db), patch.object(
+            server, "work_order_manager", work_orders
+        ), patch.object(
+            server.workflow,
+            "create_listing",
+            return_value={"draft": draft, "publish_result": None},
+        ) as create:
+            response = TestClient(server.app).post(
+                "/agents/listing/create",
+                json={"text": "Commercial work table", "publish": True},
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        create.assert_called_once_with(
+            "Commercial work table",
+            source="legacy_agent_api",
+            product_images=[],
+            publish=False,
+        )
+        self.assertTrue(response.json()["approval_required"])
+        self.assertFalse(response.json()["executed"])
+
+    def test_legacy_physical_listing_route_creates_approval(self):
+        from xianyu_agent import server
+
+        db, work_orders = self._stores()
+        draft = {
+            "id": "draft_physical_legacy",
+            "title": "Stainless work table",
+            "price": 699,
+            "stock": 1,
+            "description": "Draft only",
+            "selected_images": [],
+        }
+        with patch.object(server, "db_manager", db), patch.object(
+            server, "work_order_manager", work_orders
+        ), patch.object(
+            server.workflow,
+            "create_physical_listing",
+            return_value={"draft": draft, "publish_result": None},
+        ) as create:
+            response = TestClient(server.app).post(
+                "/listings/physical",
+                json={"text": "Stainless work table", "publish": True},
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        create.assert_called_once_with("Stainless work table", source="api", publish=False)
+        self.assertTrue(response.json()["approval_required"])
+        self.assertFalse(response.json()["executed"])
+
+    def test_direct_polish_route_is_retired(self):
+        from xianyu_agent import server
+
+        response = TestClient(server.app).post("/tasks/polish")
+
+        self.assertEqual(response.status_code, 410, response.text)
+
+    def test_market_search_requires_account_scope_when_multiple_accounts_exist(self):
+        from xianyu_agent import server
+        from xianyu_agent.browser_adapter import BrowserAdapter
+
+        db, _ = self._stores()
+        db.save_cookie("seller_a", "test-cookie-a", "account a")
+        db.save_cookie("seller_b", "test-cookie-b", "account b")
+        calls = []
+
+        class FakeBrowserAdapter(BrowserAdapter):
+            def __init__(self):
+                pass
+
+            async def search_products(self, **kwargs):
+                calls.append(kwargs)
+                return []
+
+        with patch.object(server, "db_manager", db), patch.object(
+            server.workflow, "adapter", FakeBrowserAdapter()
+        ):
+            client = TestClient(server.app)
+            ambiguous = client.post("/browser/search", json={"keyword": "work table"})
+            scoped = client.post(
+                "/browser/search",
+                json={"keyword": "work table", "cookie_id": "seller_b"},
+            )
+
+        self.assertEqual(ambiguous.status_code, 409, ambiguous.text)
+        self.assertEqual(scoped.status_code, 200, scoped.text)
+        self.assertEqual(calls[0]["cookie_id"], "seller_b")
 
 
 if __name__ == "__main__":

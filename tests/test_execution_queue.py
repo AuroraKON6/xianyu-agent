@@ -339,6 +339,7 @@ class ExecutionQueueRouteTests(unittest.TestCase):
         self.assertIn("/execution-jobs/run-pending", route_paths)
         self.assertIn("/execution-jobs/{job_id}/retry", route_paths)
         self.assertIn("/execution-jobs/{job_id}/cancel", route_paths)
+        self.assertIn("/execution-jobs/{job_id}/verification", route_paths)
 
     def test_execute_approval_creates_job_not_direct_execution(self):
         """POST /approvals/{id}/execute should create a job, not execute directly."""
@@ -368,6 +369,8 @@ class ExecutionQueueJSTests(unittest.TestCase):
         self.assertIn("retryJob", source)
         self.assertIn("cancelJob", source)
         self.assertIn("runNextJobs", source)
+        self.assertIn("resolveJobVerification", source)
+        self.assertIn("verification_required", source)
 
 
 if __name__ == "__main__":

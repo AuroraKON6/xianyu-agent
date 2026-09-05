@@ -5,6 +5,7 @@ import json
 import time
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+from .action_scope import build_action_scope_envelope
 from .work_orders import RISKY_ACTIONS
 
 
@@ -256,6 +257,15 @@ def repair_work_order_account_attribution(
     if blocked:
         result["blocked_work_order_ids"] = [item["work_order_id"] for item in blocked]
         return _skip(result, "work_order_resolution_blocked")
+    if normalized_mode == "claim":
+        existing_jobs = [
+            item
+            for item in (review_by_id[work_order_id] for work_order_id in selected_ids)
+            if item.get("job_statuses")
+        ]
+        if existing_jobs:
+            result["blocked_work_order_ids"] = [item["work_order_id"] for item in existing_jobs]
+            return _skip(result, "existing_execution_job_requires_quarantine_or_recreation")
 
     expected_confirmation = f"{normalized_mode.upper()} {len(selected_ids)}"
     if str(confirmation or "").strip() != expected_confirmation:
@@ -340,6 +350,7 @@ def _apply_work_order_cookie_id(work_order_manager: Any, work_order_id: str, coo
         context["cookie_id"] = cookie_id
         context["account_attribution_state"] = "claimed"
         context["account_attribution_resolved_at"] = now
+    approval_reset = False
     for approval in work_order.get("approvals") or []:
         if not isinstance(approval, dict):
             continue
@@ -349,6 +360,30 @@ def _apply_work_order_cookie_id(work_order_manager: Any, work_order_id: str, coo
         draft_snapshot = approval.setdefault("draft_snapshot", {})
         if isinstance(draft_snapshot, dict):
             draft_snapshot.setdefault("cookie_id", cookie_id)
+        if approval.get("status") in {"pending", "approved"}:
+            approval_reset = True
+            approval["status"] = "pending"
+            approval["requested_at"] = now
+            approval["decided_at"] = None
+            approval["decision_note"] = ""
+            approval["approved_action_digest"] = ""
+            approval["execution_status"] = None
+            approval["execution_result"] = None
+            approval["scope_envelope"] = build_action_scope_envelope(
+                approval_id=str(approval.get("approval_id") or ""),
+                work_order_id=work_order_id,
+                action=str(approval.get("action") or ""),
+                payload=payload if isinstance(payload, dict) else {},
+                draft_snapshot=draft_snapshot if isinstance(draft_snapshot, dict) else {},
+                context=context if isinstance(context, dict) else {},
+                requested_at=now,
+            )
+    if approval_reset:
+        action_plan = work_order.get("action_plan")
+        if isinstance(action_plan, dict):
+            action_plan["status"] = "needs_approval"
+        if hasattr(work_order_manager, "_refresh_status_from_approvals"):
+            work_order_manager._refresh_status_from_approvals(work_order)
     events = work_order.setdefault("events", [])
     if isinstance(events, list):
         events.append(
