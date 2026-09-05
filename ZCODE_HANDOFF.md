@@ -1,10 +1,20 @@
 # Zcode 接管总说明：Xianyu Pi 一人公司项目
 
-> 生成时间：2026-08-29，最近更新：2026-09-05（Asia/Shanghai）
+> 生成时间：2026-08-29，最近更新：2026-09-06（Asia/Shanghai）
 > 工作区：`E:\闲鱼\xianyu`  
 > 接管对象：Zcode 及后续本地编码代理  
 > 本文件优先级：低于 2026-09-05 的 `PROJECT_STATUS.md`，高于更早的历史状态描述
-> 当前结论：数据库边界、单一执行路径、外部动作 lease/fencing、Reply Outbox、浏览器写入失败证据及审批作用域绑定已完成首轮硬化；真实商业 Alpha 尚未开始，下一业务目标仍是接入一个真实账号和一个真实商品。
+> 当前结论：数据库边界、单一执行路径、外部动作 lease/fencing、Reply Outbox、浏览器写入失败证据、审批作用域绑定与 Chat 事件事实流已完成硬化并纳入 Git 基线；真实商业 Alpha 尚未开始，下一业务目标仍是接入一个真实账号和一个真实商品。
+
+---
+
+## 2026-09-06 增量（在 2026-09-05 节之上追加）
+
+1. 2026-09-05 硬化轮遗留的 88 个未提交路径已审阅并按功能域提交为 11 个可回滚提交（gitignore、Pi/安全、执行可靠性、listing agent、outbox/intake、server+console、文档×2、根状态文档）；工作树完全干净，无 secret/data/log 入库。
+2. 新增第 9 个只读 operator skill `daily-operator`：每天只输出一个优先动作（阻塞证据带 ID 和时间、owner、完成定义），资源测试锁定其只读边界。
+3. 新增 Chat 事件事实流（研究项 GH-04）：`xianyu_agent/chat_events.py` 追加式哈希链存储；入站消息在 intake 创建/去重时追加并绑定 intake_id；`send_message`/`sensitive_reply` 任务终态由 run 端点追加出站事件（envelope id / 执行 job id 双向幂等，冲突硬失败）；读取走 `GET /chat-events`（过滤+分页）与 `GET /chat-events/metrics`（链校验）；重放在链校验失败时拒绝。Runbook：`docs/ops/chat-events-runbook.md`。
+4. 验证：全量隔离回归 `1007/1007` 通过；`node --check`（app.js、xianyu-ops.ts）、`git diff --check` 通过；`data/live` 未因测试变化。
+5. 仍未做（后续可选）：价格承诺/`product_facts` 结构化事实表（GH-05）、Trace 回放（GH-06）、`pi-web-access` 隔离试验（PI-01）。真实商业阻塞与 2026-09-05 节一致，仍等待操作者提供真实账号与 SKU。
 
 ---
 
