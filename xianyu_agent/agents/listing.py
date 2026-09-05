@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from ..action_scope import listing_draft_revision
+
 from .base import BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -14,17 +16,22 @@ class ListingAgent(BaseAgent):
     description = "Create and polish product listings"
 
     def create_listing(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a product listing via the full workflow pipeline."""
+        """Create a local product draft; publishing is never an agent action."""
         text = params.get("text", "")
         images = params.get("images", [])
-        publish = params.get("publish", True)
         result = self.workflow.create_listing(
             raw_text=text,
             source="agent",
             product_images=images,
-            publish=publish,
+            publish=False,
         )
-        return {"ok": True, "draft": result.get("draft"), "publish_result": result.get("publish_result")}
+        return {
+            "ok": True,
+            "draft": result.get("draft"),
+            "publish_result": None,
+            "approval_required": bool(params.get("publish", False)),
+            "executed": False,
+        }
 
     def create_collaborative_listing(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Create a listing after peer-agent discussion, checks, and approval planning."""
@@ -240,7 +247,11 @@ def _listing_plan_actions(
                 "agent": "listing",
                 "action": "publish_listing",
                 "description": "人工确认后发布商品到闲鱼",
-                "params": {"draft_id": draft.get("id", ""), "title": draft.get("title", "")},
+                "params": {
+                    "draft_id": draft.get("id", ""),
+                    "title": draft.get("title", ""),
+                    "expected_draft_revision": listing_draft_revision(draft),
+                },
                 "draft_snapshot": {
                     "title": draft.get("title", ""),
                     "price": draft.get("price"),
