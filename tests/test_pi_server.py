@@ -16,7 +16,7 @@ class FakePiRuntime:
             "model": "fake-pi-model",
         }
 
-    def prompt(self, message, context=None, publish=True):
+    def prompt(self, message, context=None, publish=False):
         return {
             "ok": True,
             "type": "pi_agent",
@@ -67,7 +67,18 @@ class PiServerContractTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["entrypoint"], "pi")
-        self.assertEqual(response.json()["legacy_entrypoint"], "openclaw")
+        self.assertIsNone(response.json()["legacy_entrypoint"])
+        self.assertEqual(response.json()["legacy_routes"], "retired")
+
+    def test_legacy_orchestrator_routes_are_retired(self):
+        requests = (
+            self.client.post("/agents/dispatch", json={"agent": "listing", "action": "create_listing", "params": {}}),
+            self.client.post("/agents/openclaw/message", json={"message": "上架测试商品"}),
+            self.client.post("/agents/hermes/message", json={"message": "上架测试商品"}),
+        )
+
+        for response in requests:
+            self.assertEqual(response.status_code, 410, response.text)
 
 
 if __name__ == "__main__":

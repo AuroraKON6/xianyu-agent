@@ -26,7 +26,7 @@ class OpenClawRouter:
         self,
         user_message: str,
         context: Optional[Dict[str, Any]] = None,
-        publish: bool = True,
+        publish: bool = False,
     ) -> Dict[str, Any]:
         clean = user_message.strip()
         if not clean:

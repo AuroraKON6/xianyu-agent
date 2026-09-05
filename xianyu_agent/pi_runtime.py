@@ -16,7 +16,6 @@ from typing import Any, Deque, Dict, Mapping, Optional, Sequence, Tuple
 
 
 PI_TOOL_ALLOWLIST: Tuple[str, ...] = (
-    "read",
     "xianyu_business_snapshot",
     "xianyu_market_search",
     "xianyu_candidates",
@@ -172,7 +171,41 @@ class PiRpcClient:
         )
 
     def _process_env(self) -> Dict[str, str]:
-        env = dict(self._base_env)
+        allowed = {
+            "APPDATA",
+            "COMSPEC",
+            "HOME",
+            "HOMEDRIVE",
+            "HOMEPATH",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "LANG",
+            "LC_ALL",
+            "LOCALAPPDATA",
+            "NODE_EXTRA_CA_CERTS",
+            "NO_PROXY",
+            "PATH",
+            "PATHEXT",
+            "SSL_CERT_FILE",
+            "SYSTEMDRIVE",
+            "SYSTEMROOT",
+            "TEMP",
+            "TMP",
+            "USERPROFILE",
+            "WINDIR",
+        }
+        provider_keys = {
+            "deepseek": {"DEEPSEEK_API_KEY"},
+            "openai": {"OPENAI_API_KEY"},
+            "anthropic": {"ANTHROPIC_API_KEY"},
+            "google": {"GOOGLE_API_KEY", "GEMINI_API_KEY"},
+        }
+        allowed.update(provider_keys.get(self.config.provider.lower(), set()))
+        env = {
+            key: value
+            for key, value in self._base_env.items()
+            if key.upper() in allowed
+        }
         env.update(
             {
                 "PI_CODING_AGENT_DIR": str(self.config.agent_dir),
@@ -373,7 +406,7 @@ class PiRpcClient:
         self,
         message: str,
         context: Optional[Mapping[str, Any]] = None,
-        publish: bool = True,
+        publish: bool = False,
     ) -> Dict[str, Any]:
         clean_message = str(message or "").strip()
         if not clean_message:

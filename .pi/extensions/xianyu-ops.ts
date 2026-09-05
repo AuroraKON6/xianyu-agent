@@ -113,8 +113,8 @@ export default function xianyuOps(pi: ExtensionAPI) {
       ]);
       const domesticCandidates = (Array.isArray(candidates) ? candidates : []).filter(
         (item: any) =>
-          String(item?.sales_platform || "xianyu").toLowerCase() === "xianyu" &&
-          String(item?.market_scope || "domestic").toLowerCase() === "domestic",
+          String(item?.sales_platform || "").toLowerCase() === "xianyu" &&
+          String(item?.market_scope || "").toLowerCase() === "domestic",
       );
       const unresolved = (Array.isArray(workOrders) ? workOrders : []).filter((item: any) =>
         isUnresolved(item?.status),
@@ -160,6 +160,7 @@ export default function xianyuOps(pi: ExtensionAPI) {
       max_pages: Type.Optional(Type.Number({ minimum: 1, maximum: 2, description: "Pages to inspect; default 1" })),
       min_price: Type.Optional(Type.Number({ minimum: 0, description: "Optional displayed-price floor" })),
       max_price: Type.Optional(Type.Number({ minimum: 0, description: "Optional displayed-price ceiling" })),
+      cookie_id: Type.Optional(Type.String({ minLength: 1, description: "Required when more than one seller account is configured" })),
     }),
     async execute(_toolCallId, params, signal) {
       const keyword = String(params.keyword || "").trim();
@@ -179,7 +180,7 @@ export default function xianyuOps(pi: ExtensionAPI) {
             max_pages: maxPages,
             min_price: minPrice,
             max_price: maxPrice,
-            cookie_id: "default",
+            ...(params.cookie_id ? { cookie_id: params.cookie_id } : {}),
           }),
         },
         signal,
@@ -227,7 +228,11 @@ export default function xianyuOps(pi: ExtensionAPI) {
       const data = await apiRequest(`/resale/candidates?${query}`, {}, signal);
       const limit = Math.max(1, Math.min(100, Math.trunc(params.limit || 20)));
       const candidates = (Array.isArray(data) ? data : [])
-        .filter((item: any) => String(item?.sales_platform || "xianyu").toLowerCase() === "xianyu")
+        .filter(
+          (item: any) =>
+            String(item?.sales_platform || "").toLowerCase() === "xianyu" &&
+            String(item?.market_scope || "").toLowerCase() === "domestic",
+        )
         .slice(0, limit);
       return result({ count: candidates.length, candidates }, { count: candidates.length });
     },

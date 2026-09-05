@@ -178,7 +178,7 @@ class Settings:
             allow_external_product_images=_bool_env("ALLOW_EXTERNAL_PRODUCT_IMAGES", False),
             data_dir=data_dir,
             polish_at=os.environ.get("POLISH_AT", "09:30"),
-            server_host=os.environ.get("SERVER_HOST", "0.0.0.0"),
+            server_host=os.environ.get("SERVER_HOST", "127.0.0.1"),
             server_port=int(os.environ.get("SERVER_PORT", "8788")),
             github_token=os.environ.get("GITHUB_TOKEN", ""),
             github_trust_env=_bool_env("GITHUB_TRUST_ENV", True),

@@ -93,20 +93,20 @@ class PiRpcClientTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def make_client(self, *, script=None, timeout=3.0):
+    def make_client(self, *, script=None, timeout=3.0, provider="fake", base_env=None):
         config = PiRuntimeConfig(
             project_root=self.root,
             data_dir=self.root / "data",
             node_path=sys.executable,
             cli_path=script or self.script,
-            provider="fake",
+            provider=provider,
             model="fake-model",
             thinking="low",
             request_timeout_seconds=timeout,
             api_key_configured=True,
             session_id="11111111-1111-4111-8111-111111111111",
         )
-        return PiRpcClient(config)
+        return PiRpcClient(config, base_env=base_env)
 
     def test_rpc_state_prompt_events_and_shutdown(self):
         client = self.make_client()
@@ -181,10 +181,30 @@ class PiRpcClientTests(unittest.TestCase):
         self.assertEqual(tuple(tools), PI_TOOL_ALLOWLIST)
         self.assertIn("xianyu_candidate_activation_packet", tools)
         self.assertIn("xianyu_candidate_evidence", tools)
-        self.assertTrue({"bash", "edit", "write", "grep", "find", "ls"}.isdisjoint(tools))
+        self.assertTrue({"read", "bash", "edit", "write", "grep", "find", "ls"}.isdisjoint(tools))
         self.assertTrue(all("approve" not in tool and "execute" not in tool for tool in tools))
         self.assertEqual(client._process_env()["PI_CODING_AGENT_DIR"], str(self.root / "data" / "pi_agent"))
         self.assertEqual(client._process_env()["PI_OFFLINE"], "1")
+
+    def test_process_environment_excludes_unrelated_business_credentials(self):
+        client = self.make_client(
+            provider="deepseek",
+            base_env={
+                "PATH": "C:\\Windows\\System32",
+                "DEEPSEEK_API_KEY": "model-key",
+                "FEISHU_VERIFICATION_TOKEN": "must-not-reach-pi",
+                "XIANGUANJIA_TOKEN": "must-not-reach-pi",
+                "DB_PATH": "must-not-reach-pi",
+            },
+        )
+
+        env = client._process_env()
+
+        self.assertEqual(env["DEEPSEEK_API_KEY"], "model-key")
+        self.assertEqual(env["PATH"], "C:\\Windows\\System32")
+        self.assertNotIn("FEISHU_VERIFICATION_TOKEN", env)
+        self.assertNotIn("XIANGUANJIA_TOKEN", env)
+        self.assertNotIn("DB_PATH", env)
 
     def test_timeout_terminates_the_stuck_rpc_process(self):
         timeout_script = self.root / "fake_pi_timeout.py"
