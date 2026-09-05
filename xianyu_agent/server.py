@@ -46,6 +46,7 @@ from .pi_runtime import PiRpcClient, PiRuntimeError
 from .work_orders import work_order_manager
 from .action_executor import action_executor
 from .bridge_events import bridge_events
+from .chat_events import OUTBOUND_SEND_ACTIONS, chat_event_store
 from .execution_queue import execution_queue
 from .first_run_readiness import build_first_run_readiness, RUNTIME_HEARTBEAT_MAX_AGE_SECONDS
 from .message_intake import get_message_intake_runbooks, message_intake_ledger
@@ -100,6 +101,7 @@ registry.configure_persistence(settings.data_dir / "agent_collaboration.jsonl")
 work_order_manager.configure(settings.data_dir / "work_orders.json")
 execution_queue.configure(settings.data_dir / "execution_jobs.json")
 message_intake_ledger.configure(settings.data_dir / "message_intake.json")
+chat_event_store.configure(settings.data_dir / "chat_events.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
 account_runtime_store = AccountRuntimeStore(settings.data_dir / "account_runtime_state.json")
@@ -2016,6 +2018,67 @@ def get_execution_job(job_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+def _record_outbound_chat_events(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Append one outbound chat fact per finished reply-send execution job."""
+    recorded: List[Dict[str, Any]] = []
+    for result in results or []:
+        job_id = str((result or {}).get("job_id") or "")
+        status = str((result or {}).get("status") or "")
+        if not job_id or status not in {"completed", "verification_required"}:
+            continue
+        try:
+            job = execution_queue.get_job(job_id)
+        except KeyError:
+            continue
+        if str(job.get("action") or "") not in OUTBOUND_SEND_ACTIONS:
+            continue
+        scope = job.get("scope_envelope") if isinstance(job.get("scope_envelope"), dict) else {}
+        reply_text = ""
+        source_event_key = ""
+        source_message_id = ""
+        proposal_id = ""
+        approval_id = str(job.get("approval_id") or "")
+        for work_order in work_order_manager.list_work_orders(limit=1000):
+            matched = False
+            for approval in work_order.get("approvals", []):
+                if str(approval.get("approval_id") or "") != approval_id:
+                    continue
+                payload = approval.get("payload") if isinstance(approval.get("payload"), dict) else {}
+                reply_text = str(payload.get("message") or "")
+                source_event_key = str(payload.get("reply_source_event_key") or "")
+                source_message_id = str(payload.get("reply_source_message_id") or "")
+                proposal_id = str(payload.get("reply_idempotency_key") or "")
+                matched = True
+                break
+            if matched:
+                break
+        try:
+            record = chat_event_store.append_outbound(
+                execution_job_id=job_id,
+                cookie_id=str(scope.get("cookie_id") or ""),
+                chat_id=str(scope.get("chat_id") or ""),
+                buyer_id=str(scope.get("buyer_id") or ""),
+                item_id=str(scope.get("item_id") or ""),
+                message_text=reply_text,
+                reply_proposal_id=proposal_id,
+                source_event_key=source_event_key,
+                source_message_id=source_message_id,
+                send_outcome=(
+                    "verification_required" if status == "verification_required" else "sent"
+                ),
+            )
+            recorded.append(
+                {
+                    "job_id": job_id,
+                    "chat_event_id": record["event"]["event_id"],
+                    "chat_event_status": record["status"],
+                }
+            )
+        except ValueError as exc:
+            recorded.append({"job_id": job_id, "chat_event_error": str(exc)})
+    return recorded
+
+
 @app.post("/execution-jobs/run-next")
 async def run_next_execution_jobs() -> Dict[str, Any]:
     """Execute the next batch of queued jobs."""
@@ -2028,7 +2091,13 @@ async def run_next_execution_jobs() -> Dict[str, Any]:
             "commercial_trial_store": commercial_trial_store,
         },
     )
-    return {"ok": True, "executed": len(results), "results": results}
+    chat_events_recorded = _record_outbound_chat_events(results)
+    return {
+        "ok": True,
+        "executed": len(results),
+        "results": results,
+        "chat_events_recorded": chat_events_recorded,
+    }
 
 
 @app.post("/execution-jobs/run-pending")
@@ -2043,7 +2112,41 @@ async def run_pending_execution_jobs() -> Dict[str, Any]:
             "commercial_trial_store": commercial_trial_store,
         },
     )
-    return {"ok": True, "executed": len(results), "results": results}
+    chat_events_recorded = _record_outbound_chat_events(results)
+    return {
+        "ok": True,
+        "executed": len(results),
+        "results": results,
+        "chat_events_recorded": chat_events_recorded,
+    }
+
+
+@app.get("/chat-events")
+def list_chat_events(
+    cookie_id: str = "",
+    chat_id: str = "",
+    item_id: str = "",
+    direction: str = "",
+    limit: int = 50,
+    before_sequence: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Read the append-only chat fact stream (paginated by sequence)."""
+    events = chat_event_store.list_events(
+        cookie_id=cookie_id,
+        chat_id=chat_id,
+        item_id=item_id,
+        direction=direction,
+        limit=limit,
+        before_sequence=before_sequence,
+    )
+    chain = chat_event_store.verify_chain()
+    return {"ok": bool(chain.get("ok")), "events": events, "chain": chain}
+
+
+@app.get("/chat-events/metrics")
+def chat_events_metrics() -> Dict[str, Any]:
+    """Chat stream counts and hash-chain verification state."""
+    return chat_event_store.metrics()
 
 
 @app.post("/execution-jobs/{job_id}/retry")
@@ -2734,6 +2837,20 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
     product_id = (req.product_id or req.item_id).strip()
     cookie_id = _resolve_operator_cookie_id(requested=req.cookie_id, context=req.context)
     message_envelope = _message_envelope_from_context(req.context)
+    # The chat fact stream always records with a full envelope; legacy callers
+    # that carry no context envelope still get one normalized from the request.
+    chat_envelope = message_envelope or normalize_message_envelope(
+        source=req.source,
+        raw_payload={
+            "message_id": req.message_id,
+            "buyer_id": buyer_id,
+            "buyer_name": req.buyer_name,
+            "chat_id": req.chat_id,
+            "item_id": product_id,
+            "message": incoming_message,
+        },
+        cookie_id=cookie_id,
+    )
     event_key = str(message_envelope.get("dedupe_key") or "").strip()
     if not event_key:
         event_key = message_intake_ledger.event_key(
@@ -2756,6 +2873,10 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
             envelope_id=str(duplicate_envelope.get("envelope_id") or ""),
             source_message_id=str(duplicate_envelope.get("source_message_id") or req.message_id),
             ack_status=str(duplicate_envelope.get("ack_status") or "duplicate"),
+        )
+        chat_event_store.append_inbound(
+            chat_envelope,
+            intake_id=str(duplicate.get("intake_id") or ""),
         )
         return {
             "ok": True,
@@ -2895,6 +3016,10 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
         ack_status="recorded" if message_envelope else "",
     )
     recorded_envelope = with_ack_status(message_envelope, "recorded") if message_envelope else {}
+    chat_event_store.append_inbound(
+        chat_envelope,
+        intake_id=str(intake_record.get("intake_id") or ""),
+    )
     reply_outbox = _reply_outbox_projection(approval_id) if approval_id else None
     return {
         "ok": True,
