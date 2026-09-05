@@ -42,6 +42,7 @@ package-lock.json
 
 # === Workbuddy / Copilot ===
 .workbuddy/
+.mimosa/
 codex openclaw/
 
 # === External Projects (not part of this repo) ===
