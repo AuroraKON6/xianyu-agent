@@ -69,12 +69,35 @@ class PiProjectResourceTests(unittest.TestCase):
                 "commercial-alpha",
                 "commercial-experiment",
                 "competitor-evidence",
+                "daily-operator",
                 "fulfillment",
                 "listing",
                 "product-selection",
                 "weekly-review",
             ],
         )
+
+    def test_daily_operator_skill_is_read_only_and_evidence_bound(self):
+        skill = Path(".pi/skills/daily-operator/SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("strictly read-only", skill)
+        for tool in (
+            "xianyu_business_snapshot",
+            "xianyu_work_orders",
+            "xianyu_candidate_activation_packet",
+            "xianyu_candidate_evidence",
+        ):
+            self.assertIn(tool, skill)
+        for forbidden in (
+            "xianyu_prepare_listing",
+            "xianyu_prepare_customer_reply",
+            "xianyu_review_candidate",
+        ):
+            self.assertNotIn(forbidden, skill)
+        self.assertIn("never propose", skill)
+        self.assertIn("priority_action", skill)
+        self.assertIn("definition_of_done", skill)
+        self.assertIn("candidate\n   `T`", skill)
 
     def test_market_research_skill_is_read_only_and_evidence_bounded(self):
         extension = Path(".pi/extensions/xianyu-ops.ts").read_text(encoding="utf-8")
