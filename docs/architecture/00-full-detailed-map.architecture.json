@@ -1,0 +1,2266 @@
+{
+ "schema_version": 1,
+ "diagram_type": "architecture",
+ "meta": {
+  "title": "闲鱼一人公司操作系统 · 全量细节架构图",
+  "locale": "zh-CN",
+  "quality_profile": "standard",
+  "repository": {
+   "url": "https://github.com/AuroraKON6/xianyu-agent.git",
+   "revision": "706f04f50015de690261772d4f9ea1fd19285bad"
+  },
+  "views": [
+   {
+    "id": "data-boundary",
+    "label": "数据边界",
+    "focus": [
+     "dotenv",
+     "settings",
+     "compose",
+     "singleton",
+     "sqlite-live",
+     "json-ledgers",
+     "migration",
+     "backup",
+     "legacy-db"
+    ],
+    "note": "SQLite 与 JSON 账本统一在 data\\live，迁移链可回滚。"
+   },
+   {
+    "id": "exec-path",
+    "label": "审批执行路径",
+    "focus": [
+     "caller",
+     "wo",
+     "approval",
+     "queue",
+     "executor",
+     "adapter",
+     "xianyu-platform",
+     "evidence",
+     "send"
+    ],
+    "note": "平台写动作唯一路径，消息发送与发布共用。"
+   },
+   {
+    "id": "gates",
+    "label": "商业门禁",
+    "focus": [
+     "candidate",
+     "evidence-store",
+     "activation",
+     "terms",
+     "preflight",
+     "launch",
+     "trial",
+     "operator-approve"
+    ],
+    "note": "12 项一品启动包与 20 项 Day-0 门禁。"
+   },
+   {
+    "id": "msg-fulfill",
+    "label": "消息与履约",
+    "focus": [
+     "channels",
+     "feishu-in",
+     "envelope",
+     "intake",
+     "reply",
+     "send",
+     "xy-order",
+     "sync",
+     "order-runtime",
+     "handoff",
+     "purchase",
+     "supplier",
+     "logistics",
+     "profit"
+    ],
+    "note": "询盘闭环与首单履约全链。"
+   },
+   {
+    "id": "pi-runtime",
+    "label": "Pi 运行时",
+    "focus": [
+     "operator",
+     "api-pi",
+     "rpc",
+     "pi-cli",
+     "deepseek",
+     "system-md",
+     "extension",
+     "skills",
+     "sessions",
+     "tools-http"
+    ],
+    "note": "13 工具 · 8 skills，无外部动作工具。"
+   }
+  ]
+ },
+ "components": [
+  {
+   "id": "operator",
+   "type": "external",
+   "label": "操作者",
+   "sublabel": "自然语言",
+   "pos": [
+    40,
+    240
+   ],
+   "size": [
+    110,
+    64
+   ]
+  },
+  {
+   "id": "api-pi",
+   "type": "backend",
+   "label": "/agents/pi/message",
+   "sublabel": "FastAPI 路由",
+   "pos": [
+    220,
+    240
+   ],
+   "size": [
+    170,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/server.py",
+     "label": "Pi 路由"
+    }
+   ]
+  },
+  {
+   "id": "rpc",
+   "type": "backend",
+   "label": "PiRpcClient",
+   "sublabel": "持久子进程 · 会话",
+   "pos": [
+    460,
+    240
+   ],
+   "size": [
+    170,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/pi_runtime.py",
+     "label": "RPC 客户端"
+    }
+   ]
+  },
+  {
+   "id": "pi-cli",
+   "type": "backend",
+   "label": "Pi CLI 0.84.2",
+   "sublabel": "deepseek-v4-flash",
+   "pos": [
+    700,
+    240
+   ],
+   "size": [
+    170,
+    64
+   ],
+   "tag": "thinking: low"
+  },
+  {
+   "id": "deepseek",
+   "type": "external",
+   "label": "DeepSeek API",
+   "sublabel": "deepseek-v4-flash",
+   "pos": [
+    940,
+    240
+   ],
+   "size": [
+    150,
+    64
+   ]
+  },
+  {
+   "id": "system-md",
+   "type": "external",
+   "label": ".pi/SYSTEM.md",
+   "sublabel": "项目系统合同",
+   "pos": [
+    430,
+    80
+   ],
+   "size": [
+    160,
+    56
+   ]
+  },
+  {
+   "id": "extension",
+   "type": "external",
+   "label": "xianyu-ops.ts",
+   "sublabel": "13 个类型化工具",
+   "pos": [
+    695,
+    80
+   ],
+   "size": [
+    180,
+    56
+   ]
+  },
+  {
+   "id": "skills",
+   "type": "external",
+   "label": ".pi/skills ×8",
+   "sublabel": "经营技能",
+   "pos": [
+    950,
+    80
+   ],
+   "size": [
+    140,
+    56
+   ]
+  },
+  {
+   "id": "sessions",
+   "type": "database",
+   "label": "pi_sessions JSONL",
+   "sublabel": "data\\live\\pi_sessions",
+   "pos": [
+    460,
+    420
+   ],
+   "size": [
+    170,
+    64
+   ]
+  },
+  {
+   "id": "tools-http",
+   "type": "backend",
+   "label": "工具执行",
+   "sublabel": "typed HTTP → FastAPI",
+   "tag": "external_action_tools=false",
+   "pos": [
+    690,
+    420
+   ],
+   "size": [
+    190,
+    64
+   ]
+  },
+  {
+   "id": "channels",
+   "type": "external",
+   "label": "入站渠道",
+   "sublabel": "Feishu / HTTP / 闲鱼 IM",
+   "pos": [
+    1280,
+    160
+   ],
+   "size": [
+    160,
+    64
+   ]
+  },
+  {
+   "id": "feishu-in",
+   "type": "backend",
+   "label": "feishu.py",
+   "sublabel": "报文提取",
+   "pos": [
+    1530,
+    160
+   ],
+   "size": [
+    170,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/feishu.py",
+     "label": "报文解析"
+    }
+   ]
+  },
+  {
+   "id": "envelope",
+   "type": "security",
+   "label": "envelope 去重",
+   "sublabel": "来源+账号+源消息ID",
+   "pos": [
+    1790,
+    160
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/message_envelope.py",
+     "label": "信封规范化"
+    }
+   ]
+  },
+  {
+   "id": "intake",
+   "type": "database",
+   "label": "MessageIntake",
+   "sublabel": "消息台账",
+   "pos": [
+    2060,
+    160
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/message_intake.py",
+     "label": "消息台账"
+    }
+   ]
+  },
+  {
+   "id": "scheduler",
+   "type": "backend",
+   "label": "import scheduler",
+   "sublabel": "多账号导入",
+   "pos": [
+    1530,
+    400
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/message_import_scheduler.py",
+     "label": "导入调度"
+    }
+   ]
+  },
+  {
+   "id": "reply",
+   "type": "backend",
+   "label": "回复草稿",
+   "sublabel": "prepare_customer_reply",
+   "pos": [
+    1790,
+    400
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/server.py",
+     "label": "回复准备"
+    }
+   ]
+  },
+  {
+   "id": "send",
+   "type": "security",
+   "label": "发送审批→队列",
+   "sublabel": "Outbox 投影·回执闭环",
+   "pos": [
+    2060,
+    400
+   ],
+   "size": [
+    180,
+    64
+   ]
+  },
+  {
+   "id": "caller",
+   "type": "external",
+   "label": "业务调用方",
+   "sublabel": "Pi 工具 / 控制台 / 同步",
+   "pos": [
+    2390,
+    160
+   ],
+   "size": [
+    170,
+    64
+   ]
+  },
+  {
+   "id": "wo",
+   "type": "backend",
+   "label": "WorkOrder + ActionPlan",
+   "sublabel": "可审阅动作快照",
+   "pos": [
+    2640,
+    160
+   ],
+   "size": [
+    175,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/work_orders.py",
+     "label": "工单管理"
+    }
+   ]
+  },
+  {
+   "id": "approval",
+   "type": "security",
+   "label": "人工审批",
+   "sublabel": "发布/回复/删除/退款/采购",
+   "pos": [
+    2910,
+    160
+   ],
+   "size": [
+    175,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/work_orders.py",
+     "label": "审批"
+    }
+   ]
+  },
+  {
+   "id": "queue",
+   "type": "messagebus",
+   "label": "ExecutionJobQueue",
+   "sublabel": "queued/running/failed · 重试",
+   "pos": [
+    3180,
+    160
+   ],
+   "size": [
+    185,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/execution_queue.py",
+     "label": "执行队列"
+    }
+   ]
+  },
+  {
+   "id": "executor",
+   "type": "backend",
+   "label": "ActionExecutor",
+   "sublabel": "唯一分发器 · 快照绑定",
+   "pos": [
+    3450,
+    160
+   ],
+   "size": [
+    185,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/action_executor.py",
+     "label": "动作分发"
+    }
+   ]
+  },
+  {
+   "id": "adapter",
+   "type": "backend",
+   "label": "Adapter",
+   "sublabel": "browser/stub · BrowserPool · 写操作取证",
+   "pos": [
+    3150,
+    400
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/adapters.py",
+     "label": "适配器选择"
+    },
+    {
+     "path": "xianyu_agent/browser_adapter.py",
+     "label": "浏览器适配"
+    }
+   ]
+  },
+  {
+   "id": "xianyu-platform",
+   "type": "external",
+   "label": "闲鱼平台",
+   "sublabel": "平台写动作",
+   "pos": [
+    3430,
+    400
+   ],
+   "size": [
+    160,
+    64
+   ]
+  },
+  {
+   "id": "evidence",
+   "type": "database",
+   "label": "执行证据",
+   "sublabel": "前后截图 / page_url / blocker",
+   "pos": [
+    2850,
+    400
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/browser_adapter.py",
+     "label": "执行取证"
+    }
+   ]
+  },
+  {
+   "id": "dotenv",
+   "type": "external",
+   "label": ".env",
+   "sublabel": "DATA_DIR / DB_PATH",
+   "pos": [
+    40,
+    650
+   ],
+   "size": [
+    150,
+    64
+   ]
+  },
+  {
+   "id": "settings",
+   "type": "backend",
+   "label": "Settings.from_env()",
+   "sublabel": "xianyu_agent/config.py",
+   "pos": [
+    350,
+    650
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/config.py",
+     "label": "配置加载"
+    }
+   ]
+  },
+  {
+   "id": "compose",
+   "type": "backend",
+   "label": "server.py 组合根",
+   "sublabel": "服务装配",
+   "pos": [
+    690,
+    650
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/server.py",
+     "label": "组合根"
+    }
+   ]
+  },
+  {
+   "id": "singleton",
+   "type": "backend",
+   "label": "db_manager 单例",
+   "sublabel": "惰性连接 · PEP 562",
+   "pos": [
+    1060,
+    650
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/db_manager.py",
+     "label": "configure_db_manager"
+    }
+   ]
+  },
+  {
+   "id": "isolated-tests",
+   "type": "backend",
+   "label": "run_tests_isolated.ps1",
+   "sublabel": "临时 DATA_DIR / DB_PATH",
+   "pos": [
+    350,
+    800
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "scripts/run_tests_isolated.ps1",
+     "label": "隔离测试"
+    }
+   ]
+  },
+  {
+   "id": "json-ledgers",
+   "type": "database",
+   "label": "JSON 业务账本",
+   "sublabel": "candidates / work_orders / events",
+   "pos": [
+    690,
+    800
+   ],
+   "size": [
+    200,
+    64
+   ]
+  },
+  {
+   "id": "sqlite-live",
+   "type": "database",
+   "label": "SQLite live",
+   "sublabel": "data\\live\\xianyu_data.db",
+   "tag": "数据边界",
+   "pos": [
+    1060,
+    800
+   ],
+   "size": [
+    200,
+    64
+   ]
+  },
+  {
+   "id": "legacy-db",
+   "type": "database",
+   "label": "旧 SQLite",
+   "sublabel": "data\\xianyu_data.db",
+   "tag": "只读保留",
+   "pos": [
+    40,
+    960
+   ],
+   "size": [
+    170,
+    64
+   ]
+  },
+  {
+   "id": "migration",
+   "type": "backend",
+   "label": "db_migration.py",
+   "sublabel": "dry-run / 行数核对 / 幂等",
+   "pos": [
+    560,
+    960
+   ],
+   "size": [
+    210,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/db_migration.py",
+     "label": "迁移工具"
+    }
+   ]
+  },
+  {
+   "id": "backup",
+   "type": "database",
+   "label": "迁移备份",
+   "sublabel": "backup + SHA-256 sidecar",
+   "pos": [
+    900,
+    960
+   ],
+   "size": [
+    190,
+    64
+   ]
+  },
+  {
+   "id": "terms",
+   "type": "database",
+   "label": "商业条款",
+   "sublabel": "账号+类目 · ≤24h",
+   "pos": [
+    1970,
+    580
+   ],
+   "size": [
+    190,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/account_commercial_terms.py",
+     "label": "条款快照"
+    }
+   ]
+  },
+  {
+   "id": "candidate",
+   "type": "database",
+   "label": "转售候选",
+   "sublabel": "resale_candidates.json",
+   "pos": [
+    1400,
+    720
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/resale.py",
+     "label": "候选管理"
+    }
+   ]
+  },
+  {
+   "id": "evidence-store",
+   "type": "database",
+   "label": "证据存档",
+   "sublabel": "五类不可变 · SHA-256",
+   "pos": [
+    1660,
+    720
+   ],
+   "size": [
+    210,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/candidate_evidence_store.py",
+     "label": "证据存储"
+    }
+   ]
+  },
+  {
+   "id": "activation",
+   "type": "security",
+   "label": "12 项启动包门禁",
+   "sublabel": "evidence fingerprint",
+   "pos": [
+    1970,
+    720
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/candidate_activation.py",
+     "label": "激活门禁"
+    }
+   ]
+  },
+  {
+   "id": "preflight",
+   "type": "security",
+   "label": "publish preflight",
+   "sublabel": "账号+候选",
+   "pos": [
+    2260,
+    720
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/commercial_preflight.py",
+     "label": "发布预检"
+    }
+   ]
+  },
+  {
+   "id": "operator-approve",
+   "type": "external",
+   "label": "操作者",
+   "sublabel": "批准证据指纹",
+   "pos": [
+    1400,
+    960
+   ],
+   "size": [
+    150,
+    64
+   ]
+  },
+  {
+   "id": "launch",
+   "type": "security",
+   "label": "Day-0 20 门禁",
+   "sublabel": "preview/start · token",
+   "pos": [
+    1660,
+    960
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/commercial_launch.py",
+     "label": "启动门禁"
+    }
+   ]
+  },
+  {
+   "id": "trial",
+   "type": "backend",
+   "label": "CommercialTrial",
+   "sublabel": "批次/实验/止损",
+   "pos": [
+    1970,
+    960
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/commercial_trial.py",
+     "label": "试运营"
+    }
+   ]
+  },
+  {
+   "id": "xy-order",
+   "type": "external",
+   "label": "闲鱼订单",
+   "sublabel": "平台 paid 事件",
+   "pos": [
+    1400,
+    1280
+   ],
+   "size": [
+    170,
+    64
+   ]
+  },
+  {
+   "id": "sync",
+   "type": "backend",
+   "label": "订单同步",
+   "sublabel": "adapter·sync_persistence",
+   "pos": [
+    1660,
+    1280
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/sync_persistence.py",
+     "label": "同步持久化"
+    }
+   ]
+  },
+  {
+   "id": "order-runtime",
+   "type": "security",
+   "label": "OrderRuntime",
+   "sublabel": "synthetic 隔离·履约锁·状态机",
+   "pos": [
+    1930,
+    1280
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/order_runtime.py",
+     "label": "订单运行时"
+    }
+   ]
+  },
+  {
+   "id": "handoff",
+   "type": "backend",
+   "label": "fulfillment handoff",
+   "sublabel": "规格/地址/库存/报价",
+   "pos": [
+    2210,
+    1280
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/commercial_trial.py",
+     "label": "履约交接"
+    }
+   ]
+  },
+  {
+   "id": "purchase",
+   "type": "security",
+   "label": "采购审批",
+   "sublabel": "PurchaseTask",
+   "pos": [
+    1400,
+    1520
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/resale.py",
+     "label": "采购任务"
+    }
+   ]
+  },
+  {
+   "id": "supplier",
+   "type": "external",
+   "label": "供应商",
+   "sublabel": "下单/发货",
+   "pos": [
+    1660,
+    1520
+   ],
+   "size": [
+    170,
+    64
+   ]
+  },
+  {
+   "id": "logistics",
+   "type": "backend",
+   "label": "双边物流",
+   "sublabel": "供应商+闲鱼物流",
+   "pos": [
+    1930,
+    1520
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/resale.py",
+     "label": "转售订单"
+    }
+   ]
+  },
+  {
+   "id": "profit",
+   "type": "database",
+   "label": "实际利润对账",
+   "sublabel": "实收/采购/运费/平台费",
+   "pos": [
+    2210,
+    1520
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/resale.py",
+     "label": "利润重算"
+    }
+   ]
+  },
+  {
+   "id": "operator-login",
+   "type": "external",
+   "label": "操作者",
+   "sublabel": "人工登录",
+   "pos": [
+    2590,
+    720
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "browser-control",
+   "type": "backend",
+   "label": "browser_control",
+   "sublabel": "专用 Edge profile",
+   "pos": [
+    2820,
+    720
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/browser_control.py",
+     "label": "登录浏览器"
+    }
+   ]
+  },
+  {
+   "id": "import-flow",
+   "type": "backend",
+   "label": "browser-import",
+   "sublabel": "open→preview→commit",
+   "pos": [
+    3110,
+    720
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/server.py",
+     "label": "二阶段接入"
+    }
+   ]
+  },
+  {
+   "id": "account-store",
+   "type": "database",
+   "label": "cookies 表",
+   "sublabel": "SQLite live",
+   "pos": [
+    3400,
+    720
+   ],
+   "size": [
+    170,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/db_manager.py",
+     "label": "账号存储"
+    }
+   ]
+  },
+  {
+   "id": "readiness",
+   "type": "security",
+   "label": "first-run readiness",
+   "sublabel": "账号门禁",
+   "pos": [
+    2820,
+    960
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/first_run_readiness.py",
+     "label": "就绪评估"
+    }
+   ]
+  },
+  {
+   "id": "runtime",
+   "type": "backend",
+   "label": "account_runtime",
+   "sublabel": "连接·新鲜度 ≤300s",
+   "pos": [
+    3110,
+    960
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/account_runtime.py",
+     "label": "运行状态"
+    }
+   ]
+  },
+  {
+   "id": "prompt",
+   "type": "backend",
+   "label": "prompt profile",
+   "sublabel": "bootstrap·会话摘要",
+   "pos": [
+    3400,
+    960
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/account_prompt_profiles.py",
+     "label": "Prompt 配置"
+    }
+   ]
+  },
+  {
+   "id": "web-console",
+   "type": "frontend",
+   "label": "Web 控制台",
+   "sublabel": "console · app.js · style.css",
+   "pos": [
+    60,
+    1160
+   ],
+   "size": [
+    180,
+    60
+   ],
+   "sources": [
+    {
+     "path": "web/app.js",
+     "label": "控制台逻辑"
+    }
+   ]
+  },
+  {
+   "id": "cli-entry",
+   "type": "backend",
+   "label": "CLI 运维入口",
+   "sublabel": "cli server · 评审工具",
+   "pos": [
+    300,
+    1160
+   ],
+   "size": [
+    180,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/cli.py",
+     "label": "运维入口"
+    }
+   ]
+  },
+  {
+   "id": "workflow-facade",
+   "type": "backend",
+   "label": "CommerceWorkflow",
+   "sublabel": "业务门面 · 60+ 端点委托",
+   "tag": "由组合根实例化",
+   "pos": [
+    40,
+    1300
+   ],
+   "size": [
+    190,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/workflow.py",
+     "label": "业务门面"
+    }
+   ]
+  },
+  {
+   "id": "agent-registry",
+   "type": "messagebus",
+   "label": "Agent Registry",
+   "sublabel": "12 Agent · 协作总线",
+   "pos": [
+    310,
+    1300
+   ],
+   "size": [
+    160,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/agent_registry.py",
+     "label": "注册中心"
+    }
+   ]
+  },
+  {
+   "id": "llm-client",
+   "type": "backend",
+   "label": "LLM 客户端",
+   "sublabel": "DeepSeek / MiMo 双后端",
+   "pos": [
+    540,
+    1300
+   ],
+   "size": [
+    160,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/llm.py",
+     "label": "LLM 出口"
+    }
+   ]
+  },
+  {
+   "id": "llm-manager",
+   "type": "backend",
+   "label": "LLM Manager",
+   "sublabel": "按 Agent 分配客户端",
+   "pos": [
+    770,
+    1300
+   ],
+   "size": [
+    150,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/llm_manager.py",
+     "label": "客户端管理"
+    }
+   ]
+  },
+  {
+   "id": "ruflo",
+   "type": "external",
+   "label": "Ruflo 编排接口",
+   "sublabel": "MCP 记忆/事件/spawn",
+   "pos": [
+    950,
+    1300
+   ],
+   "size": [
+    150,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/ruflo_integration.py",
+     "label": "MCP 接口"
+    }
+   ]
+  },
+  {
+   "id": "json-storage",
+   "type": "database",
+   "label": "JSON 文件存储",
+   "sublabel": "drafts/outbox/guard/memory",
+   "pos": [
+    60,
+    1450
+   ],
+   "size": [
+    180,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/storage.py",
+     "label": "文件存储"
+    }
+   ]
+  },
+  {
+   "id": "sched-loops",
+   "type": "backend",
+   "label": "后台定时循环",
+   "sublabel": "发现/GitHub/日报/发货检查",
+   "pos": [
+    300,
+    1450
+   ],
+   "size": [
+    180,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/scheduler.py",
+     "label": "循环调度"
+    }
+   ]
+  },
+  {
+   "id": "bridge-events",
+   "type": "database",
+   "label": "Bridge Events 台账",
+   "sublabel": "闲鱼↔电商 幂等事件",
+   "pos": [
+    540,
+    1450
+   ],
+   "size": [
+    170,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/bridge_events.py",
+     "label": "集成台账"
+    }
+   ]
+  },
+  {
+   "id": "product-discovery",
+   "type": "backend",
+   "label": "商品发现",
+   "sublabel": "Playwright 搜索·评分·推送",
+   "pos": [
+    2520,
+    1160
+   ],
+   "size": [
+    180,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/product_discovery.py",
+     "label": "商品发现"
+    }
+   ]
+  },
+  {
+   "id": "github-discovery",
+   "type": "backend",
+   "label": "GitHub 发现",
+   "sublabel": "仓库扫描·商业化判定",
+   "pos": [
+    2740,
+    1160
+   ],
+   "size": [
+    180,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/github_discovery.py",
+     "label": "商机扫描"
+    }
+   ]
+  },
+  {
+   "id": "discovery-inbox",
+   "type": "database",
+   "label": "发现收件箱",
+   "sublabel": "人工确认 promote→候选",
+   "pos": [
+    2960,
+    1160
+   ],
+   "size": [
+    170,
+    60
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/discovery_inbox.py",
+     "label": "线索收件箱"
+    }
+   ]
+  },
+  {
+   "id": "sourcing",
+   "type": "backend",
+   "label": "实物货源管理",
+   "sublabel": "供应商·选品计划·利润",
+   "pos": [
+    2520,
+    1300
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/physical_sourcing.py",
+     "label": "货源管理"
+    }
+   ]
+  },
+  {
+   "id": "listing-strategy",
+   "type": "backend",
+   "label": "上架策略引擎",
+   "sublabel": "定价·选址·首图",
+   "pos": [
+    2740,
+    1300
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/listing_strategy.py",
+     "label": "上架策略"
+    }
+   ]
+  },
+  {
+   "id": "url-arbitrage",
+   "type": "backend",
+   "label": "URL 爬取·虚拟套利",
+   "sublabel": "转售权校验·经济学计算",
+   "pos": [
+    2960,
+    1300
+   ],
+   "size": [
+    180,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/url_crawler.py",
+     "label": "站点爬取"
+    }
+   ]
+  },
+  {
+   "id": "opc-dashboard",
+   "type": "frontend",
+   "label": "OPC Daily Dashboard",
+   "sublabel": "只读聚合 9 数据源",
+   "pos": [
+    2520,
+    1480
+   ],
+   "size": [
+    220,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/opc_dashboard.py",
+     "label": "每日仪表盘"
+    }
+   ]
+  },
+  {
+   "id": "reply-outbox",
+   "type": "database",
+   "label": "Reply Outbox",
+   "sublabel": "回复出站投影·幂等 · 待提交",
+   "tag": "untracked",
+   "pos": [
+    2790,
+    1480
+   ],
+   "size": [
+    180,
+    64
+   ]
+  },
+  {
+   "id": "action-scope",
+   "type": "security",
+   "label": "Action Scope 信封",
+   "sublabel": "账号+目标+哈希+TTL · 待提交",
+   "tag": "untracked",
+   "pos": [
+    3010,
+    1480
+   ],
+   "size": [
+    190,
+    64
+   ]
+  },
+  {
+   "id": "ws-legacy",
+   "type": "external",
+   "label": "Xianyu WS 接入",
+   "sublabel": "IM 协议层 · 接线断裂",
+   "tag": "legacy",
+   "pos": [
+    3250,
+    1480
+   ],
+   "size": [
+    170,
+    64
+   ],
+   "sources": [
+    {
+     "path": "xianyu_agent/xianyu_ws.py",
+     "label": "WS 客户端"
+    }
+   ]
+  }
+ ],
+ "boundaries": [
+  {
+   "kind": "region",
+   "label": "Pi 自然语言运行时（Pi 0.84.2 · deepseek-v4-flash）",
+   "wraps": [
+    "operator",
+    "api-pi",
+    "rpc",
+    "pi-cli",
+    "deepseek",
+    "system-md",
+    "extension",
+    "skills",
+    "sessions",
+    "tools-http"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "消息接入链（去重台账 → 草稿 → 审批发送）",
+   "wraps": [
+    "channels",
+    "feishu-in",
+    "envelope",
+    "intake",
+    "scheduler",
+    "reply",
+    "send"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "治理执行链（平台写动作唯一路径）",
+   "wraps": [
+    "caller",
+    "wo",
+    "approval",
+    "queue",
+    "executor",
+    "adapter",
+    "xianyu-platform",
+    "evidence"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "数据与运行时基座（data\\live 边界）",
+   "wraps": [
+    "dotenv",
+    "settings",
+    "compose",
+    "singleton",
+    "isolated-tests",
+    "json-ledgers",
+    "sqlite-live",
+    "legacy-db",
+    "migration",
+    "backup"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "商业证据与启动门禁（12/12 → 20/20）",
+   "wraps": [
+    "terms",
+    "candidate",
+    "evidence-store",
+    "activation",
+    "preflight",
+    "operator-approve",
+    "launch",
+    "trial"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "订单履约链（付款 → 采购 → 双物流 → 利润）",
+   "wraps": [
+    "xy-order",
+    "sync",
+    "order-runtime",
+    "handoff",
+    "purchase",
+    "supplier",
+    "logistics",
+    "profit"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "账号生命周期（二阶段绑定 · 新鲜度）",
+   "wraps": [
+    "operator-login",
+    "browser-control",
+    "import-flow",
+    "account-store",
+    "readiness",
+    "runtime",
+    "prompt"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "入口 · 业务门面 · 多 Agent 支撑",
+   "wraps": [
+    "web-console",
+    "cli-entry",
+    "workflow-facade",
+    "agent-registry",
+    "llm-client",
+    "llm-manager",
+    "ruflo",
+    "json-storage",
+    "sched-loops",
+    "bridge-events"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "发现 · 货源 · 策略",
+   "wraps": [
+    "product-discovery",
+    "github-discovery",
+    "discovery-inbox",
+    "sourcing",
+    "listing-strategy",
+    "url-arbitrage"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "运营与审批可靠性",
+   "wraps": [
+    "opc-dashboard",
+    "reply-outbox",
+    "action-scope",
+    "ws-legacy"
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "id": "operator-to-api",
+   "from": "operator",
+   "to": "api-pi",
+   "label": "指令"
+  },
+  {
+   "id": "api-to-rpc",
+   "from": "api-pi",
+   "to": "rpc",
+   "label": "RPC"
+  },
+  {
+   "id": "rpc-to-cli",
+   "from": "rpc",
+   "to": "pi-cli",
+   "label": "JSONL 流",
+   "variant": "emphasis",
+   "labelDx": 0,
+   "labelDy": 42
+  },
+  {
+   "id": "cli-to-deepseek",
+   "from": "pi-cli",
+   "to": "deepseek",
+   "label": "推理",
+   "labelDx": 18,
+   "labelDy": 30
+  },
+  {
+   "id": "system-to-cli",
+   "from": "system-md",
+   "to": "pi-cli",
+   "label": "系统合同",
+   "variant": "dashed"
+  },
+  {
+   "id": "extension-to-cli",
+   "from": "extension",
+   "to": "pi-cli",
+   "label": "扩展加载",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "labelDy": 26
+  },
+  {
+   "id": "skills-to-cli",
+   "from": "skills",
+   "to": "pi-cli",
+   "label": "按需加载",
+   "variant": "dashed"
+  },
+  {
+   "id": "rpc-to-sessions",
+   "from": "rpc",
+   "to": "sessions",
+   "label": "会话追加",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "labelDy": 30
+  },
+  {
+   "id": "cli-to-tools",
+   "from": "pi-cli",
+   "to": "tools-http",
+   "label": "工具调用",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "labelDy": 66
+  },
+  {
+   "id": "channels-to-feishu",
+   "from": "channels",
+   "to": "feishu-in",
+   "label": "入站"
+  },
+  {
+   "id": "feishu-to-envelope",
+   "from": "feishu-in",
+   "to": "envelope",
+   "label": "规范化"
+  },
+  {
+   "id": "envelope-to-intake",
+   "from": "envelope",
+   "to": "intake",
+   "label": "去重入账",
+   "variant": "emphasis"
+  },
+  {
+   "id": "intake-to-reply",
+   "from": "intake",
+   "to": "reply",
+   "label": "待复询盘",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "reply-to-send",
+   "from": "reply",
+   "to": "send",
+   "label": "草稿审批",
+   "variant": "emphasis",
+   "labelDy": -26
+  },
+  {
+   "id": "scheduler-to-intake",
+   "from": "scheduler",
+   "to": "intake",
+   "label": "周期导入",
+   "variant": "dashed",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "caller-to-wo",
+   "from": "caller",
+   "to": "wo",
+   "label": "动作请求"
+  },
+  {
+   "id": "wo-to-approval",
+   "from": "wo",
+   "to": "approval",
+   "label": "待审快照"
+  },
+  {
+   "id": "approval-to-queue",
+   "from": "approval",
+   "to": "queue",
+   "label": "批准入队",
+   "variant": "emphasis"
+  },
+  {
+   "id": "queue-to-executor",
+   "from": "queue",
+   "to": "executor",
+   "label": "领取任务"
+  },
+  {
+   "id": "executor-to-adapter",
+   "from": "executor",
+   "to": "adapter",
+   "label": "动作分发",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "adapter-to-platform",
+   "from": "adapter",
+   "to": "xianyu-platform",
+   "label": "平台写动作",
+   "variant": "emphasis"
+  },
+  {
+   "id": "adapter-to-evidence",
+   "from": "adapter",
+   "to": "evidence",
+   "label": "回执+截图",
+   "variant": "dashed"
+  },
+  {
+   "id": "dotenv-to-settings",
+   "from": "dotenv",
+   "to": "settings",
+   "label": "读取"
+  },
+  {
+   "id": "settings-to-compose",
+   "from": "settings",
+   "to": "compose",
+   "label": "db_path"
+  },
+  {
+   "id": "compose-to-singleton",
+   "from": "compose",
+   "to": "singleton",
+   "label": "显式绑定",
+   "variant": "emphasis"
+  },
+  {
+   "id": "singleton-to-sqlite",
+   "from": "singleton",
+   "to": "sqlite-live",
+   "label": "惰性首连",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "compose-to-json",
+   "from": "compose",
+   "to": "json-ledgers",
+   "label": "账本写入",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "tests-to-settings",
+   "from": "isolated-tests",
+   "to": "settings",
+   "label": "env 覆盖",
+   "variant": "dashed",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "legacy-to-migration",
+   "from": "legacy-db",
+   "to": "migration",
+   "label": "只读源"
+  },
+  {
+   "id": "migration-to-backup",
+   "from": "migration",
+   "to": "backup",
+   "label": "哈希备份",
+   "variant": "emphasis"
+  },
+  {
+   "id": "migration-to-sqlite",
+   "from": "migration",
+   "to": "sqlite-live",
+   "label": "迁移+核对",
+   "fromSide": "top",
+   "toSide": "bottom"
+  },
+  {
+   "id": "candidate-to-evidence",
+   "from": "candidate",
+   "to": "evidence-store",
+   "label": "证据绑定"
+  },
+  {
+   "id": "evidence-to-activation",
+   "from": "evidence-store",
+   "to": "activation",
+   "label": "五类齐备"
+  },
+  {
+   "id": "terms-to-activation",
+   "from": "terms",
+   "to": "activation",
+   "label": "费率重算",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "labelDy": 30
+  },
+  {
+   "id": "activation-to-preflight",
+   "from": "activation",
+   "to": "preflight",
+   "label": "12/12"
+  },
+  {
+   "id": "preflight-to-launch",
+   "from": "preflight",
+   "to": "launch",
+   "label": "门禁通过",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "operator-to-launch",
+   "from": "operator-approve",
+   "to": "launch",
+   "label": "START 1",
+   "variant": "emphasis"
+  },
+  {
+   "id": "launch-to-trial",
+   "from": "launch",
+   "to": "trial",
+   "label": "创建批次",
+   "variant": "emphasis"
+  },
+  {
+   "id": "order-to-sync",
+   "from": "xy-order",
+   "to": "sync",
+   "label": "订单事件"
+  },
+  {
+   "id": "sync-to-runtime",
+   "from": "sync",
+   "to": "order-runtime",
+   "label": "paid 确认",
+   "variant": "emphasis"
+  },
+  {
+   "id": "runtime-to-handoff",
+   "from": "order-runtime",
+   "to": "handoff",
+   "label": "拿履约锁"
+  },
+  {
+   "id": "handoff-to-purchase",
+   "from": "handoff",
+   "to": "purchase",
+   "label": "创建采购",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "purchase-to-supplier",
+   "from": "purchase",
+   "to": "supplier",
+   "label": "人工下单",
+   "variant": "emphasis"
+  },
+  {
+   "id": "supplier-to-logistics",
+   "from": "supplier",
+   "to": "logistics",
+   "label": "发货回执"
+  },
+  {
+   "id": "logistics-to-profit",
+   "from": "logistics",
+   "to": "profit",
+   "label": "签收对账",
+   "variant": "emphasis"
+  },
+  {
+   "id": "operator-to-browser",
+   "from": "operator-login",
+   "to": "browser-control",
+   "label": "扫码登录"
+  },
+  {
+   "id": "browser-to-import",
+   "from": "browser-control",
+   "to": "import-flow",
+   "label": "身份预览"
+  },
+  {
+   "id": "import-to-store",
+   "from": "import-flow",
+   "to": "account-store",
+   "label": "BIND 提交",
+   "variant": "emphasis"
+  },
+  {
+   "id": "store-to-runtime",
+   "from": "account-store",
+   "to": "runtime",
+   "label": "账号状态",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "runtime-to-prompt",
+   "from": "runtime",
+   "to": "prompt",
+   "label": "同账号",
+   "labelDy": -26
+  },
+  {
+   "id": "runtime-to-readiness",
+   "from": "runtime",
+   "to": "readiness",
+   "label": "新鲜度"
+  },
+  {
+   "id": "tools-to-compose",
+   "from": "tools-http",
+   "to": "compose",
+   "label": "typed HTTP",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "labelDy": 42
+  },
+  {
+   "id": "send-to-queue",
+   "from": "send",
+   "to": "queue",
+   "label": "批准入队",
+   "variant": "emphasis",
+   "fromSide": "right",
+   "toSide": "top",
+   "via": [
+    [
+     2300,
+     432
+    ],
+    [
+     2300,
+     130
+    ],
+    [
+     3272.5,
+     130
+    ]
+   ]
+  },
+  {
+   "id": "trial-to-wo",
+   "from": "trial",
+   "to": "wo",
+   "label": "发布工单",
+   "fromSide": "right",
+   "toSide": "bottom",
+   "via": [
+    [
+     2510,
+     992
+    ],
+    [
+     2510,
+     520
+    ],
+    [
+     2727.5,
+     520
+    ]
+   ]
+  },
+  {
+   "id": "platform-to-order",
+   "from": "xianyu-platform",
+   "to": "xy-order",
+   "label": "订单事件",
+   "variant": "dashed",
+   "fromSide": "right",
+   "toSide": "top",
+   "via": [
+    [
+     3680,
+     432
+    ],
+    [
+     3680,
+     1080
+    ],
+    [
+     1485,
+     1080
+    ]
+   ]
+  },
+  {
+   "id": "console-to-facade",
+   "from": "web-console",
+   "to": "workflow-facade",
+   "label": "REST",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "cli-to-facade",
+   "from": "cli-entry",
+   "to": "workflow-facade",
+   "label": "构造门面",
+   "fromSide": "bottom",
+   "toSide": "top",
+   "via": [
+    [
+     390,
+     1260
+    ],
+    [
+     135,
+     1260
+    ]
+   ]
+  },
+  {
+   "id": "facade-to-registry",
+   "from": "workflow-facade",
+   "to": "agent-registry",
+   "label": "协作"
+  },
+  {
+   "id": "ruflo-to-facade",
+   "from": "ruflo",
+   "to": "workflow-facade",
+   "label": "spawn 委托",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "bottom",
+   "via": [
+    [
+     1025,
+     1420
+    ],
+    [
+     135,
+     1420
+    ]
+   ]
+  },
+  {
+   "id": "loops-to-discovery",
+   "from": "sched-loops",
+   "to": "product-discovery",
+   "label": "定时驱动",
+   "variant": "dashed",
+   "fromSide": "bottom",
+   "toSide": "left",
+   "via": [
+    [
+     390,
+     1620
+    ],
+    [
+     2470,
+     1620
+    ],
+    [
+     2470,
+     1190
+    ]
+   ]
+  },
+  {
+   "id": "inbox-to-candidate",
+   "from": "discovery-inbox",
+   "to": "candidate",
+   "label": "promote",
+   "variant": "emphasis",
+   "fromSide": "top",
+   "toSide": "left",
+   "via": [
+    [
+     3045,
+     1100
+    ],
+    [
+     1330,
+     1100
+    ],
+    [
+     1330,
+     752
+    ]
+   ]
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "模块积木索引（7 区块）",
+   "items": [
+    "十区块：Pi 运行时(左上) · 消息接入(中上) · 治理执行链(右上)",
+    "数据基座(左) · 商业证据(中) · 账号生命周期(右) · 订单履约(中下)",
+    "入口·门面·多Agent支撑(左下) · 发现·货源·策略(右下) · 运营与审批可靠性(右下角)",
+    "跨区块箭头：typed HTTP / 批准入队 / 发布工单 / 订单事件 / promote / 定时驱动"
+   ]
+  },
+  {
+   "dot": "emerald",
+   "title": "运行事实",
+   "items": [
+    "938 项隔离测试通过；Pi 0.84.2 · deepseek-v4-flash · thinking low",
+    "SQLite 与 JSON 账本统一在 data\\live 数据边界（迁移已验证，54 行一致）",
+    "当前首阻塞 account_configured：等待操作者真实账号登录绑定"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "硬边界",
+   "items": [
+    "平台写动作只有一条路：WorkOrder → 人工审批 → ExecutionJobQueue → ActionExecutor → Adapter",
+    "Pi 无 shell/写文件/审批/发送工具（external_action_tools=false）",
+    "mock/stub/synthetic 只证明代码路径；占位候选 T 不得伪装真实商品"
+   ]
+  },
+  {
+   "dot": "slate",
+   "title": "如何读这张图",
+   "items": [
+    "滚轮缩放查看区块内部细节；拖拽平移；右上搜索可跳转节点",
+    "顶部导览视图一键聚焦：数据边界 / 审批执行路径 / 商业门禁 / 消息与履约 / Pi 运行时",
+    "悬停关系线可追踪连接；导出按钮可导出当前视图"
+   ]
+  },
+  {
+   "dot": "violet",
+   "title": "子代理审查增补说明（全量 86 文件核对）",
+   "items": [
+    "折入注记：auto_reply / after_sales / image_search / memory / models → 门面；order_status_handler → 订单运行时；browser_pool / 写操作取证 → Adapter；account_attribution / ops_queues / profiles / conversation_profiles → 账号与仪表盘",
+    "不上图（dead/legacy）：cookie_manager(死代码) · secure_confirm(零实例化) · openclaw_router(端点已 410) · trial_run(Phase 7 已弃用) · openclaw 脚本 ×6 · platform_guard(已禁用直通)",
+    "待提交批次（已接线、git untracked）：reply_outbox / action_scope / browser_write_evidence / commercial_alpha_intake + 各自测试与 runbook",
+    "双轨并存：scheduler.py(旧 workflow 循环) 与 agent_scheduler.py(agents 循环)均在 server startup 启动；polish_loop 为死代码"
+   ]
+  }
+ ]
+}

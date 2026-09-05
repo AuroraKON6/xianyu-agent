@@ -23,7 +23,7 @@
    不迁移其运行时或托管编排模型。
 
 Pi 方面的决定更克制：**生产业务 Pi 当前不安装任何第三方 Package**。
-项目已经有 13 个受控工具和 8 个业务 Skill；继续堆通用插件会重复状态、扩大权限，
+项目已经有 12 个业务 Typed Tools 和 8 个业务 Skill；继续堆通用插件会重复状态、扩大权限，
 还可能重新引入额外进程和终端窗口。唯一值得试验的是把 `pi-web-access` 放进
 独立的只读研究会话，且不加载到正在运行的业务 RPC；`pi-lens` 只可能用于开发环境。
 
@@ -38,7 +38,7 @@ Pi 方面的决定更克制：**生产业务 Pi 当前不安装任何第三方 P
 | 能力 | 当前实现 | 判断 |
 |---|---|---|
 | Pi 基座 | `@earendil-works/pi-coding-agent==0.84.2` | 已固定版本 |
-| 项目级 Pi 扩展 | `.pi/extensions/xianyu-ops.ts` | 已有 13 个允许工具 |
+| 项目级 Pi 扩展 | `.pi/extensions/xianyu-ops.ts` | 已有 12 个业务允许工具，无任意路径 `read` |
 | 业务 Skill | `.pi/skills/` | 已有 8 个，覆盖选品、证据、上架、转化、履约、实验和复盘 |
 | 入站消息去重 | `message_envelope.py`、`message_intake.py` | 已按来源、账号和源消息 ID 去重 |
 | 人工接管 | `account_runtime.py` | 已有按会话人工接管状态 |
@@ -234,7 +234,7 @@ Pi 方面的决定更克制：**生产业务 Pi 当前不安装任何第三方 P
 - 9 到 900 Agent 的设计不适合当前一个账号、一个 SKU 的商业 Alpha。
 - GPL-3.0 代码不进入当前项目。
 
-本项目吸收方式：未来把现有 `.pi/SYSTEM.md`、8 个 Skill、13 个工具和审批矩阵汇总为
+本项目吸收方式：未来把现有 `.pi/SYSTEM.md`、8 个 Skill、12 个工具和审批矩阵汇总为
 一个只读 `company_contract.json`，由测试校验角色、工具和保留决策的一致性；不迁移运行时。
 
 ## 5. Pi Packages 与插件审查
@@ -284,7 +284,7 @@ Pi 官方称其为 Extensions、Skills 和 Pi Packages：
 
 - 它支持多种远程搜索/抓取后端以及可选浏览器 Cookie，权限面远大于现有
   `xianyu_market_search`。
-- 业务 RPC 应保持 13 个白名单工具；通用抓取不应与发布、回复准备共享 Session。
+- 业务 RPC 应保持 12 个白名单业务工具；通用抓取不应与发布、回复准备共享 Session。
 - 其更新频率高，不能使用浮动 latest。
 
 试用合同：
@@ -369,7 +369,7 @@ PID、端口和单实例合同，不增加新的进程管理器。
 1. 修复 `.env DB_PATH` 初始化顺序。
 2. 备份并验证 SQLite 迁移，保证可重复执行和回滚。
 3. 建立 Git 可恢复基线。
-4. 保持生产 Pi 的 13 个工具和 8 个 Skill 不变。
+4. 保持生产 Pi 的 12 个业务工具和 8 个 Skill 不变。
 5. 不安装任何第三方 Pi Package。
 
 验收：与 `ZCODE_HANDOFF.md` Phase 29 定义一致，926 个测试或新的完整基线全部通过，
@@ -428,7 +428,7 @@ PID、端口和单实例合同，不增加新的进程管理器。
 | GH-05 | 商品事实和议价承诺 | candidate/listing/order facts | 结构化只增量状态 | 错误数字、反向更新、跨账号隔离测试 | 一个真实 SKU 事实包 |
 | GH-06 | 失败证据包 | browser adapter | 截图、URL、摘要、哈希、时间 | 敏感信息脱敏和文件完整性测试 | 实机页面 |
 | PI-01 | web-access 隔离试验 | 公共网页固定查询 | 来源化研究结果 | 无业务文件变化、无遗留进程 | 是否提供搜索 API 可后置 |
-| PI-02 | 内部 Pi Package | 稳定 Git 基线 | 固定资源 manifest | 13 tools、8+ skills、哈希、回滚 | Phase 29 完成 |
+| PI-02 | 内部 Pi Package | 稳定 Git 基线 | 固定资源 manifest | 12 tools、8+ skills、哈希、回滚 | Phase 29 完成 |
 | PI-03 | daily-operator Skill | dashboard/readiness APIs | 每日唯一动作摘要 | 只读、ID/时间、无副作用测试 | 无 |
 | PI-04 | exception-review Skill | unknown/failed/stale 状态 | 人工核验清单 | 不自动重试、不执行写动作 | GH-02 先完成 |
 

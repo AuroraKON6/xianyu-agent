@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "模块 2 · Pi 自然语言运行时",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/AuroraKON6/xianyu-agent.git",
+      "revision": "706f04f50015de690261772d4f9ea1fd19285bad"
+    }
+  },
+  "components": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "操作者",
+      "sublabel": "自然语言",
+      "pos": [
+        40,
+        240
+      ],
+      "size": [
+        110,
+        64
+      ]
+    },
+    {
+      "id": "api-pi",
+      "type": "backend",
+      "label": "/agents/pi/message",
+      "sublabel": "FastAPI 路由",
+      "pos": [
+        220,
+        240
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "xianyu_agent/server.py",
+          "label": "Pi 路由"
+        }
+      ]
+    },
+    {
+      "id": "rpc",
+      "type": "backend",
+      "label": "PiRpcClient",
+      "sublabel": "持久子进程 · 会话",
+      "pos": [
+        460,
+        240
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "xianyu_agent/pi_runtime.py",
+          "label": "RPC 客户端"
+        }
+      ]
+    },
+    {
+      "id": "pi-cli",
+      "type": "backend",
+      "label": "Pi CLI 0.84.2",
+      "sublabel": "deepseek-v4-flash",
+      "pos": [
+        700,
+        240
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "tag": "thinking: low"
+    },
+    {
+      "id": "deepseek",
+      "type": "external",
+      "label": "DeepSeek API",
+      "sublabel": "deepseek-v4-flash",
+      "pos": [
+        940,
+        240
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "system-md",
+      "type": "external",
+      "label": ".pi/SYSTEM.md",
+      "sublabel": "项目系统合同",
+      "pos": [
+        430,
+        80
+      ],
+      "size": [
+        160,
+        56
+      ]
+    },
+    {
+      "id": "extension",
+      "type": "external",
+      "label": "xianyu-ops.ts",
+      "sublabel": "13 个类型化工具",
+      "pos": [
+        695,
+        80
+      ],
+      "size": [
+        180,
+        56
+      ]
+    },
+    {
+      "id": "skills",
+      "type": "external",
+      "label": ".pi/skills ×8",
+      "sublabel": "经营技能",
+      "pos": [
+        950,
+        80
+      ],
+      "size": [
+        140,
+        56
+      ]
+    },
+    {
+      "id": "sessions",
+      "type": "database",
+      "label": "pi_sessions JSONL",
+      "sublabel": "data\\live\\pi_sessions",
+      "pos": [
+        460,
+        420
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "tools-http",
+      "type": "backend",
+      "label": "工具执行",
+      "sublabel": "typed HTTP → FastAPI",
+      "tag": "external_action_tools=false",
+      "pos": [
+        690,
+        420
+      ],
+      "size": [
+        190,
+        64
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "operator-to-api",
+      "from": "operator",
+      "to": "api-pi",
+      "label": "指令"
+    },
+    {
+      "id": "api-to-rpc",
+      "from": "api-pi",
+      "to": "rpc",
+      "label": "RPC"
+    },
+    {
+      "id": "rpc-to-cli",
+      "from": "rpc",
+      "to": "pi-cli",
+      "label": "JSONL 流",
+      "variant": "emphasis",
+      "labelDx": 0,
+      "labelDy": 42
+    },
+    {
+      "id": "cli-to-deepseek",
+      "from": "pi-cli",
+      "to": "deepseek",
+      "label": "推理",
+      "labelDx": 18,
+      "labelDy": 30
+    },
+    {
+      "id": "system-to-cli",
+      "from": "system-md",
+      "to": "pi-cli",
+      "label": "系统合同",
+      "variant": "dashed"
+    },
+    {
+      "id": "extension-to-cli",
+      "from": "extension",
+      "to": "pi-cli",
+      "label": "扩展加载",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 26
+    },
+    {
+      "id": "skills-to-cli",
+      "from": "skills",
+      "to": "pi-cli",
+      "label": "按需加载",
+      "variant": "dashed"
+    },
+    {
+      "id": "rpc-to-sessions",
+      "from": "rpc",
+      "to": "sessions",
+      "label": "会话追加",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    },
+    {
+      "id": "cli-to-tools",
+      "from": "pi-cli",
+      "to": "tools-http",
+      "label": "工具调用",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 66
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "工具面",
+      "items": [
+        "read + 12 个项目业务工具 = 13",
+        "无 shell、写文件、审批、发送、退款工具",
+        "工具经 typed HTTP 回到 FastAPI，不直连平台"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "运行合同",
+      "items": [
+        "pi-coding-agent 0.84.2 固定版本",
+        "deepseek-v4-flash · thinking low",
+        "持久 RPC 子进程 + 会话保持"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "安全边界",
+      "items": [
+        "/health 持续校验 external_action_tools=false",
+        "skills 只提供操作说明，不承担事务一致性",
+        "Pi 不保存商业真相，不审批，不执行平台动作"
+      ]
+    }
+  ]
+}

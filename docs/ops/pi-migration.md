@@ -1,6 +1,9 @@
 # Pi Runtime Migration Runbook
 
-Last verified: 2026-08-26
+Code contract verified: 2026-08-31
+
+Current runtime: stopped. The most recent live-runtime checks are historical and
+must be repeated before real account onboarding.
 
 ## Decision
 
@@ -13,8 +16,8 @@ an orchestration migration, not a rewrite of the business core.
   approvals, execution, account attribution, order state, and finance.
 - Specialist Python agents remain callable behind FastAPI. They are not
   duplicated as Pi subprocesses.
-- OpenClaw remains temporarily available only at the explicitly deprecated
-  `/agents/openclaw/message` and `/agents/hermes/message` routes.
+- OpenClaw and Hermes compatibility HTTP routes are retired with HTTP `410`.
+  Pi is the only natural-language entrypoint.
 
 ## Runtime Topology
 
@@ -23,7 +26,7 @@ flowchart TD
   U["Operator"] --> C["Web console or HTTP"]
   C --> R["PiRpcClient"]
   R --> P["Project-local Pi RPC process"]
-  P --> S["SYSTEM.md and six business skills"]
+  P --> S["SYSTEM.md and eight business skills"]
   P --> X["xianyu-ops typed tools"]
   X --> A["FastAPI business core"]
   A --> D["Candidates / terms / WorkOrders / approvals"]
@@ -38,13 +41,15 @@ The Pi child process runs with:
 - an isolated Pi agent directory under `DATA_DIR/pi_agent`;
 - project trust explicitly enabled for `.pi` resources;
 - startup update checks and telemetry disabled;
-- a strict tool allowlist.
+- a strict 12-tool business allowlist;
+- a filtered environment containing the selected model-provider credential and
+  required operating-system runtime variables, not database, Feishu or adapter
+  credentials.
 
 ## Enabled Tool Surface
 
 | Tool | Effect |
 |---|---|
-| `read` | Read project playbooks and local documentation |
 | `xianyu_business_snapshot` | Read accounts, candidates, unresolved work, readiness, and next actions |
 | `xianyu_market_search` | Read a bounded current listing search and observable price summary |
 | `xianyu_candidates` | Read domestic Xianyu candidates and economics |
@@ -58,9 +63,11 @@ The Pi child process runs with:
 | `xianyu_prepare_listing` | Create a local draft and approval WorkOrder only |
 | `xianyu_prepare_customer_reply` | Create a reply draft only; never send it |
 
-Pi does not receive `bash`, `edit`, `write`, approval, execution, platform
-message, delete, refund, or fulfillment tools. The deterministic execution path
-remains `WorkOrder -> Approval -> ExecutionJobQueue -> ActionExecutor`.
+Pi does not receive arbitrary-path `read`, `bash`, `edit`, `write`, approval,
+execution, platform message, delete, refund, or fulfillment tools. Skills carry
+the operating instructions; live facts come from typed APIs. The deterministic
+execution path remains
+`WorkOrder -> Approval -> ExecutionJobQueue -> ActionExecutor`.
 
 ## Skills
 
@@ -72,6 +79,8 @@ Project skills live under `.pi/skills`:
 4. `buyer-conversion`: inquiry classification and reply-draft workflow.
 5. `fulfillment`: paid-order, procurement, tracking, and after-sales sequence.
 6. `weekly-review`: funnel, bottleneck, stop-loss, and asset review.
+7. `competitor-evidence`: observed listing evidence and inference separation.
+8. `commercial-experiment`: preregistered single-variable observation and closeout.
 
 These skills point to the detailed playbooks already maintained under
 `docs/ops`. They summarize operating order; they do not replace evidence gates.
@@ -142,29 +151,33 @@ Acceptance requires all of the following:
 
 ## Current Verification Evidence
 
-Verified on 2026-08-18 against the local service at `127.0.0.1:8788`:
+The code contract was re-verified on 2026-08-31. The service itself is currently
+stopped, so prior real-model and browser checks are retained only as historical
+evidence:
 
 | Check | Result |
 |---|---|
-| Project-local Pi RPC handshake | Passed with `deepseek/deepseek-v4-flash`, thinking `low` |
-| Strict runtime tool allowlist | 10 tools: `read` plus nine Xianyu tools; no external-action tools |
-| Real-model read-only tool call | Passed; exactly one successful `xianyu_business_snapshot` call |
-| Snapshot/API agreement | `seller_accounts=0`, `domestic_xianyu_candidates=1`, `active_trials=0`, `unresolved_work_orders=15` |
-| External action marker | `false` |
-| Business-state integrity | 11 critical SQLite/JSON/JSONL files had identical pre/post SHA-256 and lengths |
-| Browser QA | Desktop 1440px and mobile 360px; no horizontal overflow and no console errors/warnings |
-| Isolated regression suite | 881 tests passed after the health-lock fix |
+| Strict runtime tool allowlist | PASS: 12 typed Xianyu tools; no arbitrary read or external-action tools |
+| Pi environment filter | PASS: model credential retained; DB, Feishu and adapter credentials excluded |
+| Legacy orchestrator routes | PASS: generic dispatch, OpenClaw and Hermes return `410` |
+| Draft-only legacy listing routes | PASS: approval WorkOrder created, Adapter not called |
+| Direct workflow publish | PASS: `publish=true` still produces only a draft and never calls Adapter |
+| Isolated regression suite | PASS: `945` tests, `0` failures |
+| Current Pi RPC handshake | NOT RUN: service intentionally stopped |
+| Current real-model read-only turn | NOT RUN: repeat before real onboarding |
+| Current browser QA | NOT RUN: repeat before real onboarding |
 
-The first real operating blocker is business evidence, not Pi infrastructure:
-there is no configured seller account. The existing 15 unresolved WorkOrders
-must also be reviewed rather than treated as a clean Commercial Alpha queue.
+The first real operating blocker is business input: there is no configured
+seller account and the only candidate is placeholder `T` at `1/12`. Historical
+WorkOrders are quarantined and must not be treated as a live Commercial Alpha
+queue.
 
 ## Migration Order
 
-1. Run Pi and OpenClaw compatibility side by side while all new traffic uses Pi.
-2. Complete the read-only real-model smoke test and one draft-only operator turn.
-3. Observe session stability and tool-call audit data during Commercial Alpha.
-4. Remove OpenClaw startup/configuration scripts only after no active caller uses
-   the compatibility routes and rollback is no longer needed.
-5. Migrate the separate cross-border ecommerce workspace independently. Do not
+1. Start FastAPI and Pi only when current runtime verification or real onboarding begins.
+2. Repeat the read-only real-model smoke test and one draft-only operator turn.
+3. Bind one real account and one exact SKU; observe session stability and tool-call audit data during Commercial Alpha.
+4. Remove remaining OpenClaw files only as a later repository cleanup; the HTTP routes are already retired.
+5. Before a second account, add server-generated ScopeEnvelope, account/case session partitioning, proposal idempotency and complete DecisionRecords.
+6. Migrate the separate cross-border ecommerce workspace independently. Do not
    share Xianyu session files, tools, databases, account state, or approvals.

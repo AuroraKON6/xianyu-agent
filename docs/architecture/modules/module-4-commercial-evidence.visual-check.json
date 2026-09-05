@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "visual-check",
+  "evidenceKind": "automated-browser",
+  "status": "fail",
+  "visualReview": "pending",
+  "artifact": {
+    "path": "E:\\闲鱼\\xianyu\\docs\\architecture\\module-4-commercial-evidence.html",
+    "sha256": "bb727984a4b122203ad759de35c62394122b12aa5e550dbfb7e3e6c0eea30231",
+    "bytes": 713126
+  },
+  "state": {
+    "detail": "read",
+    "motion": "still"
+  },
+  "chrome": {
+    "status": "available",
+    "executable": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/visual-check-runtime",
+      "severity": "error",
+      "message": "visual-check could not complete its Chrome inspection.",
+      "subject": {
+        "artifact": "E:\\闲鱼\\xianyu\\docs\\architecture\\module-4-commercial-evidence.html"
+      },
+      "evidence": {
+        "reason": "Page.loadEventFired: event timed out after 15000ms"
+      },
+      "supportedFixes": [
+        "resolve the reported Chrome inspection error, then rerun visual-check"
+      ]
+    }
+  ],
+  "containment": {
+    "status": "fail",
+    "viewports": []
+  },
+  "readability": {
+    "status": "fail",
+    "minimumProjectedNodeTextPx": 6,
+    "viewports": []
+  },
+  "viewerChrome": {
+    "status": "fail",
+    "viewports": []
+  },
+  "captures": {
+    "status": "fail",
+    "screenshots": [],
+    "contactSheet": null
+  },
+  "sidecars": {
+    "receipt": "module-4-commercial-evidence.visual-check.json",
+    "contactSheet": "module-4-commercial-evidence.visual-check.html"
+  },
+  "error": "Page.loadEventFired: event timed out after 15000ms"
+}

@@ -1,6 +1,27 @@
 # Pi Skill Provenance
 
-Updated: 2026-08-30
+Updated: 2026-08-31
+
+## Local skill inventory
+
+All eight production-loaded skills are project-local Markdown instructions. The
+hashes below identify the exact reviewed files in this baseline; a later content
+change requires a new review and hash update.
+
+| Local skill | Origin | SHA-256 of `SKILL.md` |
+|---|---|---|
+| `buyer-conversion` | Project-original adaptation of the Xianyu conversion playbook | `efbc1581c072d84c869d07c316bc42ca5e8382e3774f42248dccf06032f0e43d` |
+| `commercial-alpha` | Project-original Commercial Alpha runbook | `a4bd0d2e4808fc723160fd054d8b30195eaa5afdafed9a08403f1b7fae302fd4` |
+| `commercial-experiment` | Adapted from the MIT source listed below | `dc7fdf8061d619678076ad31255371458725c1bf0342cab694b65f0c35cf16f5` |
+| `competitor-evidence` | Adapted from the CC0 source listed below | `73af05c1944eebaf28ba16c49d800f35f13c7bcf59f555ffd3ab4fb543e62746` |
+| `fulfillment` | Project-original adaptation of the fulfillment playbook | `d12ca02b9bf7852194f256d595228f391332e095f87cd49552eb60d55bae9208` |
+| `listing` | Project-original adaptation of the listing playbook | `3fa4880492afcffa1cc83a6a7aae6379920c66496b255e1d6149bac300b3dcce` |
+| `product-selection` | Project-original adaptation of the selection playbook | `e9c4036c72cbc8ca1c96480ce61bf07275f83e8be98890b3778c4b5db107f2b0` |
+| `weekly-review` | Project-original adaptation of the OPC review playbook | `6ce150d8cc13ab4eff7b8655caff68b97303e1a13e6fbf3509b370eec4f440dc` |
+
+The Pi process no longer receives the built-in arbitrary-path `read` tool.
+Skills provide operating instructions; current business facts must come from
+the 12 typed Xianyu tools.
 
 ## Integrated adaptations
 

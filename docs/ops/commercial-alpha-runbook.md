@@ -18,6 +18,7 @@
 |---|---|---|---|
 | 0. 本地验证 | 使用隔离测试脚本和 `stub` 跑完整审批与队列 | 临时目录中的 WorkOrder、Approval、ExecutionJob、outbox | 运行 `scripts/run_tests_isolated.ps1` 全部通过，真实数据目录无变化 |
 | 0a. 历史任务隔离 | 只读审阅所有缺失账号或归到未配置账号的旧任务，逐单决定认领或隔离 | unassigned-work review + preview token + resolution event | 不允许隐式批量绑定；实盘账号不得继承未经逐单确认的旧审批、执行任务或回复草稿 |
+| 0b. 单品资料预检 | 在服务关闭时收集一个精确 SKU、五类证据和授权图片，运行离线 bundle validator | bundle fingerprint + 文件 SHA-256 + 12 项候选门禁投影 | `bundle_ready=true`、投影 `11/12` 且只缺当前人工决策；这不是正式归档或商业放行 |
 | 1. 账号接入 | 打开专用浏览器并完成平台登录；只读检测实际账号；核对后用一次性确认语句绑定 | `/accounts/browser-import/preview`、`/accounts/browser-import/commit`、`/accounts/runtime` | 平台登录探测成功；预览与提交账号/会话一致；账号存在且启用 |
 | 2. 运行验证 | 启用真实 adapter，执行订单和商品同步 | `/adapter/sync-persist`、runtime state | 同一账号订单与商品同步均成功，认证证据 300 秒内有效 |
 | 3. 经营配置 | 初始化账号 Prompt 和库存上下文 | prompt profile、account queue | Prompt 完整，商品上下文可用 |
@@ -167,6 +168,8 @@ POST /commercial-launch/start
 6. 启动成功只创建一个审计批次，不会自动上架。下一步必须从批次卡生成草稿，再单独审批和执行发布。
 
 ## 4. 首个商品的证据包
+
+正式创建候选前，先按 `docs/ops/commercial-alpha-intake-bundle.md` 创建并验证离线单品资料包。该步骤复用正式证据归档的文件规则，但不写入候选账本；只有正式上传后生成的活动 `artifact:cea_...` 才能满足生产门禁。
 
 `GET /resale/candidates/{id}/activation-packet` 是不依赖账号的只读评估；
 `PATCH /resale/candidates/{id}/activation-packet` 保存当前商品事实并重新评估。控制台候选卡上的
