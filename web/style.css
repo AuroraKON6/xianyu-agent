@@ -453,12 +453,49 @@ button {
 .collaboration-feed,
 .work-order-feed,
 .execution-job-feed,
-.message-intake-feed {
+.message-intake-feed,
+.reply-outbox-feed {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   max-height: 360px;
   overflow: auto;
+}
+
+.reply-outbox-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.reply-outbox-head h4 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.reply-outbox-head select {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.reply-outbox-binding {
+  margin-top: 5px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .account-profile-list {
@@ -646,6 +683,11 @@ button {
   color: #721c24;
 }
 
+.ops-count--verify {
+  background: #fff0c2;
+  color: #744700;
+}
+
 .work-order-timeline {
   margin: 8px 0 0;
   padding-left: 16px;
@@ -675,6 +717,26 @@ button {
 .execution-job-error {
   margin-top: 6px;
   color: var(--danger);
+  font-size: 11px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.execution-job-evidence {
+  margin-top: 6px;
+  color: #315b49;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.execution-job-verification {
+  margin-top: 6px;
+  border-left: 3px solid #d68b00;
+  background: #fff8e8;
+  color: #684207;
+  padding: 6px 8px;
   font-size: 11px;
   line-height: 1.45;
   word-break: break-word;
@@ -797,11 +859,56 @@ button {
   color: #383d41;
 }
 
+.approval-badge--exec-verification_required {
+  background: #fff0c2;
+  color: #744700;
+}
+
+.approval-badge--exec-pending_approval,
+.approval-badge--exec-ready_to_enqueue,
+.approval-badge--exec-queued {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.approval-badge--exec-sent {
+  background: #d4edda;
+  color: #155724;
+}
+
+.approval-badge--exec-rejected,
+.approval-badge--exec-cancelled,
+.approval-badge--exec-completed_without_receipt {
+  background: #f1f3f5;
+  color: #4b5563;
+}
+
 .approval-meta {
   margin-top: 3px;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.4;
+}
+
+.approval-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  border-left: 3px solid #167766;
+  background: #eff8f4;
+  color: #315b49;
+  padding: 6px 8px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.approval-scope--expired {
+  border-left-color: var(--danger);
+  background: #fff0ee;
+  color: var(--danger);
 }
 
 .approval-snapshot {

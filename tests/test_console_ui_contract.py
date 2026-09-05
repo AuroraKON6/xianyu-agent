@@ -157,11 +157,18 @@ class ConsoleUIContractTests(unittest.TestCase):
         self.assertIn("message_import_scheduler", app_js)
         self.assertIn("order_runtime", app_js)
         self.assertIn("execution_evidence", app_js)
+        self.assertIn("evidence_manifest", app_js)
+        self.assertIn("after_screenshot", app_js)
+        self.assertIn("scope_envelope", app_js)
+        self.assertIn("approved_action_digest", app_js)
+        self.assertIn("已绑定批准内容", app_js)
         self.assertIn("sync_capabilities", app_js)
         self.assertIn(".opc-action-list", style_css)
         self.assertIn(".opc-readiness-grid", style_css)
         self.assertIn(".opc-runtime-grid", style_css)
         self.assertIn(".opc-evidence-list", style_css)
+        self.assertIn(".execution-job-evidence", style_css)
+        self.assertIn(".approval-scope", style_css)
         self.assertIn(".first-run-gates", style_css)
 
     def test_console_first_run_gates_have_operator_actions(self):

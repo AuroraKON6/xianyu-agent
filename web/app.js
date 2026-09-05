@@ -6,6 +6,7 @@ const state = {
   workOrders: [],
   executionJobs: [],
   messageIntake: { metrics: {}, health: {}, recent: [], runbooks: [], scheduler: {} },
+  replyOutbox: { items: [], summary: {} },
   accountProfiles: [],
   browserAccountImportPreview: null,
   unassignedWorkReview: null,
@@ -557,10 +558,12 @@ function renderApprovalCounts(workOrders = []) {
   const approved = approvals.filter((item) => item.status === "approved").length;
   const failed = approvals.filter((item) => item.execution_status === "failed").length;
   const queued = state.executionJobs.filter((job) => job.status === "queued").length;
+  const verificationRequired = state.executionJobs.filter((job) => job.status === "verification_required").length;
   target.innerHTML = [
     `<span class="ops-count ops-count--pending">待审批 ${pending}</span>`,
     `<span class="ops-count ops-count--approved">已批准 ${approved}</span>`,
     `<span class="ops-count ops-count--queued">待执行 ${queued}</span>`,
+    verificationRequired ? `<span class="ops-count ops-count--verify">待核验 ${verificationRequired}</span>` : "",
     failed ? `<span class="ops-count ops-count--failed">执行失败 ${failed}</span>` : "",
   ].filter(Boolean).join("");
 }
@@ -620,6 +623,7 @@ function renderWorkOrderFeed(workOrders = []) {
 
 function renderApprovalCard(approval) {
   const snapshot = approval.draft_snapshot || {};
+  const scope = approval.scope_envelope || {};
   const execStatus = approval.execution_status;
   const execResult = approval.execution_result || {};
 
@@ -722,6 +726,27 @@ function renderApprovalCard(approval) {
 
   const snapshotInfo = listingSnapshot || deleteItemSnapshot || refundSnapshot || disputeReplySnapshot || fulfillSnapshot || inboundMessageSnapshot || sendMessageSnapshot || purchaseDraftSnapshot;
 
+  const scopeExpired = Number(scope.valid_until || 0) > 0 && Number(scope.valid_until) < Date.now() / 1000;
+  const scopeSigned = Boolean(
+    approval.approved_action_digest
+    && scope.action_digest
+    && approval.approved_action_digest === scope.action_digest
+  );
+  const scopeTargets = Object.entries(scope.target_refs || {})
+    .slice(0, 3)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(" · ");
+  const scopeInfo = scope.action_digest
+    ? `<div class="approval-scope ${scopeExpired ? "approval-scope--expired" : ""}">
+        <span>${scopeExpired ? "批准作用域已过期" : (scopeSigned ? "已绑定批准内容" : "待批准绑定")}</span>
+        <span>account=${escapeHtml(scope.cookie_id || "default")}</span>
+        ${scopeTargets ? `<span>${escapeHtml(scopeTargets)}</span>` : ""}
+        <span>rev=${escapeHtml(String(scope.expected_revision || "").slice(0, 12))}</span>
+        <span>digest=${escapeHtml(String(scope.action_digest || "").slice(0, 12))}</span>
+        <span>corr=${escapeHtml(String(scope.correlation_id || "").slice(0, 18))}</span>
+       </div>`
+    : `<div class="approval-scope approval-scope--expired">旧工单无作用域凭证，请重建行动计划</div>`;
+
   const statusBadge = `<span class="approval-badge approval-badge--${approval.status}">${escapeHtml(approval.status)}</span>`;
   const execBadge = execStatus
     ? `<span class="approval-badge approval-badge--exec-${execStatus}">${escapeHtml(execStatus)}</span>`
@@ -755,6 +780,7 @@ function renderApprovalCard(approval) {
         ${statusBadge}${execBadge}
       </div>
       <div class="approval-meta">agent: ${escapeHtml(approval.agent || "-")} · ${escapeHtml(approval.reason || "")}</div>
+      ${scopeInfo}
       ${snapshotInfo}
       ${actions}
     </div>
@@ -781,10 +807,34 @@ function renderExecutionJobFeed(jobs = []) {
   const items = filtered.slice(-16).reverse().map((job) => {
     const error = job.error ? `<div class="execution-job-error">${escapeHtml(job.error)}</div>` : "";
     const result = job.result && job.result.error ? `<div class="execution-job-error">${escapeHtml(job.result.error)}</div>` : "";
+    const evidence = job.evidence || {};
     const actions = [
       job.status === "failed" ? `<button class="text-btn" onclick="retryJob('${job.job_id}')">重试</button>` : "",
       job.status === "queued" ? `<button class="text-btn" onclick="cancelJob('${job.job_id}')">取消</button>` : "",
+      job.status === "verification_required" ? `<button class="text-btn" onclick="resolveJobVerification('${job.job_id}', 'confirmed_completed')">确认已执行</button>` : "",
+      job.status === "verification_required" ? `<button class="text-btn" onclick="resolveJobVerification('${job.job_id}', 'confirmed_not_executed')">确认未执行</button>` : "",
     ].filter(Boolean).join("");
+    const verification = job.verification || {};
+    const verificationInfo = job.status === "verification_required"
+      ? `<div class="execution-job-verification">核验原因：${escapeHtml(verification.reason || "external_result_unknown")} · 禁止直接重试</div>`
+      : "";
+    const leaseInfo = job.fencing_token
+      ? ` · fence: ${Number(job.fencing_token || 0)}`
+      : "";
+    const evidenceParts = [
+      evidence.adapter_status ? `adapter=${evidence.adapter || "browser"}/${evidence.adapter_status}` : "",
+      evidence.action_stage ? `stage=${evidence.action_stage}` : "",
+      evidence.after_screenshot ? `截图 ${evidence.after_screenshot}` : "",
+      evidence.evidence_manifest ? `清单 ${evidence.evidence_manifest}` : "",
+      evidence.capture_error ? `证据采集异常 ${evidence.capture_error}` : "",
+    ].filter(Boolean);
+    const evidenceInfo = evidenceParts.length
+      ? `<div class="execution-job-evidence">${escapeHtml(evidenceParts.join(" · "))}</div>`
+      : "";
+    const jobScope = job.scope_envelope || {};
+    const scopeInfo = jobScope.action_digest
+      ? `<div class="execution-job-evidence">scope ${escapeHtml(String(jobScope.action_digest).slice(0, 12))} · corr ${escapeHtml(String(jobScope.correlation_id || "").slice(0, 18))}</div>`
+      : "";
     return `
       <div class="execution-job-item execution-job-item--${escapeHtml(job.status || "unknown")}">
         <div class="execution-job-title">
@@ -792,9 +842,12 @@ function renderExecutionJobFeed(jobs = []) {
           <span class="approval-badge approval-badge--exec-${escapeHtml(job.status || "unknown")}">${escapeHtml(job.status || "-")}</span>
         </div>
         <div class="collab-meta">
-          job: ${escapeHtml(job.job_id || "-")} · approval: ${escapeHtml(job.approval_id || "-")} · attempts: ${job.attempts ?? 0}/${job.max_attempts ?? "-"}
+          job: ${escapeHtml(job.job_id || "-")} · approval: ${escapeHtml(job.approval_id || "-")} · attempts: ${job.attempts ?? 0}/${job.max_attempts ?? "-"}${leaseInfo}
         </div>
         ${error || result}
+        ${scopeInfo}
+        ${evidenceInfo}
+        ${verificationInfo}
         ${actions ? `<div class="execution-job-actions">${actions}</div>` : ""}
       </div>
     `;
@@ -973,17 +1026,108 @@ function renderMessageIntakeFeed(records = [], metrics = {}, health = {}, runboo
   }).join("");
 }
 
+const REPLY_OUTBOX_STATUS_LABELS = {
+  draft: "草稿",
+  pending_approval: "待审批",
+  ready_to_enqueue: "待入队",
+  queued: "已排队",
+  running: "发送中",
+  verification_required: "待核验",
+  failed: "失败",
+  sent: "已发送",
+  rejected: "已拒绝",
+  cancelled: "已取消",
+  completed_without_receipt: "缺少回执",
+};
+
+function renderReplyOutbox(data = {}) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  const summary = data.summary || {};
+  state.replyOutbox = { items, summary };
+  const metricTarget = $("#reply-outbox-metrics");
+  if (metricTarget) {
+    const counts = summary.counts || {};
+    metricTarget.innerHTML = [
+      `<span class="ops-count ops-count--pending">待审批 ${counts.pending_approval || 0}</span>`,
+      `<span class="ops-count ops-count--approved">待入队 ${counts.ready_to_enqueue || 0}</span>`,
+      `<span class="ops-count ops-count--queued">排队/发送 ${(counts.queued || 0) + (counts.running || 0)}</span>`,
+      (counts.verification_required || 0) ? `<span class="ops-count ops-count--verify">待核验 ${counts.verification_required}</span>` : "",
+      (counts.failed || 0) ? `<span class="ops-count ops-count--failed">失败 ${counts.failed}</span>` : "",
+      `<span class="ops-count ops-count--approved">已发送 ${counts.sent || 0}</span>`,
+    ].filter(Boolean).join("");
+  }
+
+  const feed = $("#reply-outbox-feed");
+  if (!feed) return;
+  const statusFilter = $("#reply-outbox-filter-status")?.value || "";
+  const filtered = items.filter((item) => !statusFilter || item.status === statusFilter);
+  if (!filtered.length) {
+    feed.innerHTML = `<div class="empty-state">暂无匹配回复</div>`;
+    return;
+  }
+  feed.innerHTML = filtered.slice(0, 30).map((item) => {
+    const status = item.status || "draft";
+    const label = REPLY_OUTBOX_STATUS_LABELS[status] || status;
+    const receipt = item.receipt || {};
+    const verification = item.verification || {};
+    const executionEvidence = item.execution_evidence || {};
+    const actions = [
+      status === "pending_approval" ? `<button class="text-btn" onclick="decideApproval('${item.approval_id}', 'approved')">批准</button>` : "",
+      status === "pending_approval" ? `<button class="text-btn" onclick="decideApproval('${item.approval_id}', 'rejected')">拒绝</button>` : "",
+      status === "ready_to_enqueue" ? `<button class="text-btn" onclick="enqueueApproval('${item.approval_id}')">入队</button>` : "",
+      status === "queued" ? `<button class="text-btn" onclick="cancelJob('${item.execution_job_id}')">取消</button>` : "",
+      status === "failed" ? `<button class="text-btn" onclick="retryJob('${item.execution_job_id}')">重试</button>` : "",
+      status === "verification_required" ? `<button class="text-btn" onclick="resolveJobVerification('${item.execution_job_id}', 'confirmed_completed')">确认已发送</button>` : "",
+      status === "verification_required" ? `<button class="text-btn" onclick="resolveJobVerification('${item.execution_job_id}', 'confirmed_not_executed')">确认未发送</button>` : "",
+    ].filter(Boolean).join("");
+    const receiptLine = receipt.external_message_id || receipt.page_url || receipt.manual_confirmation
+      ? `<div class="collab-meta">回执：${escapeHtml(receipt.external_message_id || receipt.page_url || "人工核验")}</div>`
+      : "";
+    const verificationLine = status === "verification_required"
+      ? `<div class="execution-job-verification">${escapeHtml(verification.reason || "external_result_unknown")} · 先核对闲鱼聊天记录</div>`
+      : "";
+    const evidenceLine = executionEvidence.after_screenshot || executionEvidence.evidence_manifest
+      ? `<div class="execution-job-evidence">${escapeHtml(executionEvidence.after_screenshot || executionEvidence.evidence_manifest)}</div>`
+      : "";
+    const binding = [
+      item.cookie_id ? `account=${item.cookie_id}` : "",
+      item.buyer_id ? `buyer=${item.buyer_id}` : "",
+      item.chat_id ? `chat=${item.chat_id}` : "",
+      item.item_id ? `item=${item.item_id}` : "",
+      item.reply_revision ? `rev=${item.reply_revision}` : "",
+      item.action_digest ? `digest=${item.action_digest.slice(0, 12)}` : "",
+    ].filter(Boolean).join(" · ");
+    return `
+      <div class="collab-item reply-outbox-item">
+        <div class="execution-job-title">
+          <span>${escapeHtml(item.message_summary || "-")}</span>
+          <span class="approval-badge approval-badge--exec-${escapeHtml(status)}">${escapeHtml(label)}</span>
+        </div>
+        <div class="collab-meta">${escapeHtml(item.action || "send_message")} · ${formatTime(item.created_at)} · attempts ${Number(item.attempts || 0)}</div>
+        <div class="reply-outbox-binding">${escapeHtml(binding || item.idempotency_key || "-")}</div>
+        ${receiptLine}
+        ${evidenceLine}
+        ${verificationLine}
+        ${item.error ? `<div class="execution-job-error">${escapeHtml(item.error)}</div>` : ""}
+        ${actions ? `<div class="execution-job-actions">${actions}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
 async function refreshMessageIntake() {
-  const [metrics, health, recent, runbookData, scheduler] = await Promise.all([
+  const [metrics, health, recent, runbookData, scheduler, replyOutbox] = await Promise.all([
     api("/message-intake/metrics"),
     api("/message-intake/health"),
     api("/message-intake/recent?limit=12"),
     api("/message-intake/runbooks"),
     api("/message-intake/import-scheduler"),
+    api("/reply-outbox?limit=100"),
   ]);
   const runbooks = runbookData.runbooks || [];
   state.messageIntake = { metrics, health, recent, runbooks, scheduler };
   renderMessageIntakeFeed(recent, metrics, health, runbooks, scheduler);
+  renderReplyOutbox(replyOutbox);
 }
 
 function renderAccountProfile(profile) {
@@ -1664,6 +1808,47 @@ async function cancelJob(jobId) {
   }
 }
 
+async function resolveJobVerification(jobId, resolution) {
+  const completed = resolution === "confirmed_completed";
+  const note = prompt(completed ? "记录你在闲鱼核对到的已执行结果" : "记录你在闲鱼核对到的未执行结果");
+  if (!note || !note.trim()) {
+    return;
+  }
+  let reference = "";
+  if (completed) {
+    reference = prompt("填写平台商品/消息/订单编号，或页面 URL / 截图路径") || "";
+    if (!reference.trim()) {
+      return;
+    }
+  }
+  const evidence = { external_id: "", page_url: "", screenshot: "" };
+  if (/^https?:\/\//i.test(reference.trim())) {
+    evidence.page_url = reference.trim();
+  } else if (/[/\\]|\.(png|jpg|jpeg|webp)$/i.test(reference.trim())) {
+    evidence.screenshot = reference.trim();
+  } else {
+    evidence.external_id = reference.trim();
+  }
+  if (!confirm(completed ? "确认平台动作已经执行？" : "确认平台动作没有执行？确认后该任务才允许进入失败重试流程。")) {
+    return;
+  }
+  try {
+    const result = await api(`/execution-jobs/${jobId}/verification`, {
+      method: "POST",
+      body: JSON.stringify({
+        resolution,
+        note: note.trim(),
+        ...evidence,
+        checked_by: "console_operator",
+      }),
+    });
+    renderResult({ type: "execution_verification_resolved", result });
+    await refreshStatus();
+  } catch (error) {
+    renderResult({ type: "error", result: { message: error.message } });
+  }
+}
+
 async function runNextJobs() {
   if (!confirm("确认执行下一批已排队任务？")) {
     return;
@@ -1705,6 +1890,7 @@ $("#refresh-collaboration").addEventListener("click", refreshCollaboration);
 $("#refresh-work-orders").addEventListener("click", refreshWorkOrders);
 $("#refresh-execution-jobs")?.addEventListener("click", refreshExecutionJobs);
 $("#refresh-message-intake")?.addEventListener("click", refreshMessageIntake);
+$("#reply-outbox-filter-status")?.addEventListener("change", () => renderReplyOutbox(state.replyOutbox));
 $("#refresh-account-profiles")?.addEventListener("click", refreshAccountProfiles);
 $("#open-xianyu-login-browser")?.addEventListener("click", openXianyuLoginBrowser);
 $("#preview-browser-account")?.addEventListener("click", previewBrowserAccountImport);
@@ -4028,6 +4214,7 @@ function renderAccountQueueCard(account_queue = {}, isUnassigned = false) {
       <div class="account-queue-metrics">
         <span>审批 ${Number(queues.pending_approvals || 0)}</span>
         <span>执行 ${Number(queues.queued_execution || 0)}</span>
+        <span>核验 ${Number(queues.verification_required || 0)}</span>
         <span>失败 ${Number(queues.failed_jobs || 0)}</span>
         <span>回复 ${Number(queues.pending_reply_drafts || 0)}</span>
         <span>商品 ${Number(queues.items || 0)}</span>
@@ -4078,6 +4265,7 @@ async function refreshOPCDashboard() {
     html += `<span class="badge">待审批 ${actions.pending_approvals || 0}</span>`;
     html += `<span class="badge">待执行 ${actions.pending_execution || 0}</span>`;
     html += `<span class="badge">待回复 ${actions.pending_reply_drafts || 0}</span>`;
+    html += `<span class="badge badge-warn">待核验 ${actions.verification_required || 0}</span>`;
     html += `<span class="badge badge-warn">失败 ${actions.failed_jobs || 0}</span>`;
     html += `<span class="badge">新发现 ${actions.new_discoveries || 0}</span>`;
     html += '</div></div>';

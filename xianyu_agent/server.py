@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from .config import Settings
 from .db_manager import configure_db_manager, db_manager
 from .feishu import extract_feishu_text, extract_xianyu_inbound_message, verify_feishu_token
-from .scheduler import github_discovery_loop, polish_loop, product_discovery_loop
+from .scheduler import github_discovery_loop, product_discovery_loop
 from .workflow import CommerceWorkflow
 from .llm_manager import llm_manager
 from .agent_registry import registry
@@ -42,7 +42,6 @@ from .account_commercial_terms import (
 from .conversation_profiles import summarize_conversation
 from .discovery_inbox import DiscoveryInboxStore
 from .models import ListingDraft
-from .openclaw_router import OpenClawRouter
 from .pi_runtime import PiRpcClient, PiRuntimeError
 from .work_orders import work_order_manager
 from .action_executor import action_executor
@@ -52,6 +51,14 @@ from .first_run_readiness import build_first_run_readiness, RUNTIME_HEARTBEAT_MA
 from .message_intake import get_message_intake_runbooks, message_intake_ledger
 from .message_envelope import normalize_message_envelope, to_inbound_request_payload, with_ack_status
 from .message_import_scheduler import MessageImportSchedulerStore
+from .reply_outbox import (
+    build_reply_metadata,
+    find_reply_by_idempotency_key,
+    list_reply_outbox,
+    outbox_item_for_approval,
+    summarize_reply_outbox,
+    validate_reply_idempotency_match,
+)
 from .opc_dashboard import OPCDashboard
 from .order_runtime import OrderRuntimeStore
 from .candidate_activation import evaluate_candidate_activation
@@ -72,6 +79,7 @@ from .commercial_trial import (
 )
 from .resale import ResaleManager, init_resale_manager, resale_manager
 from .sync_persistence import sync_account_snapshot
+from .action_scope import ActionScopeValidationError, listing_draft_revision
 
 settings = Settings.from_env()
 # Bind the SQLite singleton to the explicitly configured live data boundary
@@ -115,13 +123,15 @@ for name, agent in agents.items():
     registry.register_agent(name, agent)
     for action, handler in agent.get_handlers().items():
         registry.register_handler(name, action, handler)
-openclaw_router = OpenClawRouter(registry=registry, workflow=workflow)
 pi_runtime = PiRpcClient.from_env(PROJECT_ROOT, settings.data_dir)
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        f"http://127.0.0.1:{settings.server_port}",
+        f"http://localhost:{settings.server_port}",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -134,8 +144,8 @@ async def on_startup() -> None:
     # Bind and open SQLite at the configured live boundary before any request
     # or scheduler loop can touch the database.
     db_manager.init_db()
-    # Legacy scheduler loops
-    asyncio.create_task(polish_loop(workflow))
+    execution_queue.reconcile_expired_leases(work_order_manager)
+    # Read-only/background discovery loops. Platform writes are queue-only.
     asyncio.create_task(github_discovery_loop(workflow))
     asyncio.create_task(product_discovery_loop(workflow))
     # Agent scheduler loops
@@ -159,7 +169,7 @@ def health() -> Dict[str, Any]:
         "deepseek_configured": bool(settings.deepseek_api_key),
         "memory_updated_at": memory.get("updated_at", ""),
         "pi": pi_runtime.status(active=False),
-        "legacy_openclaw_available": True,
+        "legacy_openclaw_available": False,
     }
 
 
@@ -201,7 +211,7 @@ class PiMessageRequest(BaseModel):
     text: str = ""
     message: str = ""
     context: Dict[str, Any] = Field(default_factory=dict)
-    publish: bool = True
+    publish: bool = False
 
 
 def _run_pi_message(req: PiMessageRequest) -> Dict[str, Any]:
@@ -314,7 +324,10 @@ async def order_paid(request: Request) -> Dict[str, Any]:
 
 @app.post("/tasks/polish")
 def polish() -> Dict[str, Any]:
-    return workflow.polish_all()
+    raise HTTPException(
+        status_code=410,
+        detail="Direct polish is retired; use an approved execution action.",
+    )
 
 
 @app.post("/research/github")
@@ -593,7 +606,16 @@ async def create_physical_listing(request: Request) -> Dict[str, Any]:
     text = str(payload.get("text") or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="text is required")
-    return workflow.create_physical_listing(text, source="api", publish=bool(payload.get("publish", True)))
+    publish = bool(payload.get("publish", True))
+    draft_result = workflow.create_physical_listing(text, source="api", publish=False)
+    if not publish:
+        return {**draft_result, "approval_required": False, "executed": False}
+    cookie_id = _resolve_enabled_operator_cookie_id(str(payload.get("cookie_id") or ""))
+    return _create_publish_listing_work_order(
+        draft_result.get("draft") or {},
+        cookie_id=cookie_id,
+        kind="physical_listing",
+    )
 
 
 # --- After Sales Endpoints (NEW) ---
@@ -1400,7 +1422,7 @@ class AgentTaskRequest(BaseModel):
 class OpenClawMessageRequest(BaseModel):
     message: str
     context: Dict[str, Any] = Field(default_factory=dict)
-    publish: bool = True
+    publish: bool = False
 
 
 class AgentDiscussionRequest(BaseModel):
@@ -1513,6 +1535,7 @@ def _create_publish_listing_work_order(
                 "description": f"Publish listing: {title}",
                 "params": {
                     "draft_id": draft_id,
+                    "expected_draft_revision": listing_draft_revision(draft),
                     **({"cookie_id": cookie_id} if cookie_id else {}),
                 },
                 "draft_snapshot": {
@@ -1574,7 +1597,8 @@ def agents_collaboration() -> Dict[str, Any]:
     status = registry.get_status()
     return {
         "entrypoint": "pi",
-        "legacy_entrypoint": "openclaw",
+        "legacy_entrypoint": None,
+        "legacy_routes": "retired",
         "registered_agents": status["registered_agents"],
         "collaboration": {
             "listing": ["discovery", "analytics"],
@@ -1602,37 +1626,20 @@ def pi_message(req: PiMessageRequest) -> Dict[str, Any]:
 
 @app.post("/agents/dispatch")
 async def dispatch_agent_task(req: AgentTaskRequest) -> Dict[str, Any]:
-    """Dispatch a task to a specific agent."""
-    task = registry.dispatch(req.agent, req.action, req.params)
-    # Check if the result itself indicates failure
-    ok = task.status == "completed"
-    if ok and isinstance(task.result, dict) and task.result.get("ok") is False:
-        ok = False
-    return {
-        "ok": ok,
-        "task_id": task.task_id,
-        "agent": task.agent,
-        "action": task.action,
-        "status": task.status,
-        "result": task.result,
-        "error": task.error,
-    }
+    """Retired because arbitrary dispatch could bypass typed business flows."""
+    raise HTTPException(status_code=410, detail="Generic agent dispatch is retired; use typed Pi tools and business APIs.")
 
 
 @app.post("/agents/openclaw/message")
 async def openclaw_message(req: OpenClawMessageRequest) -> Dict[str, Any]:
     """Deprecated compatibility route for the former OpenClaw orchestrator."""
-    result = openclaw_router.process_message(req.message, req.context, publish=req.publish)
-    result["deprecated"] = "Use /agents/pi/message"
-    return result
+    raise HTTPException(status_code=410, detail="OpenClaw is retired; use /agents/pi/message.")
 
 
 @app.post("/agents/hermes/message")
 async def hermes_message(req: OpenClawMessageRequest) -> Dict[str, Any]:
     """Compatibility alias for older clients; routes through OpenClaw."""
-    result = openclaw_router.process_message(req.message, req.context, publish=req.publish)
-    result["deprecated"] = "Use /agents/pi/message"
-    return result
+    raise HTTPException(status_code=410, detail="Hermes/OpenClaw is retired; use /agents/pi/message.")
 
 
 @app.post("/agents/customer-service/reply")
@@ -1656,12 +1663,26 @@ async def customer_service_reply(request: Request) -> Dict[str, Any]:
 
 @app.post("/agents/listing/create")
 async def listing_create(request: Request) -> Dict[str, Any]:
-    """Create a product listing using MiMo."""
+    """Create a draft and, when requested, an approval-backed publish task."""
     payload = await request.json()
-    listing_agent = agents.get("listing")
-    if not listing_agent:
-        raise HTTPException(status_code=500, detail="Listing agent not initialized")
-    return listing_agent.create_listing(payload)
+    text = str(payload.get("text") or payload.get("raw_text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text is required")
+    publish = bool(payload.get("publish", True))
+    draft_result = workflow.create_listing(
+        text,
+        source="legacy_agent_api",
+        product_images=payload.get("images") or [],
+        publish=False,
+    )
+    if not publish:
+        return {**draft_result, "approval_required": False, "executed": False}
+    cookie_id = _resolve_enabled_operator_cookie_id(str(payload.get("cookie_id") or ""))
+    return _create_publish_listing_work_order(
+        draft_result.get("draft") or {},
+        cookie_id=cookie_id,
+        kind="listing",
+    )
 
 
 @app.post("/agents/discovery/analyze")
@@ -1941,6 +1962,11 @@ async def decide_approval(approval_id: str, req: ApprovalDecisionRequest) -> Dic
         return work_order_manager.decide_approval(approval_id, req.decision, note=req.note)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ActionScopeValidationError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": exc.code, "message": str(exc)},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -1953,6 +1979,11 @@ async def execute_approved_approval(approval_id: str) -> Dict[str, Any]:
         return {"ok": True, "job_id": job["job_id"], "status": job["status"], "action": job["action"]}
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ActionScopeValidationError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": exc.code, "message": str(exc)},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -1961,9 +1992,18 @@ async def execute_approved_approval(approval_id: str) -> Dict[str, Any]:
 # Execution Queue Endpoints
 # ============================================================
 
+class ExecutionVerificationRequest(BaseModel):
+    resolution: str
+    note: str
+    external_id: str = ""
+    page_url: str = ""
+    screenshot: str = ""
+    checked_by: str = "operator"
+
 @app.get("/execution-jobs")
 def list_execution_jobs(limit: int = 50) -> List[Dict[str, Any]]:
     """List execution jobs."""
+    execution_queue.reconcile_expired_leases(work_order_manager)
     return execution_queue.list_jobs(limit)
 
 
@@ -2024,6 +2064,36 @@ async def cancel_execution_job(job_id: str) -> Dict[str, Any]:
         return execution_queue.cancel_job(job_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/execution-jobs/{job_id}/verification")
+async def resolve_execution_job_verification(
+    job_id: str,
+    req: ExecutionVerificationRequest,
+) -> Dict[str, Any]:
+    """Close an unknown platform outcome only after an explicit operator check."""
+    try:
+        return execution_queue.resolve_verification(
+            job_id,
+            resolution=req.resolution,
+            note=req.note,
+            evidence={
+                "external_id": req.external_id,
+                "page_url": req.page_url,
+                "screenshot": req.screenshot,
+                "checked_by": req.checked_by,
+            },
+            work_order_manager=work_order_manager,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ActionScopeValidationError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": exc.code, "message": str(exc)},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -2118,6 +2188,8 @@ class SendMessageRequest(BaseModel):
     message: str
     cookie_id: str = "default"
     chat_id: str = ""
+    item_id: str = ""
+    idempotency_key: str = ""
     context: Dict[str, Any] = Field(default_factory=dict)
     risk_level: str = "normal"
 
@@ -2140,11 +2212,46 @@ async def send_message_endpoint(buyer_id: str, req: SendMessageRequest) -> Dict[
     if len(message_summary) > 80:
         message_summary = message_summary[:77] + "..."
 
+    reply_metadata = build_reply_metadata(
+        action="send_message",
+        cookie_id=cookie_id,
+        buyer_id=buyer_id,
+        message=req.message,
+        chat_id=req.chat_id,
+        item_id=req.item_id or str(req.context.get("item_id") or ""),
+        source=str(req.context.get("source") or "manual"),
+        source_event_key=str(req.context.get("source_event_key") or ""),
+        source_message_id=str(req.context.get("source_message_id") or ""),
+        reply_revision=req.context.get("reply_revision") or 1,
+        idempotency_key=req.idempotency_key,
+    )
+    existing = _find_existing_reply(reply_metadata)
+    if existing:
+        approval_id = str(existing["approval"].get("approval_id") or "")
+        return {
+            "ok": True,
+            "duplicate": True,
+            "work_order": existing["work_order"],
+            "action_plan": existing["work_order"].get("action_plan"),
+            "approval_required": existing["approval"].get("status") == "pending",
+            "risk_level": existing["work_order"].get("risk_level", risk_level),
+            "risk_flags": list((existing["approval"].get("draft_snapshot") or {}).get("risk_flags") or []),
+            "reply_outbox": _reply_outbox_projection(approval_id),
+        }
+
     work_order = work_order_manager.create_work_order(
         kind="customer_message",
         title=f"消息 {buyer_id}",
         owner="customer_service",
-        context={**req.context, "buyer_id": buyer_id, "message": req.message, "cookie_id": cookie_id},
+        context={
+            **req.context,
+            "buyer_id": buyer_id,
+            "message": req.message,
+            "cookie_id": cookie_id,
+            "chat_id": req.chat_id,
+            "item_id": req.item_id or str(req.context.get("item_id") or ""),
+            **reply_metadata,
+        },
         risk_level=risk_level,
     )
 
@@ -2160,25 +2267,32 @@ async def send_message_endpoint(buyer_id: str, req: SendMessageRequest) -> Dict[
                     "message": req.message,
                     "cookie_id": cookie_id,
                     "chat_id": req.chat_id,
+                    "item_id": req.item_id or str(req.context.get("item_id") or ""),
+                    **reply_metadata,
                 },
                 "draft_snapshot": {
                     "buyer_id": buyer_id,
                     "chat_id": req.chat_id,
+                    "item_id": req.item_id or str(req.context.get("item_id") or ""),
                     "cookie_id": cookie_id,
                     "message_summary": message_summary,
                     "risk_flags": risk_flags,
+                    **reply_metadata,
                 },
             },
         ],
     )
     work_order = work_order_manager.get_work_order(work_order["work_order_id"])
+    approval_id = str((work_order.get("approvals") or [{}])[0].get("approval_id") or "")
     return {
         "ok": True,
+        "duplicate": False,
         "work_order": work_order,
         "action_plan": plan,
         "approval_required": plan.get("status") == "needs_approval",
         "risk_level": risk_level,
         "risk_flags": risk_flags,
+        "reply_outbox": _reply_outbox_projection(approval_id),
     }
 
 
@@ -2207,6 +2321,7 @@ class DisputeReplyRequest(BaseModel):
     message: str
     cookie_id: str = "default"
     chat_id: str = ""
+    idempotency_key: str = ""
     context: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -2215,6 +2330,28 @@ def _snapshot_summary(value: str, limit: int = 80) -> str:
     if len(text) <= limit:
         return text
     return text[: max(0, limit - 3)] + "..."
+
+
+def _reply_outbox_projection(approval_id: str) -> Optional[Dict[str, Any]]:
+    return outbox_item_for_approval(
+        approval_id,
+        work_order_manager=work_order_manager,
+        execution_queue=execution_queue,
+        message_intake_ledger=message_intake_ledger,
+    )
+
+
+def _find_existing_reply(reply_metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    existing = find_reply_by_idempotency_key(
+        work_order_manager,
+        str(reply_metadata.get("reply_idempotency_key") or ""),
+    )
+    if existing:
+        try:
+            validate_reply_idempotency_match(existing, reply_metadata)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return existing
 
 
 # ============================================================
@@ -2610,6 +2747,7 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
         )
     existing = message_intake_ledger.find_created(event_key)
     if existing:
+        existing_approval_id = str(existing.get("approval_id") or "")
         duplicate_envelope = with_ack_status(message_envelope, "duplicate") if message_envelope else {}
         duplicate = message_intake_ledger.record_duplicate(
             event_key=event_key,
@@ -2629,6 +2767,11 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
             "existing_work_order_id": existing.get("work_order_id", ""),
             "existing_record": existing,
             "intake_record": duplicate,
+            "reply_outbox": (
+                _reply_outbox_projection(existing_approval_id)
+                if existing_approval_id
+                else None
+            ),
         }
 
     conversation = _normalize_conversation(req)
@@ -2648,7 +2791,22 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
 
     risk_flags = _dedupe_flags(_detect_risk_flags(incoming_message) + _detect_risk_flags(reply_candidate))
     risk_level = "high" if risk_flags else "normal"
+    reply_metadata = {}
+    if reply_candidate:
+        reply_metadata = build_reply_metadata(
+            action="send_message",
+            cookie_id=cookie_id,
+            buyer_id=buyer_id,
+            message=reply_candidate,
+            chat_id=req.chat_id,
+            item_id=req.item_id,
+            source=req.source,
+            source_event_key=event_key,
+            source_message_id=str(message_envelope.get("source_message_id") or req.message_id),
+            reply_revision=1,
+        )
     context = {
+        **req.context,
         "source": req.source,
         "buyer_id": buyer_id,
         "buyer_name": req.buyer_name,
@@ -2660,9 +2818,8 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
         "product_title": req.product_title,
         "cookie_id": cookie_id,
         "conversation": conversation,
-        **req.context,
+        **reply_metadata,
     }
-    context["cookie_id"] = cookie_id
     if generation_error:
         context["generation_error"] = generation_error
 
@@ -2692,6 +2849,7 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
                         "item_id": req.item_id,
                         "incoming_message": incoming_message,
                         "conversation_context": conversation,
+                        **reply_metadata,
                     },
                     "draft_snapshot": {
                         "source": req.source,
@@ -2705,6 +2863,7 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
                         "risk_flags": risk_flags,
                         "conversation_turns": len(conversation),
                         "approval_note": "Inbound buyer messages create draft replies only; approval is required before sending.",
+                        **reply_metadata,
                     },
                 }
             ],
@@ -2736,6 +2895,7 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
         ack_status="recorded" if message_envelope else "",
     )
     recorded_envelope = with_ack_status(message_envelope, "recorded") if message_envelope else {}
+    reply_outbox = _reply_outbox_projection(approval_id) if approval_id else None
     return {
         "ok": True,
         "type": "customer_message_intake",
@@ -2750,6 +2910,7 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
         "risk_level": risk_level,
         "risk_flags": risk_flags,
         "needs_manual_reply": not bool(reply_candidate),
+        "reply_outbox": reply_outbox,
     }
 
 
@@ -2811,6 +2972,45 @@ def _retry_message_intake_record(intake_id: str) -> Dict[str, Any]:
             "generation_error": generation_error,
         }
 
+    reply_revision = int(record.get("retry_count") or 0) + 2
+    reply_metadata = build_reply_metadata(
+        action="send_message",
+        cookie_id=str(context.get("cookie_id") or "default"),
+        buyer_id=buyer_id,
+        message=reply_candidate,
+        chat_id=str(context.get("chat_id") or record.get("chat_id") or ""),
+        item_id=str(context.get("item_id") or record.get("item_id") or ""),
+        source=str(context.get("source") or record.get("source") or ""),
+        source_event_key=str(record.get("event_key") or ""),
+        source_message_id=str(record.get("source_message_id") or ""),
+        reply_revision=reply_revision,
+    )
+    existing_reply = _find_existing_reply(reply_metadata)
+    if existing_reply:
+        existing_approval = existing_reply["approval"]
+        approval_id = str(existing_approval.get("approval_id") or "")
+        intake_record = message_intake_ledger.record_retry_result(
+            intake_id=intake_id,
+            status="retry_created",
+            reply_summary=_snapshot_summary(reply_candidate, 120),
+            approval_id=approval_id,
+            generation_error="",
+            risk_flags=risk_flags,
+        )
+        return {
+            "ok": True,
+            "type": "customer_message_intake_retry",
+            "duplicate": True,
+            "intake_record": intake_record,
+            "work_order": existing_reply["work_order"],
+            "action_plan": existing_reply["work_order"].get("action_plan"),
+            "approval_required": existing_approval.get("status") == "pending",
+            "reply_candidate": reply_candidate,
+            "risk_flags": risk_flags,
+            "needs_manual_reply": False,
+            "reply_outbox": _reply_outbox_projection(approval_id),
+        }
+
     plan = work_order_manager.create_action_plan(
         work_order_id,
         proposed_actions=[
@@ -2828,6 +3028,7 @@ def _retry_message_intake_record(intake_id: str) -> Dict[str, Any]:
                     "incoming_message": incoming_message,
                     "conversation_context": conversation,
                     "retry_of_intake_id": intake_id,
+                    **reply_metadata,
                 },
                 "draft_snapshot": {
                     "source": str(context.get("source") or record.get("source") or ""),
@@ -2842,6 +3043,7 @@ def _retry_message_intake_record(intake_id: str) -> Dict[str, Any]:
                     "conversation_turns": len(conversation) if isinstance(conversation, list) else 1,
                     "approval_note": "Retry generated a draft reply only; approval is required before sending.",
                     "retry_of_intake_id": intake_id,
+                    **reply_metadata,
                 },
             }
         ],
@@ -2858,6 +3060,7 @@ def _retry_message_intake_record(intake_id: str) -> Dict[str, Any]:
         generation_error="",
         risk_flags=risk_flags,
     )
+    reply_outbox = _reply_outbox_projection(approval_id)
     return {
         "ok": True,
         "type": "customer_message_intake_retry",
@@ -2868,6 +3071,8 @@ def _retry_message_intake_record(intake_id: str) -> Dict[str, Any]:
         "reply_candidate": reply_candidate,
         "risk_flags": risk_flags,
         "needs_manual_reply": False,
+        "duplicate": False,
+        "reply_outbox": reply_outbox,
     }
 
 
@@ -2964,6 +3169,30 @@ async def message_intake_import_scheduler_run_now(cookie_id: Optional[str] = Non
 @app.get("/message-intake/recent")
 def message_intake_recent(limit: int = 20) -> List[Dict[str, Any]]:
     return message_intake_ledger.list_recent(limit=limit)
+
+
+@app.get("/reply-outbox")
+def reply_outbox_list(
+    status: str = "",
+    cookie_id: str = "",
+    limit: int = 100,
+) -> Dict[str, Any]:
+    """Return the authoritative reply lifecycle projected from approvals and execution jobs."""
+    execution_queue.reconcile_expired_leases(work_order_manager)
+    items = list_reply_outbox(
+        work_order_manager=work_order_manager,
+        execution_queue=execution_queue,
+        message_intake_ledger=message_intake_ledger,
+        status=status,
+        cookie_id=cookie_id,
+        limit=max(0, min(int(limit), 500)),
+    )
+    return {
+        "ok": True,
+        "items": items,
+        "summary": summarize_reply_outbox(items),
+        "source_of_truth": "WorkOrder + Approval + ExecutionJobQueue",
+    }
 
 
 @app.get("/message-intake/metrics")
@@ -3165,17 +3394,44 @@ async def dispute_reply_endpoint(dispute_id: str, req: DisputeReplyRequest) -> D
     cookie_id = _resolve_enabled_operator_cookie_id(req.cookie_id) or "default"
 
     risk_flags = _detect_risk_flags(req.message)
+    reply_metadata = build_reply_metadata(
+        action="sensitive_reply",
+        cookie_id=cookie_id,
+        buyer_id=req.buyer_id,
+        message=req.message,
+        chat_id=req.chat_id,
+        order_id=req.order_id,
+        dispute_id=dispute_id,
+        source="dispute",
+        source_event_key=str(req.context.get("source_event_key") or ""),
+        source_message_id=str(req.context.get("source_message_id") or ""),
+        reply_revision=req.context.get("reply_revision") or 1,
+        idempotency_key=req.idempotency_key,
+    )
+    existing = _find_existing_reply(reply_metadata)
+    if existing:
+        approval_id = str(existing["approval"].get("approval_id") or "")
+        return {
+            "ok": True,
+            "duplicate": True,
+            "work_order": existing["work_order"],
+            "action_plan": existing["work_order"].get("action_plan"),
+            "approval_required": existing["approval"].get("status") == "pending",
+            "risk_flags": list((existing["approval"].get("draft_snapshot") or {}).get("risk_flags") or []),
+            "reply_outbox": _reply_outbox_projection(approval_id),
+        }
     work_order = work_order_manager.create_work_order(
         kind="dispute_reply",
         title=f"Dispute reply {dispute_id}",
         owner="customer_service",
         context={
+            **req.context,
             "dispute_id": dispute_id,
             "order_id": req.order_id,
             "buyer_id": req.buyer_id,
             "message": req.message,
-            **req.context,
             "cookie_id": cookie_id,
+            **reply_metadata,
         },
         risk_level="critical" if risk_flags else "high",
     )
@@ -3194,6 +3450,7 @@ async def dispute_reply_endpoint(dispute_id: str, req: DisputeReplyRequest) -> D
                     "message": req.message,
                     "cookie_id": cookie_id,
                     "chat_id": req.chat_id,
+                    **reply_metadata,
                 },
                 "draft_snapshot": {
                     "dispute_id": dispute_id,
@@ -3204,17 +3461,21 @@ async def dispute_reply_endpoint(dispute_id: str, req: DisputeReplyRequest) -> D
                     "message_summary": _snapshot_summary(req.message, 80),
                     "risk_flags": risk_flags,
                     "approval_note": "Dispute replies are sensitive and require explicit approval.",
+                    **reply_metadata,
                 },
             },
         ],
     )
     work_order = work_order_manager.get_work_order(work_order["work_order_id"])
+    approval_id = str((work_order.get("approvals") or [{}])[0].get("approval_id") or "")
     return {
         "ok": True,
+        "duplicate": False,
         "work_order": work_order,
         "action_plan": plan,
         "approval_required": plan.get("status") == "needs_approval",
         "risk_flags": risk_flags,
+        "reply_outbox": _reply_outbox_projection(approval_id),
     }
 
 
@@ -3879,6 +4140,7 @@ def _strict_listing_draft_side_effects(candidate_id: str, cookie_id: str) -> Dic
             "params": {
                 "draft_id": draft.get("draft_id"),
                 "candidate_id": candidate_id,
+                "expected_draft_revision": listing_draft_revision(draft),
                 "preflight": preflight["snapshot"],
                 **({"cookie_id": resolved_cookie_id} if resolved_cookie_id else {}),
             },
@@ -4418,6 +4680,16 @@ def _commercial_experiment_approval(experiment: Mapping[str, Any]) -> Optional[D
     )
 
 
+def _complete_commercial_experiment_approval(approval_id: str, result: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        return work_order_manager.complete_approval_manually(approval_id, result)
+    except ActionScopeValidationError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"error": "experiment_activation_blocked", "reason": exc.code},
+        ) from exc
+
+
 @app.post("/commercial-trials/{trial_id}/experiments/{experiment_id}/activate")
 def activate_commercial_item_experiment(
     trial_id: str,
@@ -4493,7 +4765,7 @@ def activate_commercial_item_experiment(
                 str(approval.get("execution_status") or "") != "completed"
                 or not bool(experiment.get("approval_execution_ok"))
             ):
-                work_order_manager.complete_approval_manually(
+                _complete_commercial_experiment_approval(
                     str(approval.get("approval_id") or ""),
                     {
                         "ok": True,
@@ -4522,7 +4794,7 @@ def activate_commercial_item_experiment(
                     detail={"error": "experiment_activation_blocked", "reason": "edit_execution_not_completed"},
                 )
             if not automated_edit_succeeded:
-                work_order_manager.complete_approval_manually(
+                _complete_commercial_experiment_approval(
                     str(approval.get("approval_id") or ""),
                     {
                         "ok": True,
@@ -5555,12 +5827,13 @@ async def browser_search(request: Request) -> Dict[str, Any]:
     if not isinstance(adapter, BrowserAdapter):
         return {"ok": False, "error": "Browser adapter not active"}
     payload = await request.json()
+    cookie_id = _resolve_enabled_operator_cookie_id(str(payload.get("cookie_id") or ""))
     items = await adapter.search_products(
         keyword=payload.get("keyword", ""),
         max_pages=payload.get("max_pages", 1),
         min_price=payload.get("min_price", 0),
         max_price=payload.get("max_price", 0),
-        cookie_id=payload.get("cookie_id", "default"),
+        cookie_id=cookie_id or "default",
     )
     return {"ok": True, "count": len(items), "items": items}
 

@@ -178,6 +178,22 @@
             <div id="message-intake-alerts" class="message-intake-alerts"></div>
             <div id="message-intake-runbooks" class="message-intake-runbooks"></div>
             <div id="message-intake-feed" class="message-intake-feed">暂无入站消息</div>
+            <div class="reply-outbox-head">
+              <h4>回复发件箱</h4>
+              <select id="reply-outbox-filter-status" aria-label="回复发件箱状态">
+                <option value="">全部状态</option>
+                <option value="pending_approval">待审批</option>
+                <option value="ready_to_enqueue">待入队</option>
+                <option value="queued">已排队</option>
+                <option value="running">发送中</option>
+                <option value="verification_required">待核验</option>
+                <option value="failed">失败</option>
+                <option value="sent">已发送</option>
+                <option value="rejected">已拒绝</option>
+              </select>
+            </div>
+            <div id="reply-outbox-metrics" class="approval-count-badges"></div>
+            <div id="reply-outbox-feed" class="reply-outbox-feed">暂无回复草稿</div>
           </article>
 
           <article id="account-profile-panel" class="panel account-profile-panel">
