@@ -2241,6 +2241,116 @@ def upsert_product_facts(req: ProductFactsRequest) -> Dict[str, Any]:
     return {"ok": True, "facts": facts}
 
 
+@app.get("/reply-trace")
+def reply_trace(cookie_id: str = "", chat_id: str = "") -> Dict[str, Any]:
+    """Read-only replay of one chat's message, price, and facts timeline.
+
+    The spine is the append-only chat event stream; each outbound event is
+    joined with its Reply Outbox status, and price commitment history and
+    product fact revisions merge into the same time-ordered view.
+    """
+    clean_cookie = cookie_id.strip()
+    clean_chat = chat_id.strip()
+    if not clean_cookie or not clean_chat:
+        raise HTTPException(
+            status_code=400, detail="cookie_id and chat_id are required"
+        )
+    events = chat_event_store.list_events(
+        cookie_id=clean_cookie, chat_id=clean_chat, limit=500
+    )
+    outbox_items = [
+        item
+        for item in list_reply_outbox(
+            work_order_manager=work_order_manager,
+            execution_queue=execution_queue,
+            message_intake_ledger=message_intake_ledger,
+            limit=1000,
+        )
+        if str(item.get("cookie_id") or "") == clean_cookie
+        and str(item.get("chat_id") or "") == clean_chat
+    ]
+    outbox_by_job = {
+        str(item.get("execution_job_id") or ""): item
+        for item in outbox_items
+        if item.get("execution_job_id")
+    }
+    price_records = price_commitment_store.list_records(
+        cookie_id=clean_cookie, chat_id=clean_chat, limit=50
+    )
+    facts_items = product_facts_store.list_facts(cookie_id=clean_cookie, limit=100)
+
+    timeline: List[Dict[str, Any]] = []
+    for event in events:
+        job_id = str(event.get("execution_job_id") or "")
+        outbox_item = outbox_by_job.get(job_id)
+        timeline.append(
+            {
+                "ts": event.get("recorded_at"),
+                "kind": f"chat.{event.get('direction')}",
+                "source_message_id": str(event.get("source_message_id") or ""),
+                "message_excerpt": str(event.get("message_text") or "")[:80],
+                "execution_job_id": job_id,
+                "send_outcome": event.get("send_outcome"),
+                "reply_status": str((outbox_item or {}).get("status") or ""),
+                "verification_required": (
+                    (outbox_item or {}).get("status") == "verification_required"
+                ),
+            }
+        )
+    for record in price_records:
+        for entry in record.get("history", []):
+            timeline.append(
+                {
+                    "ts": entry.get("recorded_at"),
+                    "kind": f"price.{entry.get('actor')}",
+                    "item_id": str(record.get("item_id") or ""),
+                    "amount": entry.get("amount"),
+                    "applied": bool(entry.get("applied")),
+                    "source": str(entry.get("source") or ""),
+                    "excerpt": str(entry.get("excerpt") or ""),
+                }
+            )
+    for facts_item in facts_items:
+        for revision in facts_item.get("revisions", []):
+            timeline.append(
+                {
+                    "ts": revision.get("recorded_at"),
+                    "kind": "facts.revision",
+                    "item_id": str(facts_item.get("item_id") or ""),
+                    "changed": revision.get("changed"),
+                    "source": str(revision.get("source") or ""),
+                }
+            )
+    timeline.sort(key=lambda row: row.get("ts") or 0)
+    return {
+        "ok": True,
+        "cookie_id": clean_cookie,
+        "chat_id": clean_chat,
+        "entry_count": len(timeline),
+        "timeline": timeline,
+        "current_state": {
+            "price_records": [
+                {
+                    "item_id": str(record.get("item_id") or ""),
+                    "seller_lowest_committed": record.get("seller_lowest_committed"),
+                    "buyer_highest_offer": record.get("buyer_highest_offer"),
+                }
+                for record in price_records
+            ],
+            "product_facts": [
+                {
+                    "item_id": str(facts_item.get("item_id") or ""),
+                    "list_price": facts_item.get("list_price"),
+                    "stock_available": facts_item.get("stock_available"),
+                    "ships_in_days": facts_item.get("ships_in_days"),
+                }
+                for facts_item in facts_items
+            ],
+        },
+        "chain": chat_event_store.verify_chain(),
+    }
+
+
 @app.post("/execution-jobs/{job_id}/retry")
 async def retry_execution_job(job_id: str) -> Dict[str, Any]:
     """Retry a failed execution job."""
