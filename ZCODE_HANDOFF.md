@@ -4,7 +4,7 @@
 > 工作区：`E:\闲鱼\xianyu`  
 > 接管对象：Zcode 及后续本地编码代理  
 > 本文件优先级：低于 2026-09-05 的 `PROJECT_STATUS.md`，高于更早的历史状态描述
-> 当前结论：数据库边界、单一执行路径、外部动作 lease/fencing、Reply Outbox、浏览器写入失败证据、审批作用域绑定与 Chat 事件事实流已完成硬化并纳入 Git 基线；真实商业 Alpha 尚未开始，下一业务目标仍是接入一个真实账号和一个真实商品。
+> 当前结论：数据库边界、单一执行路径、外部动作 lease/fencing、Reply Outbox、浏览器写入失败证据、审批作用域绑定、Chat 事件事实流、结构化议价记忆与只读 Trace 回放已完成硬化并纳入 Git 基线；真实商业 Alpha 尚未开始，下一业务目标仍是接入一个真实账号和一个真实商品。
 
 ---
 
@@ -13,8 +13,11 @@
 1. 2026-09-05 硬化轮遗留的 88 个未提交路径已审阅并按功能域提交为 11 个可回滚提交（gitignore、Pi/安全、执行可靠性、listing agent、outbox/intake、server+console、文档×2、根状态文档）；工作树完全干净，无 secret/data/log 入库。
 2. 新增第 9 个只读 operator skill `daily-operator`：每天只输出一个优先动作（阻塞证据带 ID 和时间、owner、完成定义），资源测试锁定其只读边界。
 3. 新增 Chat 事件事实流（研究项 GH-04）：`xianyu_agent/chat_events.py` 追加式哈希链存储；入站消息在 intake 创建/去重时追加并绑定 intake_id；`send_message`/`sensitive_reply` 任务终态由 run 端点追加出站事件（envelope id / 执行 job id 双向幂等，冲突硬失败）；读取走 `GET /chat-events`（过滤+分页）与 `GET /chat-events/metrics`（链校验）；重放在链校验失败时拒绝。Runbook：`docs/ops/chat-events-runbook.md`。
-4. 验证：全量隔离回归 `1007/1007` 通过；`node --check`（app.js、xianyu-ops.ts）、`git diff --check` 通过；`data/live` 未因测试变化。
-5. 仍未做（后续可选）：价格承诺/`product_facts` 结构化事实表（GH-05）、Trace 回放（GH-06）、`pi-web-access` 隔离试验（PI-01）。真实商业阻塞与 2026-09-05 节一致，仍等待操作者提供真实账号与 SKU。
+4. 新增结构化议价记忆与商品事实（研究项 GH-05）：`xianyu_agent/price_commitments.py`。`seller_lowest_committed` 只降不升且只来自平台确认发送的回复（`verification_required` 不入账）；`buyer_highest_offer` 只升不降，由固定正则从入站消息确定性提取；已知挂牌价时出价必须落在 `[0.1×, 1.05×]` 区间。商品事实（挂牌价/库存/发货/成色）由 `PUT /product-facts` 显式登记并保留修订历史；`GET /price-commitments` 读取；Reply Outbox 投影自动附带 `price_context`。LLM 不写入任何价格事实。Runbook：`docs/ops/price-commitments-runbook.md`。
+5. 新增只读 Trace 回放：`GET /reply-trace?cookie_id=&chat_id=` 以 chat 事件流为时间轴主干，按执行 job id 联结 Reply Outbox 状态（含 verification_required 标记），合并价格历史与事实修订，输出排序时间线 + 当前议价状态 + 链校验。
+6. 验证：全量隔离回归 `1026/1026` 通过；`node --check`（app.js、xianyu-ops.ts）、`git diff --check` 通过；`data/live` 未因测试变化。
+7. 研究清单状态：GH-01/02/03（硬化轮）与 GH-04/05、PI-03（本日）已完成；GH-06 失败证据包主体已由 `browser_write_evidence.py` 覆盖，剩余为实机页面验收（外部阻塞）；PI-01（pi-web-access 隔离试验）等待操作者批准试用条件；固定询盘评测需要真实询盘（外部阻塞）。
+8. 仍未变：真实商业阻塞等待操作者提供真实账号与 SKU（`E:\闲鱼\商业资料\commercial-alpha-001` 预检包空模板待填）。
 
 ---
 
