@@ -47,6 +47,11 @@ from .work_orders import work_order_manager
 from .action_executor import action_executor
 from .bridge_events import bridge_events
 from .chat_events import OUTBOUND_SEND_ACTIONS, chat_event_store
+from .price_commitments import (
+    extract_price_mentions,
+    price_commitment_store,
+    product_facts_store,
+)
 from .execution_queue import execution_queue
 from .first_run_readiness import build_first_run_readiness, RUNTIME_HEARTBEAT_MAX_AGE_SECONDS
 from .message_intake import get_message_intake_runbooks, message_intake_ledger
@@ -102,6 +107,8 @@ work_order_manager.configure(settings.data_dir / "work_orders.json")
 execution_queue.configure(settings.data_dir / "execution_jobs.json")
 message_intake_ledger.configure(settings.data_dir / "message_intake.json")
 chat_event_store.configure(settings.data_dir / "chat_events.json")
+price_commitment_store.configure(settings.data_dir / "price_commitments.json")
+product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
 account_runtime_store = AccountRuntimeStore(settings.data_dir / "account_runtime_state.json")
@@ -2019,7 +2026,11 @@ def get_execution_job(job_id: str) -> Dict[str, Any]:
 
 
 def _record_outbound_chat_events(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Append one outbound chat fact per finished reply-send execution job."""
+    """Append one outbound chat fact per finished reply-send execution job.
+
+    A confirmed send also commits the reply's lowest explicit price as the
+    seller floor for that chat; unverified outcomes commit nothing.
+    """
     recorded: List[Dict[str, Any]] = []
     for result in results or []:
         job_id = str((result or {}).get("job_id") or "")
@@ -2067,13 +2078,33 @@ def _record_outbound_chat_events(results: List[Dict[str, Any]]) -> List[Dict[str
                     "verification_required" if status == "verification_required" else "sent"
                 ),
             )
-            recorded.append(
-                {
-                    "job_id": job_id,
-                    "chat_event_id": record["event"]["event_id"],
-                    "chat_event_status": record["status"],
-                }
-            )
+            entry = {
+                "job_id": job_id,
+                "chat_event_id": record["event"]["event_id"],
+                "chat_event_status": record["status"],
+            }
+            # A price only becomes a seller commitment once the platform send
+            # is confirmed; verification_required outcomes commit nothing.
+            if status == "completed" and reply_text:
+                mentions = extract_price_mentions(reply_text)
+                if mentions:
+                    floor = min(mention["amount"] for mention in mentions)
+                    floor_mention = next(
+                        mention for mention in mentions if mention["amount"] == floor
+                    )
+                    commitment = price_commitment_store.record_seller_commit(
+                        cookie_id=str(scope.get("cookie_id") or ""),
+                        chat_id=str(scope.get("chat_id") or ""),
+                        item_id=str(scope.get("item_id") or ""),
+                        amount=floor,
+                        source=f"execution_job:{job_id}",
+                        excerpt=floor_mention["excerpt"],
+                    )
+                    entry["seller_commit"] = {
+                        "amount": floor,
+                        "status": commitment["status"],
+                    }
+            recorded.append(entry)
         except ValueError as exc:
             recorded.append({"job_id": job_id, "chat_event_error": str(exc)})
     return recorded
@@ -2147,6 +2178,67 @@ def list_chat_events(
 def chat_events_metrics() -> Dict[str, Any]:
     """Chat stream counts and hash-chain verification state."""
     return chat_event_store.metrics()
+
+
+@app.get("/price-commitments")
+def list_price_commitments(
+    cookie_id: str = "",
+    chat_id: str = "",
+    item_id: str = "",
+    limit: int = 100,
+) -> Dict[str, Any]:
+    """Read the monotonic bargaining memory for account + chat + item scopes."""
+    return {
+        "ok": True,
+        "records": price_commitment_store.list_records(
+            cookie_id=cookie_id, chat_id=chat_id, item_id=item_id, limit=limit
+        ),
+        "metrics": price_commitment_store.metrics(),
+    }
+
+
+class ProductFactsRequest(BaseModel):
+    cookie_id: str
+    item_id: str
+    list_price: Optional[float] = None
+    stock_available: Optional[int] = None
+    ships_in_days: Optional[int] = None
+    condition: str = ""
+    notes: str = ""
+
+
+@app.get("/product-facts")
+def list_product_facts(
+    cookie_id: str = "", item_id: str = "", limit: int = 100
+) -> Dict[str, Any]:
+    """Read authoritative listing facts used for offer plausibility and drafting."""
+    return {
+        "ok": True,
+        "facts": product_facts_store.list_facts(
+            cookie_id=cookie_id, item_id=item_id, limit=limit
+        ),
+    }
+
+
+@app.put("/product-facts")
+def upsert_product_facts(req: ProductFactsRequest) -> Dict[str, Any]:
+    """Register or revise authoritative listing facts (revision history kept)."""
+    if not req.cookie_id.strip() or not req.item_id.strip():
+        raise HTTPException(status_code=400, detail="cookie_id and item_id are required")
+    try:
+        facts = product_facts_store.upsert(
+            cookie_id=req.cookie_id.strip(),
+            item_id=req.item_id.strip(),
+            list_price=req.list_price,
+            stock_available=req.stock_available,
+            ships_in_days=req.ships_in_days,
+            condition=req.condition,
+            notes=req.notes,
+            source="operator_api",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "facts": facts}
 
 
 @app.post("/execution-jobs/{job_id}/retry")
@@ -2436,12 +2528,30 @@ def _snapshot_summary(value: str, limit: int = 80) -> str:
 
 
 def _reply_outbox_projection(approval_id: str) -> Optional[Dict[str, Any]]:
-    return outbox_item_for_approval(
+    item = outbox_item_for_approval(
         approval_id,
         work_order_manager=work_order_manager,
         execution_queue=execution_queue,
         message_intake_ledger=message_intake_ledger,
     )
+    if item and str(item.get("cookie_id") or ""):
+        cookie_id = str(item.get("cookie_id") or "")
+        chat_id = str(item.get("chat_id") or "")
+        item_id = str(item.get("item_id") or "")
+        record = price_commitment_store.get_record(
+            cookie_id=cookie_id, chat_id=chat_id, item_id=item_id
+        )
+        facts = (
+            product_facts_store.get(cookie_id=cookie_id, item_id=item_id)
+            if item_id
+            else None
+        )
+        item["price_context"] = {
+            "seller_lowest_committed": (record or {}).get("seller_lowest_committed"),
+            "buyer_highest_offer": (record or {}).get("buyer_highest_offer"),
+            "list_price": (facts or {}).get("list_price"),
+        }
+    return item
 
 
 def _find_existing_reply(reply_metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -2828,6 +2938,42 @@ async def message_import_scheduler_loop() -> None:
             await _run_message_import_scheduler_once(cookie_id=cookie_id)
 
 
+def _record_buyer_price_offers(
+    cookie_id: str, chat_id: str, item_id: str, message_text: str, source_message_id: str
+) -> List[Dict[str, Any]]:
+    """Record deterministic price offers extracted from an inbound message.
+
+    Offers are filtered against the known list price when product facts
+    exist; the LLM never writes these values.
+    """
+    if not cookie_id or not message_text:
+        return []
+    list_price = None
+    if item_id:
+        facts = product_facts_store.get(cookie_id=cookie_id, item_id=item_id)
+        if facts:
+            list_price = facts.get("list_price")
+    recorded = []
+    for mention in extract_price_mentions(message_text):
+        result = price_commitment_store.record_buyer_offer(
+            cookie_id=cookie_id,
+            chat_id=chat_id,
+            item_id=item_id,
+            amount=mention["amount"],
+            source=source_message_id or "inbound",
+            excerpt=mention["excerpt"],
+            list_price=list_price,
+        )
+        recorded.append(
+            {
+                "amount": mention["amount"],
+                "pattern": mention["pattern"],
+                "status": result["status"],
+            }
+        )
+    return recorded
+
+
 def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, Any]:
     buyer_id = req.buyer_id.strip()
     incoming_message = req.message.strip()
@@ -3020,6 +3166,13 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
         chat_envelope,
         intake_id=str(intake_record.get("intake_id") or ""),
     )
+    buyer_price_offers = _record_buyer_price_offers(
+        cookie_id,
+        req.chat_id,
+        product_id,
+        incoming_message,
+        str(chat_envelope.get("source_message_id") or req.message_id),
+    )
     reply_outbox = _reply_outbox_projection(approval_id) if approval_id else None
     return {
         "ok": True,
@@ -3035,6 +3188,7 @@ def _create_inbound_message_work_order(req: InboundMessageRequest) -> Dict[str, 
         "risk_level": risk_level,
         "risk_flags": risk_flags,
         "needs_manual_reply": not bool(reply_candidate),
+        "buyer_price_offers": buyer_price_offers,
         "reply_outbox": reply_outbox,
     }
 
