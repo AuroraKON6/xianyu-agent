@@ -120,6 +120,10 @@ commerce_repositories = JsonCommerceRepositories(settings.data_dir)
 supplier_import_service = SupplierImportService(commerce_repositories, settings.data_dir)
 product_matching_service = ProductMatchingService(commerce_repositories)
 opportunity_service = OpportunityService(commerce_repositories)
+from .providers import ProviderCapabilityRegistry  # noqa: E402
+
+provider_capability_registry = ProviderCapabilityRegistry(settings.data_dir)
+provider_capability_registry.seed_defaults()
 product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
@@ -6734,6 +6738,21 @@ async def list_commerce_opportunities(status: str = "") -> Dict[str, Any]:
 @app.get("/commerce/opportunities/funnel")
 async def commerce_opportunity_funnel() -> Dict[str, Any]:
     return opportunity_service.funnel()
+
+
+@app.get("/commerce/data-providers")
+async def list_commerce_data_providers() -> Dict[str, Any]:
+    """Provider capability registry projection (WP02).
+
+    Statuses are UNVERIFIED/CONFIGURED/VERIFIED/DEGRADED/DISABLED; no
+    source is VERIFIED without >= 20 real samples with evidence.
+    """
+    records = provider_capability_registry.list()
+    return {
+        "providers": records,
+        "usable_provider_ids": [r["provider_id"] for r in provider_capability_registry.usable_sources()],
+        "verified_count": sum(1 for r in records if str(r.get("status")) == "VERIFIED"),
+    }
 
 
 @app.get("/commerce/opportunities/{opportunity_id}/decision-card")

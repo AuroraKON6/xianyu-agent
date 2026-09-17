@@ -146,6 +146,17 @@ class CommercePipelineApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertGreaterEqual(response.json()["total"], 1)
 
+    def test_data_providers_registry_projection(self):
+        response = self.client.get("/commerce/data-providers")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        by_id = {p["provider_id"]: p for p in body["providers"]}
+        self.assertIn("supplier_file", by_id)
+        self.assertIn("pinduoduo_duoduojinbao", by_id)
+        self.assertEqual(by_id["pinduoduo_duoduojinbao"]["status"], "UNVERIFIED")
+        # nothing is VERIFIED in this baseline
+        self.assertEqual(body["verified_count"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
