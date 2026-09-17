@@ -362,7 +362,11 @@ class SupplierImportService:
         if not text.strip():
             raise ImportPreviewError("pasted text is empty")
         payload = text.encode("utf-8")
-        headers, raw_rows = _parse_pasted(text)
+        try:
+            headers, raw_rows = _parse_pasted(text)
+        except ImportPreviewError:
+            # plain CSV paste is equally valid structured text
+            headers, raw_rows = self._read_csv(payload)
         return self._build_preview(IMPORT_KIND_PASTED, "", _sha256_bytes(payload), headers, raw_rows)
 
     def _read_csv(self, payload: bytes) -> Tuple[List[str], List[Dict[str, str]]]:
