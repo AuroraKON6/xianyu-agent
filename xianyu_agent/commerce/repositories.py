@@ -94,6 +94,24 @@ class _LockedJsonList:
         with self._lock:
             return [dict(item) for item in self._items if predicate(item)]
 
+    def append(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        with self as items:
+            items._items.append(item)
+        return dict(item)
+
+    def update(self, record_id: str, mutate) -> Dict[str, Any]:
+        with self as items:
+            for existing in items._items:
+                if str(existing.get("record_id")) == record_id:
+                    mutate(existing)
+                    return dict(existing)
+        raise KeyError(f"record not found: {record_id}")
+
+
+# Public alias for sibling modules in this package (e.g. supplier import
+# batch registry) that need the same JSON durability level.
+LockedJsonList = _LockedJsonList
+
 
 class OfferSnapshotRepository(ABC):
     @abstractmethod
