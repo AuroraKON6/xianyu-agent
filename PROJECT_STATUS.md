@@ -1,5 +1,26 @@
 # Xianyu Pi Commercial Alpha Status
 
+Updated: 2026-09-18
+
+## 2026-09-18 增量（薄闭环：报价→同款→成本→商机→决策卡）
+
+按 [ZCODE_START_HERE_2026-09-18.md](ZCODE_START_HERE_2026-09-18.md) 执行的最小贯通轮，全部证据见
+[docs/acceptance/WP_THIN_LOOP_2026-09-18.md](docs/acceptance/WP_THIN_LOOP_2026-09-18.md) 与
+[docs/acceptance/BASELINE_2026-09-18.md](docs/acceptance/BASELINE_2026-09-18.md)。
+
+- WP00 基线刷新 PASS：全量 1026/1026 实测通过（47.064s），data/live 哈希不变，GH-04/05 调用路径核验，skills 实测 9 个。
+- 新增 commerce 域（WP01）：`xianyu_agent/commerce/`（契约 + repository，Money 三态金额/未知不填零，ADR-0001）。
+- 供应商报价导入（WP03）：preview→confirm、CSV/XLSX/粘贴文本、整箱换算、批次可撤销，测试 20 条。
+- 同款匹配（WP05）：硬约束四级判级 + 28 对标注集（EXACT 精确 6/6；未达 100 对，不宣称 95% 目标）。
+- 贡献利润与商机（WP06）：三情景、黄金样例 104.03/34.79% 复算一致、确定性资格门禁（EXACT+保守利润>0+新鲜度）。
+- 决策卡与面板最小版（WP09）：13 条 `/commerce/*` 路由 + console「商机雷达」；Playwright 视觉验收未做（完整 WP09 范围）。
+- 来源能力登记（WP02）：5 来源 = 2 CONFIGURED / 3 UNVERIFIED，VERIFIED 需 ≥20 真实样本证据（代码强制）。
+- 本轮终点全量回归：**1122/1122 通过**；8 个分包独立提交（41c20b3…da6882f）。
+- 未变：真实账号 0、占位候选 T、真实订单/询盘/利润 0；无平台写动作；OpenClaw 未恢复。
+- 下一阻塞不变：操作者提供真实供应商报价文件与账号（见验收文档「诚实声明」）。
+
+---
+
 Updated: 2026-09-05
 
 ## Status

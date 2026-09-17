@@ -1,0 +1,121 @@
+{
+  "demo_note": "SYNTHETIC DEMO DATA: numbers follow master plan 8.3; no real supplier, no real market listing, no platform action, no profit claimed",
+  "executed_at": "2026-09-17T18:34:38.778746+00:00",
+  "step1_preview_summary": {
+    "total": 1,
+    "ok": 1,
+    "needs_confirmation": 0,
+    "rejected": 0
+  },
+  "step1_confirm": {
+    "batch_id": "impb_4d192e965a9b4075",
+    "snapshot_id": "offer_34fd6e3a0e1e4fcb",
+    "price": {
+      "state": "known",
+      "amount": "150",
+      "currency": "CNY",
+      "reason": null
+    },
+    "freight": {
+      "state": "known",
+      "amount": "15",
+      "currency": "CNY",
+      "reason": null
+    }
+  },
+  "step2_market_observation": {
+    "snapshot_id": "offer_be2dc3eb291a45b2",
+    "price": {
+      "state": "known",
+      "amount": "299",
+      "currency": "CNY",
+      "reason": null
+    }
+  },
+  "step3_match": {
+    "match_id": "match_d68ec150cfd741e2",
+    "grade": "EXACT",
+    "explanation": "all hard constraints known and equal (recall similarity 0.48 is reporting only, not proof)",
+    "recall_score": 0.48
+  },
+  "step4_economics": {
+    "opportunity_id": "opp_a238944f9a5442bd",
+    "status": "ready_for_test",
+    "qualification": {
+      "qualified": true,
+      "reasons": [],
+      "checks": {
+        "exact_match": true,
+        "profit_known_positive": true,
+        "inputs_fresh": true
+      }
+    },
+    "base_profit": {
+      "state": "known",
+      "amount": "104.03",
+      "currency": "CNY",
+      "reason": null
+    },
+    "conservative_profit": {
+      "state": "known",
+      "amount": "75.90",
+      "currency": "CNY",
+      "reason": null
+    },
+    "cash_occupied": {
+      "state": "known",
+      "amount": "330",
+      "currency": "CNY",
+      "reason": null
+    }
+  },
+  "step5_decision_card": {
+    "decision_id": "dec_79aba55143114207",
+    "actor_role": "pricing_agent",
+    "summary": "conservative contribution profit 75.90 CNY; EXACT match and fresh inputs; recommend moving to ready_for_test",
+    "recommendation": "advance to ready_for_test (operator approval required for any listing action)",
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "pass"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "pass"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "none"
+    ],
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_be2dc3eb291a45b2"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_34fd6e3a0e1e4fcb"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_d68ec150cfd741e2"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-09-17T18:34:38.795276+00:00"
+      }
+    ],
+    "authorization_type": "human"
+  },
+  "step6_funnel": {
+    "discovered_total": 1,
+    "with_match": 1,
+    "cost_complete": 1,
+    "positive_conservative_profit": 1,
+    "note": "counts are facts about stored records, not business results"
+  }
+}
