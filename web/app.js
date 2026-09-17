@@ -5231,3 +5231,249 @@ $("#commercial-trial-create-form")?.addEventListener("input", (event) => {
 
 // Load commercial alpha trial panel on startup
 refreshCommercialTrials().catch(() => {});
+
+// ---------------------------------------------------------------------------
+// Commerce opportunity radar (WP03/WP05/WP06/WP09 thin loop):
+// supplier quote import -> same-product match -> contribution economics
+// -> opportunity -> decision card. Read/write only via /commerce/* APIs;
+// no platform action is triggered from this panel.
+// ---------------------------------------------------------------------------
+const commerceState = {
+  preview: null,
+  lastMatch: null,
+  opportunityId: null,
+};
+
+function commerceMoney(m) {
+  if (!m) return "-";
+  if (m.state === "known") return `${m.amount} ${m.currency || "CNY"}`;
+  if (m.state === "not_applicable") return "不适用";
+  return `未知${m.reason ? `（${m.reason}）` : ""}`;
+}
+
+function commerceStatusBadge(status) {
+  const labels = { ok: "可确认", needs_confirmation: "待确认", rejected: "已拒绝" };
+  return labels[status] || status;
+}
+
+async function commercePreviewImport() {
+  const content = $("#commerce-quote-text")?.value?.trim();
+  const resultNode = $("#commerce-preview-result");
+  if (!content) {
+    resultNode.textContent = "请先粘贴报价内容";
+    return;
+  }
+  try {
+    const preview = await api("/commerce/supplier-imports/preview", {
+      method: "POST",
+      body: JSON.stringify({ kind: "pasted_text", content }),
+    });
+    commerceState.preview = preview;
+    const rows = (preview.rows || [])
+      .map(
+        (row) =>
+          `<tr><td>${row.row_number}</td><td>${escapeHtml(row.fields?.sku || "-")}</td>` +
+          `<td>${commerceMoney(row.fields?.price)}</td><td>${commerceMoney(row.fields?.freight)}</td>` +
+          `<td>${commerceStatusBadge(row.status)}</td><td>${escapeHtml((row.issues || []).join("；") || "-")}</td></tr>`
+      )
+      .join("");
+    resultNode.innerHTML =
+      `<p>共 ${preview.summary?.total ?? 0} 行：可确认 ${preview.summary?.ok ?? 0}，待确认 ${preview.summary?.needs_confirmation ?? 0}，拒绝 ${preview.summary?.rejected ?? 0}` +
+      `${(preview.unmapped_columns || []).length ? `；未映射列：${escapeHtml(preview.unmapped_columns.join(","))}` : ""}</p>` +
+      `<table class="commerce-table"><thead><tr><th>#</th><th>SKU</th><th>单价</th><th>运费</th><th>状态</th><th>问题</th></tr></thead><tbody>${rows}</tbody></table>`;
+    $("#commerce-confirm-btn").disabled = false;
+  } catch (e) {
+    resultNode.textContent = `预览失败：${e.message}`;
+  }
+}
+
+async function commerceConfirmImport() {
+  const preview = commerceState.preview;
+  const supplier = $("#commerce-supplier")?.value?.trim();
+  if (!preview || !supplier) {
+    $("#commerce-preview-result").textContent = "缺少预览或供应商名称";
+    return;
+  }
+  try {
+    const result = await api(`/commerce/supplier-imports/${preview.preview_id}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({
+        content_sha256: preview.content_sha256,
+        revision: preview.revision,
+        supplier,
+        operator: "console",
+      }),
+    });
+    const ids = (result.snapshots || []).map((s) => `${s.source_item_id}: ${s.record_id}`);
+    $("#commerce-preview-result").innerHTML =
+      `<p>批次 ${result.created ? "已创建" : "已存在（幂等）"}：<code>${escapeHtml(result.batch?.record_id || "")}</code></p>` +
+      `<p>快照：<br>${ids.map((i) => escapeHtml(i)).join("<br>")}</p>`;
+    $("#commerce-confirm-btn").disabled = true;
+  } catch (e) {
+    $("#commerce-preview-result").textContent = `确认失败：${e.message}`;
+  }
+}
+
+async function commerceSaveMarket() {
+  const body = {
+    sku: $("#market-sku")?.value?.trim(),
+    title: $("#market-title")?.value?.trim(),
+    spec: $("#market-spec")?.value?.trim(),
+    brand: $("#market-brand")?.value?.trim(),
+    price: $("#market-price")?.value?.trim(),
+    condition: $("#market-condition")?.value?.trim(),
+    unit: $("#market-unit")?.value?.trim(),
+  };
+  if (!body.sku || !body.price) {
+    $("#market-save-result").textContent = "型号与展示价必填";
+    return;
+  }
+  try {
+    const result = await api("/commerce/market-observations", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    $("#market-save-result").innerHTML =
+      `快照 <code>${escapeHtml(result.snapshot?.record_id || "")}</code> 已登记（人工观察，非成交事实）`;
+    $("#match-market-id").value = result.snapshot?.record_id || "";
+  } catch (e) {
+    $("#market-save-result").textContent = `登记失败：${e.message}`;
+  }
+}
+
+async function commerceRunMatch() {
+  const left = $("#match-market-id")?.value?.trim();
+  const right = $("#match-supplier-id")?.value?.trim();
+  try {
+    const result = await api("/commerce/product-matches", {
+      method: "POST",
+      body: JSON.stringify({ left_snapshot_id: left, right_snapshot_id: right }),
+    });
+    commerceState.lastMatch = { ...result, marketId: left, supplierId: right };
+    const conflicts = (result.conflicts || [])
+      .map((c) => `${c.field}: ${JSON.stringify(c.left)} vs ${JSON.stringify(c.right)}`)
+      .join("；");
+    $("#match-result").innerHTML =
+      `<p>判定 <strong>${result.grade}</strong>（规则 ${escapeHtml(String(result.rule_version || ""))}）` +
+      ` 相似度 ${result.recall_score ?? "-"}（仅报告）</p>` +
+      `<p>${conflicts ? `冲突：${escapeHtml(conflicts)}` : escapeHtml(result.explanation || "")}</p>` +
+      `<p>match_id：<code>${escapeHtml(result.match_id || "")}</code></p>`;
+  } catch (e) {
+    $("#match-result").textContent = `匹配失败：${e.message}`;
+  }
+}
+
+async function commerceCreateOpportunity() {
+  const match = commerceState.lastMatch;
+  if (!match) {
+    $("#opp-result").textContent = "请先完成匹配判定";
+    return;
+  }
+  try {
+    const opportunity = await api("/commerce/opportunities", {
+      method: "POST",
+      body: JSON.stringify({
+        market_snapshot_id: match.marketId,
+        supplier_snapshot_id: match.supplierId,
+        match_id: match.match_id,
+      }),
+    });
+    commerceState.opportunityId = opportunity.record_id;
+    $("#opp-result").innerHTML = `商机 <code>${escapeHtml(opportunity.record_id)}</code> 已创建（${escapeHtml(opportunity.status)}）`;
+  } catch (e) {
+    $("#opp-result").textContent = `创建失败：${e.message}`;
+  }
+}
+
+async function commerceEvaluate() {
+  const opportunityId = commerceState.opportunityId;
+  if (!opportunityId) {
+    $("#opp-result").textContent = "请先创建商机";
+    return;
+  }
+  const low = $("#cost-market-low")?.value?.trim();
+  const body = {
+    platform_fee_rate: $("#fee-rate")?.value?.trim() || null,
+    platform_fee_fixed: $("#fee-fixed")?.value?.trim() || null,
+    packaging: $("#cost-packaging")?.value ? { state: "known", amount: $("#cost-packaging").value, currency: "CNY" } : null,
+    expected_return_loss: $("#cost-return")?.value ? { state: "known", amount: $("#cost-return").value, currency: "CNY" } : null,
+    attributable_costs: $("#cost-attributable")?.value ? { state: "known", amount: $("#cost-attributable").value, currency: "CNY" } : null,
+  };
+  if (low) {
+    body.scenario_overrides = { conservative: { sale_price: { state: "known", amount: low, currency: "CNY" } } };
+  }
+  try {
+    const result = await api(`/commerce/opportunities/${opportunityId}/evaluate`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    const s = result.economics?.scenarios || {};
+    const line = (name) => {
+      const sc = s[name];
+      if (!sc) return "";
+      return `<tr><td>${name}</td><td>${commerceMoney(sc.contribution_profit)}</td>` +
+        `<td>${sc.contribution_margin ?? "-"}</td><td>${commerceMoney(sc.break_even_price)}</td>` +
+        `<td>${escapeHtml((sc.missing || []).join("；") || "-")}</td></tr>`;
+    };
+    $("#opp-result").innerHTML =
+      `<p>状态：<strong>${escapeHtml(result.opportunity?.status || "")}</strong> ｜ 现金占用：${commerceMoney(result.economics?.cash_occupied)}</p>` +
+      `<table class="commerce-table"><thead><tr><th>情景</th><th>贡献利润</th><th>利润率</th><th>盈亏平衡价</th><th>缺口</th></tr></thead>` +
+      `<tbody>${line("conservative")}${line("base")}${line("optimistic")}</tbody></table>` +
+      `<p>${result.economics?.scenarios_note ? escapeHtml(result.economics.scenarios_note) : ""}</p>`;
+    await commerceRenderDecisionCard(opportunityId);
+    await commerceRefreshFunnel();
+  } catch (e) {
+    $("#opp-result").textContent = `核算失败：${e.message}`;
+  }
+}
+
+async function commerceRenderDecisionCard(opportunityId) {
+  try {
+    const card = await api(`/commerce/opportunities/${opportunityId || commerceState.opportunityId}/decision-card`);
+    const decisions = card.decisions || [];
+    const latest = decisions[decisions.length - 1];
+    if (!latest) {
+      $("#decision-card").textContent = "暂无决策记录";
+      return;
+    }
+    const checks = (latest.constraint_checks || [])
+      .map((c) => `${c.check}:${c.state}`)
+      .join(" ｜ ");
+    $("#decision-card").innerHTML =
+      `<p><strong>${escapeHtml(latest.actor_role)}</strong> / ${escapeHtml(latest.decision_type)} / ${new Date(latest.created_at).toLocaleString()}</p>` +
+      `<p>${escapeHtml(latest.summary)}</p>` +
+      `<p>建议：${escapeHtml(latest.recommendation || "-")}</p>` +
+      `<p>门禁：${escapeHtml(checks)} ｜ 授权：${escapeHtml(latest.authorization_type)}（人工）</p>` +
+      `<p>未知项：${escapeHtml((latest.unknowns || []).join("；"))}</p>` +
+      `<p>依据：${(latest.evidence_refs || []).map((r) => escapeHtml(`${r.ref_type}:${r.ref_id}`)).join(" ｜ ")}</p>`;
+  } catch (e) {
+    $("#decision-card").textContent = `决策卡读取失败：${e.message}`;
+  }
+}
+
+async function commerceRefreshFunnel() {
+  try {
+    const funnel = await api("/commerce/opportunities/funnel");
+    const opportunities = await api("/commerce/opportunities");
+    const rows = (opportunities.opportunities || [])
+      .map(
+        (o) =>
+          `<tr><td>${escapeHtml(o.canonical_sku)}</td><td>${escapeHtml(o.status)}</td>` +
+          `<td>${escapeHtml(o.status_reason || "-")}</td><td>r${o.revision}</td></tr>`
+      )
+      .join("");
+    $("#commerce-funnel").innerHTML =
+      `<p>原始 ${funnel.discovered_total} ｜ 有匹配 ${funnel.with_match} ｜ 成本齐全 ${funnel.cost_complete} ｜ 保守利润为正 ${funnel.positive_conservative_profit}</p>` +
+      `<table class="commerce-table"><thead><tr><th>SKU</th><th>状态</th><th>原因</th><th>版本</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } catch (e) {
+    $("#commerce-funnel").textContent = `漏斗读取失败：${e.message}`;
+  }
+}
+
+$("#commerce-preview-btn")?.addEventListener("click", commercePreviewImport);
+$("#commerce-confirm-btn")?.addEventListener("click", commerceConfirmImport);
+$("#market-save-btn")?.addEventListener("click", commerceSaveMarket);
+$("#match-run-btn")?.addEventListener("click", commerceRunMatch);
+$("#opp-create-btn")?.addEventListener("click", commerceCreateOpportunity);
+$("#opp-evaluate-btn")?.addEventListener("click", commerceEvaluate);
+$("#commerce-refresh")?.addEventListener("click", commerceRefreshFunnel);

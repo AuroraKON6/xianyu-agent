@@ -270,6 +270,70 @@
             <div id="sourcing-result" class="resale-dashboard">填写表单后点击评估</div>
           </article>
 
+          <article class="panel commerce-panel">
+            <div class="panel-head">
+              <h3>商机雷达（报价 → 同款 → 利润 → 决策卡）</h3>
+              <div class="top-actions">
+                <button id="commerce-refresh" class="text-btn">刷新漏斗</button>
+              </div>
+            </div>
+            <div class="commerce-steps">
+              <section class="commerce-step">
+                <h4>1. 供应商报价导入（preview → confirm）</h4>
+                <textarea id="commerce-quote-text" rows="4" placeholder="货号,品名,单价,单位,起订量,库存,运费,规格,品牌,成色&#10;GZ-1200,不锈钢工作台,150,件,2,10,包邮,120x60x85cm,众商,全新"></textarea>
+                <input id="commerce-supplier" placeholder="供应商名称（必填）" />
+                <div class="commerce-actions">
+                  <button id="commerce-preview-btn" class="text-btn" type="button">预览</button>
+                  <button id="commerce-confirm-btn" class="primary" type="button" disabled>确认导入</button>
+                </div>
+                <div id="commerce-preview-result" class="commerce-result">粘贴报价文件内容后点击预览；确认前不会写入任何快照</div>
+              </section>
+              <section class="commerce-step">
+                <h4>2. 市场观察登记（人工观察，非成交事实）</h4>
+                <div class="commerce-grid">
+                  <input id="market-sku" placeholder="型号/SKU 如 GZ-1200" />
+                  <input id="market-title" placeholder="商品标题" />
+                  <input id="market-spec" placeholder="规格 如 120x60x85cm" />
+                  <input id="market-brand" placeholder="品牌（可选）" />
+                  <input id="market-price" type="number" step="0.01" min="0" placeholder="观察展示价" />
+                  <input id="market-condition" placeholder="成色 全新/二手" value="全新" />
+                  <input id="market-unit" placeholder="单位 件/套" value="件" />
+                </div>
+                <button id="market-save-btn" class="text-btn" type="button">登记观察</button>
+                <div id="market-save-result" class="commerce-result"></div>
+              </section>
+              <section class="commerce-step">
+                <h4>3. 同款判定（硬约束，标题相似度仅报告）</h4>
+                <div class="commerce-grid">
+                  <input id="match-market-id" placeholder="市场快照ID" />
+                  <input id="match-supplier-id" placeholder="供应商快照ID" />
+                </div>
+                <button id="match-run-btn" class="text-btn" type="button">匹配判定</button>
+                <div id="match-result" class="commerce-result"></div>
+              </section>
+              <section class="commerce-step">
+                <h4>4. 商机与贡献利润（缺成本不填零）</h4>
+                <button id="opp-create-btn" class="text-btn" type="button">创建商机</button>
+                <div class="commerce-grid">
+                  <input id="fee-rate" placeholder="平台费率（当期条款）" value="0.03" />
+                  <input id="fee-fixed" placeholder="固定费用" value="0" />
+                  <input id="cost-packaging" placeholder="包装/单件" value="5" />
+                  <input id="cost-return" placeholder="预期退货损失/单" value="12" />
+                  <input id="cost-attributable" placeholder="获客+模型/单" value="4" />
+                  <input id="cost-market-low" placeholder="保守售价（观察区间低）" placeholder2="可选" />
+                </div>
+                <button id="opp-evaluate-btn" class="primary" type="button">核算利润</button>
+                <div id="opp-result" class="commerce-result"></div>
+              </section>
+              <section class="commerce-step">
+                <h4>5. 决策卡</h4>
+                <div id="decision-card" class="commerce-result">核算后自动展示</div>
+              </section>
+            </div>
+            <div class="panel-head"><h4>商机漏斗（记录事实，非经营结果）</h4></div>
+            <div id="commerce-funnel" class="commerce-result">点击刷新查看</div>
+          </article>
+
           <article class="panel strategy-panel">
             <div class="panel-head">
               <h3>上架策略生成</h3>

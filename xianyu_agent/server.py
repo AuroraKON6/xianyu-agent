@@ -47,6 +47,14 @@ from .work_orders import work_order_manager
 from .action_executor import action_executor
 from .bridge_events import bridge_events
 from .chat_events import OUTBOUND_SEND_ACTIONS, chat_event_store
+from .commerce import JsonCommerceRepositories
+from .opportunity_service import OpportunityError, OpportunityService
+from .product_matching import MatchError, ProductMatchingService
+from .supplier_import import (
+    ConfirmMismatch,
+    ImportPreviewError,
+    SupplierImportService,
+)
 from .price_commitments import (
     extract_price_mentions,
     price_commitment_store,
@@ -108,6 +116,10 @@ execution_queue.configure(settings.data_dir / "execution_jobs.json")
 message_intake_ledger.configure(settings.data_dir / "message_intake.json")
 chat_event_store.configure(settings.data_dir / "chat_events.json")
 price_commitment_store.configure(settings.data_dir / "price_commitments.json")
+commerce_repositories = JsonCommerceRepositories(settings.data_dir)
+supplier_import_service = SupplierImportService(commerce_repositories, settings.data_dir)
+product_matching_service = ProductMatchingService(commerce_repositories)
+opportunity_service = OpportunityService(commerce_repositories)
 product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
@@ -6554,3 +6566,225 @@ async def generate_trial_report() -> Dict[str, Any]:
     orders = resale_manager.list_resale_orders() if resale_manager and hasattr(resale_manager, "list_resale_orders") else []
     reviews_dir = settings.data_dir / "reviews"
     return _trial.generate_report(candidates, orders, reviews_dir)
+
+
+# ---------------------------------------------------------------------------
+# Commerce pipeline (WP03/WP05/WP06/WP09): supplier quotes -> match ->
+# contribution economics -> opportunity -> decision card.
+# Namespaced under /commerce to avoid colliding with the legacy
+# /opportunities virtual-product routes above.
+# ---------------------------------------------------------------------------
+
+
+def _commerce_payload_bytes(payload: Mapping[str, Any]) -> bytes:
+    import base64
+
+    encoded = str(payload.get("content_b64") or "")
+    if encoded:
+        try:
+            return base64.b64decode(encoded, validate=True)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail=f"invalid content_b64: {exc}") from exc
+    text = payload.get("content")
+    if text is None:
+        raise HTTPException(status_code=400, detail="provide content or content_b64")
+    return str(text).encode("utf-8")
+
+
+@app.post("/commerce/supplier-imports/preview")
+async def preview_supplier_import(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    kind = str(payload.get("kind") or "")
+    try:
+        if kind == "pasted_text":
+            text = payload.get("content")
+            if text is None:
+                text = _commerce_payload_bytes(payload).decode("utf-8")
+            return supplier_import_service.preview_pasted_text(str(text))
+        return supplier_import_service.preview_bytes(
+            _commerce_payload_bytes(payload),
+            kind=kind,
+            filename=str(payload.get("filename") or ""),
+        )
+    except ImportPreviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/commerce/supplier-imports/{preview_id}/confirm")
+async def confirm_supplier_import(preview_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return supplier_import_service.confirm(
+            preview_id,
+            content_sha256=str(payload.get("content_sha256") or ""),
+            revision=int(payload.get("revision") or 0),
+            supplier=str(payload.get("supplier") or ""),
+            operator=str(payload.get("operator") or "operator"),
+            include_needs_confirmation=bool(payload.get("include_needs_confirmation", False)),
+        )
+    except ConfirmMismatch as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ImportPreviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/commerce/supplier-imports")
+async def list_supplier_imports(supplier: str = "") -> Dict[str, Any]:
+    return {"batches": supplier_import_service.list_batches(supplier=supplier)}
+
+
+@app.post("/commerce/supplier-imports/{batch_id}/revoke")
+async def revoke_supplier_import(batch_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return supplier_import_service.revoke_batch(
+            batch_id,
+            operator=str(payload.get("operator") or "operator"),
+            reason=str(payload.get("reason") or ""),
+        )
+    except ImportPreviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError:
+        raise HTTPException(status_code=404, detail="batch not found")
+
+
+@app.get("/commerce/offers")
+async def list_commerce_offers(
+    provider_id: str = "",
+    source_item_id: str = "",
+    limit: int = 100,
+) -> Dict[str, Any]:
+    records = commerce_repositories.offers.list(
+        provider_id=provider_id,
+        source_item_id=source_item_id,
+    )
+    return {"offers": records[: max(0, limit)], "total": len(records)}
+
+
+@app.post("/commerce/product-matches")
+async def create_product_match(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return product_matching_service.match_snapshots(
+            str(payload.get("left_snapshot_id") or ""),
+            str(payload.get("right_snapshot_id") or ""),
+        )
+    except MatchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/commerce/product-matches/{match_id}/correction")
+async def correct_product_match(match_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return product_matching_service.correct_grade(
+            match_id,
+            corrected_grade=str(payload.get("corrected_grade") or ""),
+            operator=str(payload.get("operator") or "operator"),
+            reason=str(payload.get("reason") or ""),
+        )
+    except MatchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError:
+        raise HTTPException(status_code=404, detail="match not found")
+
+
+@app.post("/commerce/opportunities")
+async def create_commerce_opportunity(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return opportunity_service.create_from_match(
+            market_snapshot_id=str(payload.get("market_snapshot_id") or ""),
+            supplier_snapshot_id=str(payload.get("supplier_snapshot_id") or ""),
+            match_id=str(payload.get("match_id") or ""),
+            title=str(payload.get("title") or ""),
+        )
+    except OpportunityError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/commerce/opportunities/{opportunity_id}/evaluate")
+async def evaluate_commerce_opportunity(opportunity_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return opportunity_service.evaluate(
+            opportunity_id,
+            platform_fee_rate=payload.get("platform_fee_rate"),
+            platform_fee_fixed=payload.get("platform_fee_fixed"),
+            packaging=payload.get("packaging"),
+            after_sales_reserve=payload.get("after_sales_reserve"),
+            attributable_costs=payload.get("attributable_costs"),
+            return_probability=payload.get("return_probability"),
+            return_loss_amount=payload.get("return_loss_amount"),
+            expected_return_loss=payload.get("expected_return_loss"),
+            scenario_overrides=payload.get("scenario_overrides"),
+            target_margin=payload.get("target_margin"),
+        )
+    except OpportunityError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/commerce/opportunities")
+async def list_commerce_opportunities(status: str = "") -> Dict[str, Any]:
+    return {"opportunities": opportunity_service.list_opportunities(status=status)}
+
+
+@app.get("/commerce/opportunities/funnel")
+async def commerce_opportunity_funnel() -> Dict[str, Any]:
+    return opportunity_service.funnel()
+
+
+@app.get("/commerce/opportunities/{opportunity_id}/decision-card")
+async def commerce_decision_card(opportunity_id: str) -> Dict[str, Any]:
+    try:
+        return opportunity_service.decision_card(opportunity_id)
+    except OpportunityError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/commerce/market-observations")
+async def record_market_observation(request: Request) -> Dict[str, Any]:
+    """Record one manual market-side observation as an OfferSnapshot.
+
+    These are operator-observed display prices (未接在线 API 时的人工观
+    察), stored as ``market:xianyu_observation`` snapshots. They are
+    observations, not transaction facts.
+    """
+    from .commerce.contracts import PRICE_TYPE_LIST, build_offer_snapshot as _build, utc_now as _utc_now
+
+    payload = await request.json()
+    sku = str(payload.get("sku") or "").strip()
+    price = str(payload.get("price") or "").strip()
+    if not sku or not price:
+        raise HTTPException(status_code=400, detail="sku and price are required")
+    try:
+        snapshot = _build(
+            provider_id="market:xianyu_observation",
+            source_item_id=sku,
+            source_sku_id=sku,
+            observed_at=_utc_now(),
+            attributes={
+                key: value
+                for key, value in (
+                    ("name", str(payload.get("title") or "")),
+                    ("spec", str(payload.get("spec") or "")),
+                    ("brand", str(payload.get("brand") or "")),
+                )
+                if value
+            },
+            condition=str(payload.get("condition") or ""),
+            unit=str(payload.get("unit") or ""),
+            price_type=PRICE_TYPE_LIST,
+            eligible_price={"state": "known", "amount": price, "currency": "CNY"},
+            payload_hash=__import__("hashlib").sha256(
+                f"{sku}|{price}|{payload.get('title')}|{payload.get('spec')}|{payload.get('brand')}|{payload.get('condition')}".encode("utf-8")
+            ).hexdigest(),
+            account_id="",
+            source_ref="market:manual_observation",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    stored, created = commerce_repositories.offers.add(snapshot)
+    return {"snapshot": stored, "created": created}
