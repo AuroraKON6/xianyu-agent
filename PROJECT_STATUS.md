@@ -2,6 +2,18 @@
 
 Updated: 2026-09-18
 
+## 2026-09-18 第四轮增量（WP08 解锁 + WP14 最小版）
+
+证据：[docs/acceptance/WP_ROUND4_2026-09-18.md](docs/acceptance/WP_ROUND4_2026-09-18.md)。全量回归 **1259/1259**（两次通过）。
+
+- WP08 BLOCKED→PASS（最小版）：操作者提供新 DeepSeek key；平台无 v4.1 后缀 ID，flash 档即 `deepseek-flash` 已设为默认；修复 llm.py 推理烧 token 缺陷（thinking 显式 disabled）；真实无写入任务成功落库（job_9ab5eaae56f74263 / dec_727bc140fb7d4611），面板可读。pi-subagents 插件试验仍待批准。
+- WP14 PASS（最小版）：data/commerce 备份/校验/恢复演练（CLI+runbook+测试）；首份真实备份已建并校验通过；GET /commerce/ops-summary 运维摘要；RPO/RTO 目标未实现未宣称；每日调度待操作者决定。
+- 修复：repository 同秒时间戳平局按追加序裁决。
+- 已知非复现 flake：preflight 敏感文本误报一次，记录待查。
+- 真实经营状态仍未变：账号 0、真实供应商报价 0、平台动作 0、真实利润 0。剩余外部欠账：真实供应商报价文件、闲鱼账号登录、PDD/1688 申请决定。
+
+---
+
 ## 2026-09-18 第三轮增量（WP11/WP12/WP13）
 
 证据：[docs/acceptance/WP_ROUND3_2026-09-18.md](docs/acceptance/WP_ROUND3_2026-09-18.md)。本轮终点全量回归 **1254/1254**。
