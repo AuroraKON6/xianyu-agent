@@ -867,6 +867,9 @@ def build_procurement_order(
 
 
 LEDGER_KINDS = ("expected", "provisional", "settled")
+LEDGER_KIND_EXPECTED = "expected"
+LEDGER_KIND_PROVISIONAL = "provisional"
+LEDGER_KIND_SETTLED = "settled"
 LEDGER_DIRECTIONS = ("debit", "credit")
 
 
