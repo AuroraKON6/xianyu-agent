@@ -1,0 +1,189 @@
+"""Sellable inventory allocation (WP12).
+
+Supplier stock is NOT sellable stock. This service converts the latest
+supplier offer snapshot (stock_quantity + observed_at) into a
+conservative sellable allocation per account + SKU, with order locks:
+
+- Unknown or expired supplier stock (older than the quote TTL) yields
+  allocation 0: the SKU is paused for selling rather than oversold
+  ("宁可低库存不超卖").
+- A safety margin is subtracted from known stock.
+- Order locks decrement the allocation atomically and idempotently per
+  order; releasing a cancelled order returns the quantity.
+- Every state change records why, so panels can explain why a SKU is
+  not sellable.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, Dict, List, Mapping, Optional
+
+from .candidate_activation import QUOTE_MAX_AGE_SECONDS
+from .commerce.repositories import LockedJsonList
+from .commerce.contracts import new_id, utc_now
+from .providers.freshness import classify_snapshot
+
+DEFAULT_SAFETY_MARGIN = 1
+
+
+class InventoryError(RuntimeError):
+    pass
+
+
+class InventoryAllocationService:
+    def __init__(self, data_dir, *, safety_margin: int = DEFAULT_SAFETY_MARGIN) -> None:
+        self._store = LockedJsonList(data_dir / "commerce" / "inventory.json")
+        self._safety_margin = max(0, int(safety_margin))
+
+    # ---- supplier stock registration ----
+
+    def register_supplier_snapshot(self, *, account_id: str, sku: str, snapshot: Mapping[str, Any]) -> Dict[str, Any]:
+        """Refresh supplier stock for one account+SKU from a snapshot."""
+        if not account_id.strip() or not sku.strip():
+            raise InventoryError("account_id and sku are required")
+        if str(snapshot.get("record_type")) != "offer_snapshot":
+            raise InventoryError("supplier stock requires an offer snapshot")
+
+        freshness = classify_snapshot(snapshot)
+        stock_quantity = snapshot.get("stock_quantity")
+        stock_state = str(snapshot.get("stock_state") or "unknown")
+        known = stock_quantity is not None and stock_state != "unknown" and freshness["freshness"] == "current"
+        sellable = max(0, int(stock_quantity) - self._safety_margin) if known else 0
+        reason = (
+            "supplier stock known and fresh"
+            if known
+            else f"stock not sellable (stock_quantity={stock_quantity}, stock_state={stock_state}, freshness={freshness['freshness']})"
+        )
+
+        def mutate(items: LockedJsonList) -> Dict[str, Any]:
+            record = self._find(items, account_id, sku)
+            if record is None:
+                record = {
+                    "record_type": "inventory_allocation",
+                    "record_id": new_id("inv"),
+                    "account_id": account_id,
+                    "sku": sku,
+                    "supplier_snapshot_id": None,
+                    "supplier_stock": None,
+                    "sellable_base": 0,
+                    "locks": {},
+                    "history": [],
+                    "created_at": utc_now().isoformat(),
+                }
+                items._items.append(record)
+            record["supplier_snapshot_id"] = snapshot.get("record_id")
+            record["supplier_stock"] = stock_quantity if known else None
+            record["supplier_observed_at"] = snapshot.get("observed_at")
+            record["freshness"] = freshness
+            record["sellable_base"] = sellable
+            record["updated_at"] = utc_now().isoformat()
+            record["history"].append(
+                {
+                    "at": utc_now().isoformat(),
+                    "change": f"supplier stock -> sellable_base={sellable}",
+                    "reason": reason,
+                    "snapshot_id": snapshot.get("record_id"),
+                }
+            )
+            return dict(record)
+
+        with self._store as items:
+            return mutate(items)
+
+    # ---- allocation reads ----
+
+    def _find(self, items: LockedJsonList, account_id: str, sku: str) -> Optional[Dict[str, Any]]:
+        for record in items._items:
+            if str(record.get("account_id")) == account_id and str(record.get("sku")) == sku:
+                return record
+        return None
+
+    def allocation(self, *, account_id: str, sku: str) -> Dict[str, Any]:
+        found = self._store.find(
+            lambda r: str(r.get("account_id")) == account_id and str(r.get("sku")) == sku
+        )
+        if not found:
+            return {
+                "account_id": account_id,
+                "sku": sku,
+                "sellable": 0,
+                "locked": 0,
+                "available": 0,
+                "sellable_reason": "no supplier stock registered; paused",
+            }
+        record = found[0]
+        locked = sum(int(q) for q in (record.get("locks") or {}).values())
+        available = max(0, int(record.get("sellable_base") or 0) - locked)
+        return {
+            "account_id": account_id,
+            "sku": sku,
+            "supplier_snapshot_id": record.get("supplier_snapshot_id"),
+            "supplier_stock": record.get("supplier_stock"),
+            "supplier_observed_at": record.get("supplier_observed_at"),
+            "freshness": record.get("freshness"),
+            "sellable": int(record.get("sellable_base") or 0),
+            "locked": locked,
+            "available": available,
+            "sellable_reason": "ok" if record.get("supplier_stock") is not None else "supplier stock unknown or expired; paused",
+        }
+
+    # ---- order locks ----
+
+    def lock_for_order(self, *, account_id: str, sku: str, order_id: str, quantity: int) -> Dict[str, Any]:
+        if quantity <= 0:
+            raise InventoryError("lock quantity must be positive")
+        if not order_id.strip():
+            raise InventoryError("order_id required")
+
+        def mutate(items: LockedJsonList) -> Dict[str, Any]:
+            record = self._find(items, account_id, sku)
+            if record is None:
+                raise InventoryError(f"no inventory registered for {account_id}/{sku}; refusing to oversell")
+            locks = record.setdefault("locks", {})
+            if order_id in locks:
+                return dict(record)  # idempotent re-lock
+            locked = sum(int(q) for q in locks.values())
+            available = max(0, int(record.get("sellable_base") or 0) - locked)
+            if quantity > available:
+                raise InventoryError(
+                    f"insufficient allocation for {account_id}/{sku}: need {quantity}, available {available}"
+                )
+            locks[order_id] = quantity
+            record["history"].append(
+                {"at": utc_now().isoformat(), "change": f"lock {quantity} for {order_id}", "reason": "order confirmed"}
+            )
+            return dict(record)
+
+        with self._store as items:
+            return mutate(items)
+
+    def release_order(self, *, account_id: str, sku: str, order_id: str, reason: str) -> Dict[str, Any]:
+        if not reason.strip():
+            raise InventoryError("release requires a reason")
+
+        def mutate(items: LockedJsonList) -> Dict[str, Any]:
+            record = self._find(items, account_id, sku)
+            if record is None or order_id not in (record.get("locks") or {}):
+                raise InventoryError(f"no lock for order {order_id}")
+            quantity = record["locks"].pop(order_id)
+            record["history"].append(
+                {"at": utc_now().isoformat(), "change": f"release {quantity} from {order_id}", "reason": reason}
+            )
+            return dict(record)
+
+        with self._store as items:
+            return mutate(items)
+
+    def list_allocations(self, *, account_id: str = "") -> List[Dict[str, Any]]:
+        records = self._store.find(lambda r: (not account_id) or str(r.get("account_id")) == account_id)
+        return [
+            {
+                "account_id": r.get("account_id"),
+                "sku": r.get("sku"),
+                "sellable": r.get("sellable_base"),
+                "supplier_observed_at": r.get("supplier_observed_at"),
+                "freshness": (r.get("freshness") or {}).get("freshness"),
+            }
+            for r in records
+        ]

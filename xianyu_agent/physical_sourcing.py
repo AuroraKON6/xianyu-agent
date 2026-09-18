@@ -41,13 +41,15 @@ CATEGORY_CITY_MAP = {
 }
 
 
-# Stealth shipping templates (from article)
+# Shipping instruction for suppliers. This is an operator-to-supplier
+# order note only; it makes no buyer-facing claims.
+# WP12: the previous fixed buyer-facing scripts ("我们在其他平台也有店
+# 铺"、"好评返现" etc.) were removed -- fabricated supply relationships
+# and cashback solicitation must never be generated from templates.
+# Buyer responses are now assembled from verified facts only (see
+# PhysicalSourcingService.generate_buyer_response).
 STEALTH_TEMPLATES = {
-    "order_note": "您好，已下单，麻烦快递面单不要放拼多多店铺信息，快递里面不要放价格表和好评返现小卡片，不要给我发短信打扰，无痕发货谢谢",
-    "buyer_pdd_logo": "您好，我们多平台都有店铺的哈，拼多多店铺也是我们的，每个平台对商家的补贴方式都不一样，拼多多经常搞活动，所以平台对顾客的价格会给予优惠哈!请见谅。",
-    "buyer_pdd_card": "您好，小本生意，为了增加商品曝光，我们在闲鱼和拼多多都有店铺的，是一个仓库发货的哈，质量都有保证的您放心。您这边对商品还满意不，满意的话您给个好评，我给您返现。",
-    "buyer_pdd_sms": "亲，是这样的，闲鱼平台快递费用方面没有给补贴，个人邮寄又比较贵，小本生意经不起折腾，我会和其他平台合作，比如PDD、TB、JD等，通过他们的平台发货，快递费会得到一些补贴省点运费。货物都是我们家的，您放心，这个没有问题的哈。",
-    "factory_negotiation": "您好，我们是有团队的，主要在闲鱼平台销售，可以发动小伙伴一起去帮您卖。如果价格有优势，我们可以长期合作，量会比较大。",
+    "order_note": "您好，已下单，麻烦快递面单不要放平台店铺信息，快递里面不要放价格表和小卡片，不要给我发短信打扰，无痕发货谢谢",
 }
 
 
@@ -380,14 +382,19 @@ class PhysicalSourcingManager:
         return template
 
     def generate_buyer_response(self, issue_type: str, context: Optional[Dict[str, Any]] = None) -> str:
-        """Generate buyer response for common PDD-related issues."""
+        """Generate a buyer response from VERIFIED facts only.
+
+        ``context["verified_facts"]`` maps fact keys to text the
+        operator has actually verified (e.g. ``fulfillment_note``).
+        Without verified facts the response stays neutral and makes no
+        claims about stores, platforms, cashback or quality guarantees.
+        """
         context = context or {}
-        templates = {
-            "pdd_logo": STEALTH_TEMPLATES["buyer_pdd_logo"],
-            "pdd_card": STEALTH_TEMPLATES["buyer_pdd_card"],
-            "pdd_sms": STEALTH_TEMPLATES["buyer_pdd_sms"],
-        }
-        return templates.get(issue_type, "您好，有任何问题我们会妥善处理的，请放心。")
+        verified = context.get("verified_facts") or {}
+        parts = [str(verified[key]) for key in ("fulfillment_note", "quality_note") if verified.get(key)]
+        if parts:
+            return "您好，" + "".join(parts) + "商品有问题随时找我处理。"
+        return "您好，有任何问题我们会妥善处理的，请放心。"
 
     # ====== Price Monitoring ======
 

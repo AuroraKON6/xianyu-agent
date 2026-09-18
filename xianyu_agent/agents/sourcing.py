@@ -79,12 +79,11 @@ class SourcingAgent(BaseAgent):
     def get_stealth_templates(self, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """获取无痕发货话术模板。
 
-        5 套标准话术：
+        WP12 起buyer_pdd_logo/buyer_pdd_card/buyer_pdd_sms/factory_negotiation
+        四套固定话术已移除：它们捏造多平台店铺关系并含好评返现内容，
+        只能由已验证经营事实生成（见 generate_buyer_response 的
+        verified_facts）。当前仅保留：
         - order_note: 下单备注（给商家的无痕发货请求）
-        - buyer_pdd_logo: 买家发现拼多多logo时的解释
-        - buyer_pdd_card: 买家发现好评返现卡时的解释
-        - buyer_pdd_sms: 买家收到拼多多短信时的解释
-        - factory_negotiation: 与厂家谈价格的谈判话术
 
         可选参数: scenario(指定场景), 不指定则返回所有
         """
