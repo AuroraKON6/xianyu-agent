@@ -123,11 +123,22 @@ opportunity_service = OpportunityService(commerce_repositories)
 from .providers import ProviderCapabilityRegistry  # noqa: E402
 from .providers.supplier_file import SupplierFileProvider  # noqa: E402
 from .agent_jobs import AgentJobError, AgentJobStore, FencingError  # noqa: E402
+from .budget_reservations import BudgetError, BudgetReservationStore, ShadowAuthorizationLog  # noqa: E402
+from .operating_mandates import (  # noqa: E402
+    ActionRequest,
+    MandateError,
+    OperatingMandateStore,
+    evaluate_action,
+    today_key,
+)
 
 provider_capability_registry = ProviderCapabilityRegistry(settings.data_dir)
 provider_capability_registry.seed_defaults()
 supplier_file_provider = SupplierFileProvider(commerce_repositories, supplier_import_service)
 agent_job_store = AgentJobStore(settings.data_dir)
+operating_mandate_store = OperatingMandateStore(settings.data_dir)
+budget_reservation_store = BudgetReservationStore(settings.data_dir)
+shadow_authorization_log = ShadowAuthorizationLog(settings.data_dir)
 product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
@@ -6902,3 +6913,115 @@ async def cancel_agent_job(job_id: str, request: Request) -> Dict[str, Any]:
 async def recover_agent_jobs() -> Dict[str, Any]:
     recovered = agent_job_store.recover_expired_leases()
     return {"recovered_count": len(recovered), "recovered": recovered}
+
+
+# ---------------------------------------------------------------------------
+# Operating mandates + shadow authorization (WP10). Shadow-evaluate only
+# records what the policy WOULD decide; no route in this block performs
+# or queues any platform action.
+# ---------------------------------------------------------------------------
+
+
+@app.post("/commerce/operating-mandates")
+async def issue_operating_mandate(request: Request) -> Dict[str, Any]:
+    from datetime import datetime as _dt
+
+    payload = await request.json()
+    try:
+        valid_until_raw = str(payload.get("valid_until") or "")
+        if not valid_until_raw:
+            raise HTTPException(status_code=400, detail="valid_until is required")
+        valid_until = _dt.fromisoformat(valid_until_raw)
+        valid_from = None
+        if payload.get("valid_from"):
+            valid_from = _dt.fromisoformat(str(payload["valid_from"]))
+        return operating_mandate_store.issue(
+            operator=str(payload.get("operator") or ""),
+            account_id=str(payload.get("account_id") or ""),
+            action_types=payload.get("action_types") or [],
+            sku_scope=payload.get("sku_scope") or [],
+            category_scope=payload.get("category_scope") or [],
+            price_floor=payload.get("price_floor"),
+            price_ceiling=payload.get("price_ceiling"),
+            per_transaction_limit=payload.get("per_transaction_limit"),
+            daily_limit=payload.get("daily_limit"),
+            max_actions=payload.get("max_actions"),
+            valid_until=valid_until,
+            valid_from=valid_from,
+        )
+    except MandateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid datetime: {exc}") from exc
+
+
+@app.get("/commerce/operating-mandates")
+async def list_operating_mandates() -> Dict[str, Any]:
+    active_ids = {m["record_id"] for m in operating_mandate_store.list_active()}
+    mandates = [
+        {**m, "currently_active": m["record_id"] in active_ids}
+        for m in operating_mandate_store.list()
+    ]
+    return {"mandates": mandates, "active_count": len(active_ids)}
+
+
+@app.post("/commerce/operating-mandates/{mandate_id}/revoke")
+async def revoke_operating_mandate(mandate_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return operating_mandate_store.revoke(
+            mandate_id,
+            operator=str(payload.get("operator") or ""),
+            reason=str(payload.get("reason") or ""),
+        )
+    except MandateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/commerce/budgets")
+async def budget_usage(account_id: str, bucket: str, day: str = "") -> Dict[str, Any]:
+    return budget_reservation_store.usage(account_id=account_id, bucket=bucket, day=day or None)
+
+
+@app.post("/commerce/authorization/shadow-evaluate")
+async def shadow_evaluate(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        action = ActionRequest(
+            action_type=str(payload.get("action_type") or ""),
+            account_id=str(payload.get("account_id") or ""),
+            sku=str(payload.get("sku") or ""),
+            category=str(payload.get("category") or ""),
+            amount=payload.get("amount"),
+            listing_price=payload.get("listing_price"),
+        )
+    except MandateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    usage_today: Dict[str, float] = {}
+    for mandate in operating_mandate_store.list_active():
+        mandate_id = str(mandate.get("record_id"))
+        account = str(mandate.get("account_id") or "")
+        usage = budget_reservation_store.usage(account_id=account, bucket="mandate_daily", day=today_key())
+        usage_today[mandate_id] = float(usage.get("committed_total") or 0)
+
+    decision = evaluate_action(
+        action,
+        active_mandates=operating_mandate_store.list_active(),
+        budget_usage_today=usage_today,
+    )
+    record = shadow_authorization_log.record(
+        decision=decision,
+        action_summary=f"{action.action_type} {action.account_id}",
+    )
+    return {
+        "decision": decision,
+        "shadow_record_id": record["record_id"],
+        "mode": "shadow",
+        "note": "verdict recorded only; the operator still performs every real action",
+    }
+
+
+@app.get("/commerce/authorization/shadow-metrics")
+async def shadow_metrics() -> Dict[str, Any]:
+    return shadow_authorization_log.metrics()

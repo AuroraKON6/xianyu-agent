@@ -227,6 +227,61 @@ class CommercePipelineApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_mandate_lifecycle_and_shadow_evaluation(self):
+        from datetime import datetime, timedelta, timezone
+
+        valid_until = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        issued = self.client.post(
+            "/commerce/operating-mandates",
+            json={
+                "operator": "操作者",
+                "account_id": "acc-shadow",
+                "action_types": ["faq_reply"],
+                "per_transaction_limit": {"state": "known", "amount": "100", "currency": "CNY"},
+                "daily_limit": {"state": "known", "amount": "500", "currency": "CNY"},
+                "valid_until": valid_until,
+            },
+        )
+        self.assertEqual(issued.status_code, 200, issued.text)
+        mandate_id = issued.json()["record_id"]
+
+        shadow = self.client.post(
+            "/commerce/authorization/shadow-evaluate",
+            json={"action_type": "faq_reply", "account_id": "acc-shadow"},
+        )
+        self.assertEqual(shadow.status_code, 200, shadow.text)
+        body = shadow.json()
+        self.assertTrue(body["decision"]["allowed"])
+        self.assertEqual(body["mode"], "shadow")
+
+        denied = self.client.post(
+            "/commerce/authorization/shadow-evaluate",
+            json={"action_type": "listing_publish", "account_id": "acc-shadow"},
+        )
+        self.assertFalse(denied.json()["decision"]["allowed"])
+
+        # revoke -> the same action is refused by the live re-check
+        revoked = self.client.post(
+            f"/commerce/operating-mandates/{mandate_id}/revoke",
+            json={"operator": "操作者", "reason": "测试撤销"},
+        )
+        self.assertEqual(revoked.status_code, 200)
+        after = self.client.post(
+            "/commerce/authorization/shadow-evaluate",
+            json={"action_type": "faq_reply", "account_id": "acc-shadow"},
+        )
+        self.assertFalse(after.json()["decision"]["allowed"])
+
+        metrics = self.client.get("/commerce/authorization/shadow-metrics")
+        self.assertEqual(metrics.json()["total"], 3)
+
+    def test_mandate_requires_valid_until(self):
+        response = self.client.post(
+            "/commerce/operating-mandates",
+            json={"operator": "o", "account_id": "a", "action_types": ["faq_reply"]},
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
