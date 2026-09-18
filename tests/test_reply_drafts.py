@@ -194,23 +194,23 @@ class DraftServiceGuardTests(unittest.TestCase):
 
 
 class ScenarioEvaluationTests(unittest.TestCase):
-    def test_seed_set_runs_with_honest_sample_size(self):
+    def test_seed_set_meets_200_gate_with_clean_guards(self):
         scenarios = [
             json.loads(line)
             for line in FIXTURE.read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.startswith("#")
         ]
-        self.assertGreaterEqual(len(scenarios), 45)
+        self.assertGreaterEqual(len(scenarios), 200)
         report = evaluate_reply_scenarios(scenarios)
-        self.assertGreaterEqual(report["total"], 45)
-        self.assertIn("below the planned 200-scenario gate", report["sample_size_note"])
-        # guard-critical categories must be perfect before any real use
+        self.assertGreaterEqual(report["total"], 200)
+        self.assertIn("met", report["sample_size_note"])
+        # guard-critical categories must be perfect
         for category in ("negation", "freight", "reference_price", "multi_item", "stale_quote"):
             bucket = report["by_category"].get(category, {})
             self.assertEqual(bucket.get("offer_ok"), bucket.get("total"), f"category {category} has offer mistakes")
-        # overall intent accuracy on the deterministic seed must be high
-        self.assertGreaterEqual(report["intent_accuracy"], 0.95)
-        self.assertGreaterEqual(report["offer_accuracy"], 0.95)
+            self.assertEqual(bucket.get("intent_ok"), bucket.get("total"), f"category {category} has intent mistakes")
+        self.assertGreaterEqual(report["intent_accuracy"], 0.98)
+        self.assertGreaterEqual(report["offer_accuracy"], 0.98)
 
 
 if __name__ == "__main__":

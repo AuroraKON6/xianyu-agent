@@ -61,17 +61,18 @@ DRAFT_TAKEOVER_HOLD = "manual_takeover_hold"
 # Deterministic intent + guarded money extraction
 # ---------------------------------------------------------------------------
 
-_REFUND_WORDS = ("退款", "退货", "退钱", "不想要了", "售后")
-_STOCK_WORDS = ("有货吗", "有现货", "还有吗", "库存", "还有没有")
-_SHIPPING_WORDS = ("运费", "邮费", "快递费", "发货", "什么时候到", "几天到", "几天能到", "物流", "包邮")
-_SPEC_WORDS = ("尺寸", "多大", "规格", "材质", "型号", "功率", "容量", "重量", "颜色", "成色")
-_PRICE_WORDS = ("多少钱", "什么价", "价格", "卖多少", "最低多少", "便宜点", "少点", "最低价", "太贵")
+_REFUND_WORDS = ("退款", "退货", "退钱", "不想要了", "售后", "能退", "想退", "无理由")
+_STOCK_WORDS = ("有货吗", "有现货", "还有吗", "库存", "还有没有", "有货", "还在卖", "现货")
+_SHIPPING_WORDS = ("运费", "邮费", "快递费", "发货", "什么时候到", "几天到", "几天能到", "物流", "包邮", "能发", "顺丰", "自提", "几天", "送到", "货到付款", "秒发")
+_SPEC_WORDS = ("尺寸", "多大", "多厚", "规格", "材质", "型号", "功率", "容量", "重量", "颜色", "成色", "几层", "抽屉", "不锈钢", "脚轮", "插电", "电池", "划痕", "保修", "联保", "多少个")
+_PRICE_WORDS = ("多少钱", "什么价", "价格", "卖多少", "最低多少", "便宜点", "少点", "最低价", "太贵", "多个钱", "优惠", "单价", "便宜", "底价", "能刀", "报价", "含税")
+_FALLBACK_VERDICTS = ("freight", "reference", "negated", "multi_item_total", "stale")
 
 _FREIGHT_MARKERS = ("运费", "邮费", "快递费", "物流费")
-_REFERENCE_MARKERS = ("别人", "其他家", "别家", "其他店", "官网", "旗舰店", "同款")
+_REFERENCE_MARKERS = ("别人", "其他家", "别家", "其他店", "官网", "旗舰店", "同款", "淘宝", "拼多多", "京东", "抖音", "直播间", "仓库", "隔壁", "线下")
 _NEGATION_MARKERS = ("不要", "不用", "不是", "别按", "没有", "不低于", "少于")
-_STALE_MARKERS = ("上次", "之前说", "刚才")
-_QUANTITY_RE = re.compile(r"(两|二|三|四|五|六|七|八|九|十|\d+)\s*(个|件|张|台|把|套|只)")
+_STALE_MARKERS = ("上次", "之前说", "刚才", "昨天", "上回")
+_QUANTITY_RE = re.compile(r"(两|二|三|四|五|六|七|八|九|十|\d+)\s*(个|件|张|台|把|套|只|副|条)")
 _AMOUNT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[元块]?")
 _FREIGHT_AFTER_RE = re.compile(r"^\s*块?\s*(运费|邮费|快递费)")
 _MODEL_BEFORE_RE = re.compile(r"[A-Za-z]\s*[-_]?\s*$")
@@ -90,6 +91,47 @@ def _scan_amounts(text: str) -> List[Dict[str, Any]]:
             continue
         found.append({"amount": amount, "start": match.start(1), "end": match.end(1)})
     return found
+
+
+def _marker_adjacent_before(clean: str, start: int, before: str, markers: tuple, *, max_gap: int = 2, window: int = 6) -> bool:
+    """True when a marker sits just before this amount and owns it.
+
+    The gap between marker and amount must be short and digit-free, so a
+    marker that belongs to a PREVIOUS amount ("不是350，320") or crosses
+    a clause boundary never leaks onto this one.
+    """
+    for marker in markers:
+        idx = before.rfind(marker)
+        if idx == -1 or idx < len(before) - window:
+            continue
+        absolute = start - len(before) + idx
+        gap = clean[absolute + len(marker) : start]
+        if len(gap) > max_gap or any(ch.isdigit() for ch in gap):
+            continue
+        return True
+    return False
+
+
+def _freight_marker_before(clean: str, start: int, before: str) -> bool:
+    """A freight marker just before this amount marks it as freight.
+
+    False positives to reject: the marker directly follows a digit
+    ("补20运费，300") -- it belongs to the previous amount -- and wide
+    gaps that cross clause boundaries.
+    """
+    for marker in _FREIGHT_MARKERS:
+        idx = before.rfind(marker)
+        if idx == -1 or idx < len(before) - 6:
+            continue
+        absolute = start - len(before) + idx
+        gap = clean[absolute + len(marker) : start]
+        if len(gap) > 2 or any(ch.isdigit() for ch in gap):
+            continue
+        previous = clean[absolute - 1] if absolute > 0 else ""
+        if previous.isdigit():
+            continue
+        return True
+    return False
 
 
 def analyze_money_mentions(text: str) -> Dict[str, Any]:
@@ -114,16 +156,21 @@ def analyze_money_mentions(text: str) -> Dict[str, Any]:
         if _MODEL_BEFORE_RE.search(before):
             # e.g. GZ-1200: the digits are part of a model/code token
             verdict, reason = "model_number", "digits attached to a model/code token"
-        elif re.match(r"^\s*(个|件|张|台|把|套|只)", after or " "):
-            # e.g. 5个: the number is a count, not money
-            verdict, reason = "quantity_count", "number is a unit count, not an amount"
-        elif any(marker in before[-6:] for marker in _FREIGHT_MARKERS) or _FREIGHT_AFTER_RE.match(after or " "):
+        elif re.match(r"^\s*(个|件|张|台|把|套|只|送|新)", after or " ") or clean[max(0, start - 1) : start] == "送":
+            # e.g. 5个 / 买5送1: counts; 99新: a condition grade
+            verdict, reason = "quantity_count", "number is a count or grade, not an amount"
+        elif re.match(r"^\s*(不锈钢|钢)", after or " ") and len(str(int(amount))) == 3:
+            # e.g. 304不锈钢: a steel grade, not a price
+            verdict, reason = "material_grade", "number is a material grade"
+        elif _freight_marker_before(clean, start, before) or _FREIGHT_AFTER_RE.match(after or " "):
             verdict, reason = "freight", "amount belongs to freight, not the product price"
-        elif any(marker in before for marker in _REFERENCE_MARKERS) or "太贵" in after[:6]:
+        elif any(marker in before for marker in _REFERENCE_MARKERS) or "太贵" in after[:6] or "不合理" in after[:6]:
             verdict, reason = "reference", "third-party or seller price reference"
-        elif any(marker in before[-6:] for marker in _NEGATION_MARKERS):
+        elif _marker_adjacent_before(clean, start, before, _NEGATION_MARKERS):
             verdict, reason = "negated", "amount explicitly rejected just before it"
-        elif _QUANTITY_RE.search(before[-8:]) or _QUANTITY_RE.search(after[:8]):
+        elif _QUANTITY_RE.search(before[-8:]):
+            # quantity BEFORE the amount ("两个60"); a quantity after the
+            # amount is usually a purchase plan ("170卖的话我要两台")
             verdict, reason = "multi_item_total", "amount tied to a quantity; unit price unresolved"
         elif any(marker in before for marker in _STALE_MARKERS):
             verdict, reason = "stale", "mentions a previous quote, not a current offer"
@@ -157,9 +204,10 @@ def classify_intent(text: str) -> str:
         return INTENT_SPEC_QUESTION
     if any(word in clean for word in _PRICE_WORDS):
         return INTENT_PRICE_INQUIRY
-    if money["mentions"]:
-        # amounts that are all freight/reference/negated/multi/stale still
-        # need a bargaining-shaped escalation, not silence
+    if money["mentions"] and any(m["verdict"] in _FALLBACK_VERDICTS for m in money["mentions"]):
+        # non-offer money (freight/reference/negated/multi/stale) still
+        # needs a bargaining-shaped escalation, not silence; pure counts,
+        # model numbers and grades do not
         return INTENT_BARGAIN_OFFER
     return INTENT_OTHER
 
@@ -626,5 +674,9 @@ def evaluate_reply_scenarios(scenarios: Sequence[Mapping[str, Any]], *, floor: f
         "offer_accuracy": round(correct_offer / offer_cases, 4) if offer_cases else None,
         "by_category": by_category,
         "mistakes": mistakes,
-        "sample_size_note": f"n={total}; below the planned 200-scenario gate, no quality target is claimed",
+        "sample_size_note": (
+            f"n={total} scenarios; the 200-scenario gate is "
+            + ("met" if total >= 200 else "NOT met")
+            + "; guard-critical categories must stay at 100% regardless"
+        ),
     }
