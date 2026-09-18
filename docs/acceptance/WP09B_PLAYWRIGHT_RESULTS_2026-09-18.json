@@ -1,0 +1,38 @@
+{
+  "viewports": [
+    {
+      "viewport": "desktop-1440",
+      "horizontal_overflow_px": 0,
+      "commerce_panel_present": true,
+      "buttons": {
+        "preview": true,
+        "confirm": true,
+        "market": true,
+        "match": true,
+        "evaluate": true
+      },
+      "screenshot": "E:\\闲鱼\\xianyu\\output\\playwright\\wp09b\\console-desktop-1440.png"
+    },
+    {
+      "viewport": "mobile-390",
+      "horizontal_overflow_px": 0,
+      "commerce_panel_present": true,
+      "buttons": {
+        "preview": true,
+        "confirm": true,
+        "market": true,
+        "match": true,
+        "evaluate": true
+      },
+      "screenshot": "E:\\闲鱼\\xianyu\\output\\playwright\\wp09b\\console-mobile-390.png"
+    }
+  ],
+  "ui_flow": {
+    "preview_shows_row": true,
+    "preview_shows_price": true,
+    "confirm_shows_batch": true,
+    "offer_persisted_after_reload": true
+  },
+  "console_errors": [],
+  "pass": true
+}
