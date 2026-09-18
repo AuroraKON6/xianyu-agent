@@ -122,10 +122,12 @@ product_matching_service = ProductMatchingService(commerce_repositories)
 opportunity_service = OpportunityService(commerce_repositories)
 from .providers import ProviderCapabilityRegistry  # noqa: E402
 from .providers.supplier_file import SupplierFileProvider  # noqa: E402
+from .agent_jobs import AgentJobError, AgentJobStore, FencingError  # noqa: E402
 
 provider_capability_registry = ProviderCapabilityRegistry(settings.data_dir)
 provider_capability_registry.seed_defaults()
 supplier_file_provider = SupplierFileProvider(commerce_repositories, supplier_import_service)
+agent_job_store = AgentJobStore(settings.data_dir)
 product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
@@ -6842,3 +6844,61 @@ async def record_market_observation(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     stored, created = commerce_repositories.offers.add(snapshot)
     return {"snapshot": stored, "created": created}
+
+
+# ---------------------------------------------------------------------------
+# Agent jobs (WP07): durable leased jobs with fencing and recovery. These
+# routes submit/read/cancel; execution itself stays with Python workers
+# (and later the Pi runner). No route here performs a platform write.
+# ---------------------------------------------------------------------------
+
+
+@app.post("/commerce/agent-jobs")
+async def submit_agent_job(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return agent_job_store.submit(
+            role=str(payload.get("role") or ""),
+            goal_id=str(payload.get("goal_id") or ""),
+            account_id=str(payload.get("account_id") or ""),
+            input_refs=payload.get("input_refs") or [],
+            input_versions=payload.get("input_versions") or {},
+            priority=int(payload.get("priority") or 5),
+            model_budget=payload.get("model_budget") or {},
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+            write_required=bool(payload.get("write_required", False)),
+        )
+    except AgentJobError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/commerce/agent-jobs")
+async def list_agent_jobs(status: str = "", role: str = "", account_id: str = "") -> Dict[str, Any]:
+    jobs = agent_job_store.list(status=status, role=role, account_id=account_id)
+    return {"jobs": jobs, "stats": agent_job_store.stats()}
+
+
+@app.get("/commerce/agent-jobs/stats")
+async def agent_job_stats() -> Dict[str, Any]:
+    return agent_job_store.stats()
+
+
+@app.post("/commerce/agent-jobs/{job_id}/cancel")
+async def cancel_agent_job(job_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return agent_job_store.cancel(
+            job_id,
+            actor=str(payload.get("actor") or "operator"),
+            reason=str(payload.get("reason") or ""),
+        )
+    except AgentJobError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError:
+        raise HTTPException(status_code=404, detail="job not found")
+
+
+@app.post("/commerce/agent-jobs/recover")
+async def recover_agent_jobs() -> Dict[str, Any]:
+    recovered = agent_job_store.recover_expired_leases()
+    return {"recovered_count": len(recovered), "recovered": recovered}

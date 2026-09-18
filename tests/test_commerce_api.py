@@ -192,6 +192,41 @@ class CommercePipelineApiTests(unittest.TestCase):
         self.assertGreaterEqual(len(offers), 1)
         self.assertIn(offers[0]["freshness_meta"]["freshness"], ("current", "expired", "unknown"))
 
+    def test_agent_jobs_submit_list_cancel(self):
+        submitted = self.client.post(
+            "/commerce/agent-jobs",
+            json={"role": "matching", "goal_id": "opp-1", "idempotency_key": "ij-1"},
+        )
+        self.assertEqual(submitted.status_code, 200, submitted.text)
+        job = submitted.json()
+        # idempotent resubmit
+        again = self.client.post(
+            "/commerce/agent-jobs",
+            json={"role": "matching", "goal_id": "opp-1", "idempotency_key": "ij-1"},
+        )
+        self.assertEqual(again.json()["record_id"], job["record_id"])
+
+        listed = self.client.get("/commerce/agent-jobs", params={"role": "matching"})
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(len(listed.json()["jobs"]), 1)
+
+        cancelled = self.client.post(
+            f"/commerce/agent-jobs/{job['record_id']}/cancel",
+            json={"actor": "operator", "reason": "duplicate"},
+        )
+        self.assertEqual(cancelled.status_code, 200)
+        self.assertEqual(cancelled.json()["status"], "cancelled")
+
+        stats = self.client.get("/commerce/agent-jobs/stats")
+        self.assertEqual(stats.json()["by_status"].get("cancelled"), 1)
+
+    def test_agent_job_write_requires_account(self):
+        response = self.client.post(
+            "/commerce/agent-jobs",
+            json={"role": "publish", "write_required": True},
+        )
+        self.assertEqual(response.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
