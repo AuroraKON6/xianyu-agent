@@ -7025,3 +7025,9 @@ async def shadow_evaluate(request: Request) -> Dict[str, Any]:
 @app.get("/commerce/authorization/shadow-metrics")
 async def shadow_metrics() -> Dict[str, Any]:
     return shadow_authorization_log.metrics()
+
+
+@app.get("/commerce/decisions")
+async def list_commerce_decisions(opportunity_id: str = "", actor_role: str = "", limit: int = 100) -> Dict[str, Any]:
+    records = commerce_repositories.decisions.list(opportunity_id=opportunity_id, actor_role=actor_role)
+    return {"decisions": records[: max(0, limit)], "total": len(records)}
