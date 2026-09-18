@@ -167,7 +167,7 @@ class GradePairTests(unittest.TestCase):
 
     def test_steel_grade_conflict_rejected_but_unstated_downgrades(self):
         dims = (Decimal(120), Decimal(60), Decimal(85))
-        base = dict(name="台", model="gz1", dimensions=dims, material="不锈钢", unit_class="piece")
+        base = dict(name="台", brand="众商", model="gz1", dimensions=dims, material="不锈钢", unit_class="piece")
         left = self._attrs(**base, steel_grade="304")
         right_same = self._attrs(**base, steel_grade="304")
         self.assertEqual(grade_pair(left, right_same)["grade"], MATCH_EXACT)
