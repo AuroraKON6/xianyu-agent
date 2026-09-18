@@ -1,0 +1,9 @@
+{
+  "model": "deepseek-flash",
+  "deterministic_body": "可以的，200 元可以出。当前有货，2 天内发货。",
+  "polish_accepted": true,
+  "polished_body": "可以的，200 元可以出。目前有货，2 天内发货。",
+  "guard_notes": [],
+  "polish_failure": null,
+  "note": "guards kept: no new amounts/promises/claims; deterministic body is fallback"
+}

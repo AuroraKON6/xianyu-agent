@@ -269,6 +269,91 @@ class DraftReplyService:
 
         return self._drafts.find(predicate)
 
+    # ---- LLM polish (guards unchanged; deterministic body is the fallback) ----
+
+    _POLISHABLE_TYPES = (DRAFT_FACT_ANSWER, DRAFT_COUNTER_OFFER, DRAFT_DECLINE)
+    _PROMISE_TOKENS = ("天内发货", "天内到", "保证到", "现货", "有货")
+
+    def polish_draft(self, draft: Mapping[str, Any], *, client: Any) -> Dict[str, Any]:
+        """Rephrase one draft with the model under hard guards.
+
+        The model only rewords. It may not introduce any money amount
+        absent from the deterministic draft/facts, any unverified-claim
+        pattern, or any stock/arrival promise the deterministic body
+        did not make. Any violation (or an LLM failure) keeps the
+        deterministic body -- polish is cosmetic, never authoritative.
+        """
+        from .listing_guard import scan_listing_text
+
+        if str(draft.get("draft_type")) not in self._POLISHABLE_TYPES:
+            return dict(draft)
+        original_body = str(draft.get("body") or "")
+        if not original_body.strip():
+            return dict(draft)
+
+        allowed_amounts = {m["amount"] for m in _scan_amounts(original_body)}
+        for extra in (draft.get("effective_floor"), draft.get("offer_amount")):
+            if extra is not None:
+                allowed_amounts.add(round(float(extra), 2))
+
+        system = (
+            "你是闲鱼卖家客服措辞助手。只改写输入的回复草稿，使其更自然礼貌。"
+            "禁止：添加任何新的数字/价格/日期/库存或到货承诺/平台外联系方式；"
+            "禁止改变事实。输出 JSON：{\"reply\": \"改写后的回复\"}。"
+        )
+        user = f"原始草稿：{original_body}"
+        polished_body = ""
+        failure = ""
+        try:
+            result = client.chat_json(system, user, temperature=0.3, max_tokens=300)
+            polished_body = str((result or {}).get("reply") or "").strip()
+        except Exception as exc:  # noqa: BLE001 - model failures fall back safely
+            failure = f"llm error: {exc}"
+
+        guard_notes: List[str] = []
+        accepted = False
+        if polished_body:
+            if scan_listing_text(polished_body):
+                guard_notes.append("rejected: polished text contains unverified-claim patterns")
+            elif len(polished_body) > 300:
+                guard_notes.append("rejected: polished text too long")
+            else:
+                new_amounts = [m for m in _scan_amounts(polished_body) if m["amount"] not in allowed_amounts]
+                if new_amounts:
+                    guard_notes.append(
+                        "rejected: polished text introduces amounts absent from the deterministic draft: "
+                        + ", ".join(str(m["amount"]) for m in new_amounts)
+                    )
+                else:
+                    added_promises = [
+                        token
+                        for token in self._PROMISE_TOKENS
+                        if token in polished_body and token not in original_body
+                    ]
+                    if added_promises:
+                        guard_notes.append("rejected: polished text adds promises not in the draft: " + ", ".join(added_promises))
+                    else:
+                        accepted = True
+        elif not failure:
+            failure = "model returned no reply field"
+
+        record = dict(draft)
+        record.update(
+            {
+                "record_id": new_id("rdraft"),
+                "created_at": utc_now().isoformat(),
+                "polish_of": draft.get("record_id"),
+                "body": polished_body if accepted else original_body,
+                "polish_accepted": accepted,
+                "polish_attempted_body": polished_body or None,
+                "polish_failure": failure or None,
+                "polish_guard_notes": guard_notes,
+                "status": "draft_needs_approval",
+                "send_path": "none: this service produces drafts only",
+            }
+        )
+        return self._drafts.append(record)
+
     # ---- draft builders ----
 
     def _effective_floor(
