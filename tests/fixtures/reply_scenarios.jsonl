@@ -1,0 +1,57 @@
+# WP11 reply-scenario seed set (2026-09-18). Deterministic classifier +
+# money-guard ground truth. Categories per the backlog: negation,
+# third-party price reference, stale quotes, freight-not-price,
+# multi-item totals, plain bargaining, spec/shipping/stock questions.
+# n is below the planned 200-scenario gate; no quality target claimed.
+{"text": "这个多少钱", "expect_intent": "price_inquiry", "expect_offer": null, "category": "price_inquiry"}
+{"text": "最低什么价", "expect_intent": "price_inquiry", "expect_offer": null, "category": "price_inquiry"}
+{"text": "价格能便宜点吗", "expect_intent": "price_inquiry", "expect_offer": null, "category": "price_inquiry"}
+{"text": "250卖吗", "expect_intent": "bargain_offer", "expect_offer": 250.0, "category": "bargain"}
+{"text": "200元出吗", "expect_intent": "bargain_offer", "expect_offer": 200.0, "category": "bargain"}
+{"text": "我出180怎么样", "expect_intent": "bargain_offer", "expect_offer": 180.0, "category": "bargain"}
+{"text": "260可以吗", "expect_intent": "bargain_offer", "expect_offer": 260.0, "category": "bargain"}
+{"text": "便宜点，220吧", "expect_intent": "bargain_offer", "expect_offer": 220.0, "category": "bargain"}
+{"text": "不要300，我最多出210", "expect_intent": "bargain_offer", "expect_offer": 210.0, "category": "negation"}
+{"text": "不用260那么高，230行不行", "expect_intent": "bargain_offer", "expect_offer": 230.0, "category": "negation"}
+{"text": "不是280，我是说250", "expect_intent": "bargain_offer", "expect_offer": 250.0, "category": "negation"}
+{"text": "别按320算，300卖不卖", "expect_intent": "bargain_offer", "expect_offer": 300.0, "category": "negation"}
+{"text": "别人家同款才卖240，你280太贵了", "expect_intent": "price_inquiry", "expect_offer": null, "category": "reference_price"}
+{"text": "其他店卖230，你最低多少", "expect_intent": "price_inquiry", "expect_offer": null, "category": "reference_price"}
+{"text": "官网价269，你能便宜点吗", "expect_intent": "price_inquiry", "expect_offer": null, "category": "reference_price"}
+{"text": "旗舰店标价299，你这260出吗", "expect_intent": "bargain_offer", "expect_offer": 260.0, "category": "reference_price"}
+{"text": "运费多少", "expect_intent": "shipping_question", "expect_offer": null, "category": "freight"}
+{"text": "包邮吗", "expect_intent": "shipping_question", "expect_offer": null, "category": "freight"}
+{"text": "运费15元是吗", "expect_intent": "shipping_question", "expect_offer": null, "category": "freight"}
+{"text": "快递费要20块？那商品240卖吗", "expect_intent": "bargain_offer", "expect_offer": 240.0, "category": "freight"}
+{"text": "邮费我出10块，东西270卖吗", "expect_intent": "bargain_offer", "expect_offer": 270.0, "category": "freight"}
+{"text": "两个60卖吗", "expect_intent": "bargain_offer", "expect_offer": null, "category": "multi_item"}
+{"text": "三件一起500卖吗", "expect_intent": "bargain_offer", "expect_offer": null, "category": "multi_item"}
+{"text": "5个一共1000可以吗", "expect_intent": "bargain_offer", "expect_offer": null, "category": "multi_item"}
+{"text": "两台1500出吗", "expect_intent": "bargain_offer", "expect_offer": null, "category": "multi_item"}
+{"text": "上次你说280，现在还算数吗", "expect_intent": "bargain_offer", "expect_offer": null, "category": "stale_quote"}
+{"text": "之前说的260还在吗", "expect_intent": "bargain_offer", "expect_offer": null, "category": "stale_quote"}
+{"text": "刚才不是说250吗", "expect_intent": "bargain_offer", "expect_offer": null, "category": "stale_quote"}
+{"text": "尺寸多大的", "expect_intent": "spec_question", "expect_offer": null, "category": "spec"}
+{"text": "什么材质的", "expect_intent": "spec_question", "expect_offer": null, "category": "spec"}
+{"text": "这台功率多少", "expect_intent": "spec_question", "expect_offer": null, "category": "spec"}
+{"text": "有别的颜色吗", "expect_intent": "spec_question", "expect_offer": null, "category": "spec"}
+{"text": "还有货吗", "expect_intent": "stock_question", "expect_offer": null, "category": "stock"}
+{"text": "现在有现货吗", "expect_intent": "stock_question", "expect_offer": null, "category": "stock"}
+{"text": "库存还剩多少", "expect_intent": "stock_question", "expect_offer": null, "category": "stock"}
+{"text": "什么时候能发货", "expect_intent": "shipping_question", "expect_offer": null, "category": "shipping"}
+{"text": "几天能到", "expect_intent": "shipping_question", "expect_offer": null, "category": "shipping"}
+{"text": "物流用什么快递", "expect_intent": "shipping_question", "expect_offer": null, "category": "shipping"}
+{"text": "我不要了，退款吧", "expect_intent": "refund_request", "expect_offer": null, "category": "refund"}
+{"text": "收到有破损，要求退货", "expect_intent": "refund_request", "expect_offer": null, "category": "refund"}
+{"text": "申请退款", "expect_intent": "refund_request", "expect_offer": null, "category": "refund"}
+{"text": "这个成色怎么样，全新吗", "expect_intent": "spec_question", "expect_offer": null, "category": "spec"}
+{"text": "能到230我就拍", "expect_intent": "bargain_offer", "expect_offer": 230.0, "category": "bargain"}
+{"text": "220元，不能再多了", "expect_intent": "bargain_offer", "expect_offer": 220.0, "category": "bargain"}
+{"text": "同学想买，235出不出", "expect_intent": "bargain_offer", "expect_offer": 235.0, "category": "bargain"}
+{"text": "290含运费出吗", "expect_intent": "bargain_offer", "expect_offer": 290.0, "category": "bargain"}
+{"text": "我是说商品195，不是运费", "expect_intent": "bargain_offer", "expect_offer": 195.0, "category": "negation"}
+{"text": "型号是GZ-1200吗", "expect_intent": "spec_question", "expect_offer": null, "category": "spec"}
+{"text": "买两个有优惠吗", "expect_intent": "other", "expect_offer": null, "category": "multi_item"}
+{"text": "帮我留一台，明天拍", "expect_intent": "other", "expect_offer": null, "category": "other"}
+{"text": "在吗", "expect_intent": "other", "expect_offer": null, "category": "other"}
+{"text": "你好", "expect_intent": "other", "expect_offer": null, "category": "other"}

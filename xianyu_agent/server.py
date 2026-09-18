@@ -124,6 +124,7 @@ from .providers import ProviderCapabilityRegistry  # noqa: E402
 from .providers.supplier_file import SupplierFileProvider  # noqa: E402
 from .agent_jobs import AgentJobError, AgentJobStore, FencingError  # noqa: E402
 from .budget_reservations import BudgetError, BudgetReservationStore, ShadowAuthorizationLog  # noqa: E402
+from .reply_drafts import DraftReplyService  # noqa: E402
 from .operating_mandates import (  # noqa: E402
     ActionRequest,
     MandateError,
@@ -139,6 +140,7 @@ agent_job_store = AgentJobStore(settings.data_dir)
 operating_mandate_store = OperatingMandateStore(settings.data_dir)
 budget_reservation_store = BudgetReservationStore(settings.data_dir)
 shadow_authorization_log = ShadowAuthorizationLog(settings.data_dir)
+reply_draft_service = DraftReplyService(settings.data_dir, product_facts_store, price_commitment_store)
 product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
@@ -7031,3 +7033,32 @@ async def shadow_metrics() -> Dict[str, Any]:
 async def list_commerce_decisions(opportunity_id: str = "", actor_role: str = "", limit: int = 100) -> Dict[str, Any]:
     records = commerce_repositories.decisions.list(opportunity_id=opportunity_id, actor_role=actor_role)
     return {"decisions": records[: max(0, limit)], "total": len(records)}
+
+
+# ---------------------------------------------------------------------------
+# Reply drafts (WP11): draft-only customer replies from verified facts.
+# No route in this block sends anything; adoption still goes through the
+# existing reply approval/execution chain.
+# ---------------------------------------------------------------------------
+
+
+@app.post("/commerce/reply-drafts")
+async def create_reply_draft(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return reply_draft_service.draft_reply(
+            cookie_id=str(payload.get("cookie_id") or ""),
+            chat_id=str(payload.get("chat_id") or ""),
+            item_id=str(payload.get("item_id") or ""),
+            buyer_text=str(payload.get("buyer_text") or ""),
+            floor=payload.get("floor"),
+            manual_takeover_until=payload.get("manual_takeover_until"),
+            latest_inbound_at=payload.get("latest_inbound_at"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/commerce/reply-drafts")
+async def list_reply_drafts(chat_id: str = "", item_id: str = "") -> Dict[str, Any]:
+    return {"drafts": reply_draft_service.list_drafts(chat_id=chat_id, item_id=item_id)}
