@@ -253,7 +253,12 @@ class JsonOfferSnapshotRepository(OfferSnapshotRepository):
             candidates = [c for c in candidates if str(c.get("source_sku_id") or "") == source_sku_id]
         if not candidates:
             return None
-        return max(candidates, key=lambda r: str(r.get("observed_at") or ""))
+        # tie-break identical observed_at by append order (later wins)
+        latest = candidates[0]
+        for record in candidates[1:]:
+            if str(record.get("observed_at") or "") >= str(latest.get("observed_at") or ""):
+                latest = record
+        return dict(latest)
 
 
 class JsonProductMatchRepository(ProductMatchRepository):
@@ -281,7 +286,13 @@ class JsonProductMatchRepository(ProductMatchRepository):
         )
         if not candidates:
             return None
-        return max(candidates, key=lambda r: str(r.get("created_at") or ""))
+        # tie-break identical created_at timestamps by append order
+        # (later record wins), so same-second writes stay deterministic
+        latest = candidates[0]
+        for record in candidates[1:]:
+            if str(record.get("created_at") or "") >= str(latest.get("created_at") or ""):
+                latest = record
+        return dict(latest)
 
     def list(self, *, grade: str = "") -> List[Dict[str, Any]]:
         def predicate(record: Mapping[str, Any]) -> bool:

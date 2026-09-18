@@ -64,6 +64,11 @@ class DeepSeekClient:
         if self.settings.deepseek_thinking_enabled:
             payload["thinking"] = {"type": "enabled"}
             payload["reasoning_effort"] = self.settings.deepseek_reasoning_effort
+        else:
+            # reasoning-by-default models burn the whole max_tokens budget
+            # on hidden reasoning and return empty content (observed with
+            # deepseek-flash 2026-09-18); disable explicitly
+            payload["thinking"] = {"type": "disabled"}
         headers = {
             "Authorization": f"Bearer {self._effective_api_key}",
             "Content-Type": "application/json",

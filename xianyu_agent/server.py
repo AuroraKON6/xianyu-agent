@@ -7035,6 +7035,36 @@ async def list_commerce_decisions(opportunity_id: str = "", actor_role: str = ""
     return {"decisions": records[: max(0, limit)], "total": len(records)}
 
 
+@app.get("/commerce/ops-summary")
+async def commerce_ops_summary() -> Dict[str, Any]:
+    """Compact WP14 ops view: store counts, provider states, job stats.
+
+    Counts are facts about stored records, not business results.
+    """
+    from pathlib import Path as _P
+
+    commerce_dir = settings.data_dir / "commerce"
+    store_files = sorted(p.name for p in commerce_dir.glob("*.json")) if commerce_dir.is_dir() else []
+    return {
+        "stores": store_files,
+        "counts": {
+            "offers": len(commerce_repositories.offers.list()),
+            "matches": len(commerce_repositories.matches.list()),
+            "opportunities": len(commerce_repositories.opportunities.list()),
+            "decisions": len(commerce_repositories.decisions.list()),
+            "agent_jobs": agent_job_store.stats()["total"],
+            "mandates": len(operating_mandate_store.list()),
+        },
+        "agent_jobs_by_status": agent_job_store.stats()["by_status"],
+        "providers": [
+            {"provider_id": p["provider_id"], "status": p["status"]}
+            for p in provider_capability_registry.list()
+        ],
+        "shadow": {k: shadow_authorization_log.metrics()[k] for k in ("total", "allowed", "distinct_days")},
+        "note": "operational record counts only; no business result implied",
+    }
+
+
 # ---------------------------------------------------------------------------
 # Reply drafts (WP11): draft-only customer replies from verified facts.
 # No route in this block sends anything; adoption still goes through the

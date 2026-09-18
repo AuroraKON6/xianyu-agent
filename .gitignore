@@ -18,6 +18,8 @@ test_data/
 # and an .env backup; it must never enter version control.
 output/
 .playwright-cli/
+# backups/ holds commerce data snapshots (business facts); never commit
+backups/
 
 # === Python ===
 .venv/
