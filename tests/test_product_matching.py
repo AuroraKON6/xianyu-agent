@@ -28,6 +28,7 @@ from xianyu_agent.product_matching import (
 
 UTC = timezone.utc
 FIXTURE = Path(__file__).parent / "fixtures" / "match_labeled_pairs.jsonl"
+HOLDOUT = Path(__file__).parent / "fixtures" / "match_holdout_pairs.jsonl"
 
 
 def market_snapshot(
@@ -153,6 +154,28 @@ class GradePairTests(unittest.TestCase):
         right = self._attrs(dimensions=(Decimal(120), Decimal(60), Decimal(85)), unit_class="set")
         self.assertEqual(grade_pair(left, right)["grade"], MATCH_NOT_MATCH)
 
+    def test_feature_count_conflict_rejected(self):
+        left = self._attrs(
+            name="货架", model="hc1", dimensions=(Decimal(150), Decimal(60), Decimal(180)),
+            feature_counts=(("层", 5),),
+        )
+        right = self._attrs(
+            name="货架", model="hc1", dimensions=(Decimal(150), Decimal(60), Decimal(180)),
+            feature_counts=(("层", 4),),
+        )
+        self.assertEqual(grade_pair(left, right)["grade"], MATCH_NOT_MATCH)
+
+    def test_steel_grade_conflict_rejected_but_unstated_downgrades(self):
+        dims = (Decimal(120), Decimal(60), Decimal(85))
+        base = dict(name="台", model="gz1", dimensions=dims, material="不锈钢", unit_class="piece")
+        left = self._attrs(**base, steel_grade="304")
+        right_same = self._attrs(**base, steel_grade="304")
+        self.assertEqual(grade_pair(left, right_same)["grade"], MATCH_EXACT)
+        right_201 = self._attrs(**base, steel_grade="201")
+        self.assertEqual(grade_pair(left, right_201)["grade"], MATCH_NOT_MATCH)
+        right_unstated = self._attrs(**base, steel_grade="")
+        self.assertEqual(grade_pair(left, right_unstated)["grade"], MATCH_COMPARABLE)
+
 
 class ServiceTests(unittest.TestCase):
     def setUp(self):
@@ -188,24 +211,35 @@ class ServiceTests(unittest.TestCase):
 
 
 class LabeledEvaluationTests(unittest.TestCase):
-    def test_seed_set_evaluation_reports_sample_size_honestly(self):
+    def test_tune_split_reports_sample_size_honestly(self):
         report = evaluate_labeled_pairs(FIXTURE)
-        self.assertGreaterEqual(report["pair_count"], 24)
-        self.assertIn("below the planned 100-pair holdout", report["sample_size_note"])
-        # precision computed only when EXACT was predicted
+        self.assertEqual(report["pair_count"], 72)
+        self.assertIn("only claimed from a clean holdout", report["sample_size_note"])
         if report["exact_predicted"]:
-            self.assertIsNotNone(report["exact_precision"])
-        # known grader limitation shows up as the shelf-count mistake
-        notes = " ".join(m["note"] for m in report["mistakes"])
-        self.assertIn("shelf count", notes)
+            self.assertEqual(report["exact_precision"], 1.0)
+        self.assertEqual(report["mistakes"], [])
+
+    def test_holdout_split_zero_mistakes(self):
+        """The holdout is never used for grader adjustment; it must stay clean."""
+        report = evaluate_labeled_pairs(HOLDOUT)
+        self.assertEqual(report["pair_count"], 30)
+        self.assertEqual(report["mistakes"], [])
+        if report["exact_predicted"]:
+            self.assertGreaterEqual(report["exact_precision"], 0.95)
+
+    def test_combined_set_reaches_planned_size(self):
+        tune = evaluate_labeled_pairs(FIXTURE)
+        holdout = evaluate_labeled_pairs(HOLDOUT)
+        self.assertGreaterEqual(tune["pair_count"] + holdout["pair_count"], 100)
 
     def test_fixture_every_label_is_a_valid_grade(self):
         valid = {MATCH_EXACT, MATCH_COMPARABLE, MATCH_NOT_MATCH, MATCH_UNKNOWN}
-        for line in FIXTURE.read_text(encoding="utf-8").splitlines():
-            if line.strip() and not line.startswith("#"):
-                import json
+        import json
 
-                self.assertIn(json.loads(line)["label"], valid)
+        for fixture in (FIXTURE, HOLDOUT):
+            for line in fixture.read_text(encoding="utf-8").splitlines():
+                if line.strip() and not line.startswith("#"):
+                    self.assertIn(json.loads(line)["label"], valid)
 
 
 if __name__ == "__main__":

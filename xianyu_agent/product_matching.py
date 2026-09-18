@@ -51,7 +51,7 @@ MATCH_RULE_VERSION = "hard-constraints-v1"
 CRITICAL_FIELDS = ("condition",)
 
 UNIT_CLASSES: Dict[str, str] = {
-    "件": "piece", "个": "piece", "只": "piece", "张": "piece",
+    "件": "piece", "个": "piece", "只": "piece", "张": "piece", "台": "piece", "块": "piece",
     "套": "set", "组": "set",
     "箱": "case",
     "对": "pair",
@@ -69,6 +69,54 @@ _DIMENSION_RE = re.compile(
     re.IGNORECASE,
 )
 _MODEL_RE = re.compile(r"[A-Za-z]{1,6}[-_]?\d{2,}[A-Za-z0-9\-]*")
+
+_CN_NUMBERS = {"一": 1, "二": 2, "两": 2, "双": 2, "单": 1, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+# structural counts that make otherwise-similar items different products
+# (5-shelf vs 4-shelf racks, 2-door vs 3-door freezers, double sinks...)
+_COUNT_FEATURE_RE = re.compile(r"([一二两双单三四五六七八九十\d]+)\s*(层|门|抽屉|抽|星|眼|灶|头|孔|缸|轮|盘|人位|座位|位)")
+
+_STEEL_GRADES = ("304", "316", "201", "430", "2205")
+
+
+def steel_grade(raw: Any) -> str:
+    """Extract a stated stainless-steel grade ("" when unstated)."""
+    text = _norm_text(raw)
+    for grade in _STEEL_GRADES:
+        if grade in text and ("不锈钢" in text or "钢" in text):
+            return grade
+    return ""
+
+
+def _parse_cn_count(text: str) -> Optional[int]:
+    clean = str(text)
+    if clean.isdigit():
+        return int(clean)
+    # mixed token like "100双" (model digits glued to a cn numeral):
+    # the trailing cn numeral is the structural count, not the digits
+    if clean and clean[-1] in _CN_NUMBERS:
+        return _CN_NUMBERS[clean[-1]]
+    if "十" in clean:
+        parts = clean.split("十")
+        tens = _CN_NUMBERS.get(parts[0], 1) if parts[0] else 1
+        ones = _CN_NUMBERS.get(parts[1], 0) if len(parts) > 1 and parts[1] else 0
+        return tens * 10 + ones
+    if len(clean) == 1:
+        return _CN_NUMBERS.get(clean)
+    return None
+
+
+def normalize_feature_counts(raw: Any) -> tuple:
+    """Extract structural counts (层/门/抽/星/眼/灶/头) from text."""
+    text = _norm_text(raw)
+    if not text:
+        return ()
+    found = {}
+    for match in _COUNT_FEATURE_RE.finditer(text):
+        count = _parse_cn_count(match.group(1))
+        feature = match.group(2)
+        if count is not None:
+            found.setdefault(feature, count)
+    return tuple(sorted(found.items()))
 
 
 class MatchError(ValueError):
@@ -157,6 +205,8 @@ def extract_match_attributes(snapshot: Mapping[str, Any]) -> Dict[str, Any]:
         "material": normalize_material(attributes.get("material")) or normalize_material(spec) or normalize_material(name),
         "condition": normalize_condition(condition_raw),
         "unit_class": normalize_unit(snapshot.get("unit")),
+        "feature_counts": normalize_feature_counts(spec) or normalize_feature_counts(name),
+        "steel_grade": steel_grade(spec) or steel_grade(name),
     }
 
 
@@ -187,11 +237,20 @@ def _similarity(left: str, right: str) -> float:
 
 def _check_constraint(field_name: str, left: Any, right: Any) -> Dict[str, Any]:
     """One hard-constraint check -> pass / conflict / unknown."""
-    if left in ("", "unknown", None) or right in ("", "unknown", None):
+    if left in ("", "unknown", None, ()) or right in ("", "unknown", None, ()):
         state = "unknown"
     elif field_name == "dimensions":
         equal = _dims_equal(left, right)
         state = "unknown" if equal is None else ("pass" if equal else "conflict")
+    elif field_name == "feature_counts":
+        left_counts, right_counts = dict(left), dict(right)
+        shared = set(left_counts) & set(right_counts)
+        # only compare features both sides state; disjoint claims are unknown
+        state = (
+            "pass"
+            if shared and all(left_counts[k] == right_counts[k] for k in shared)
+            else ("conflict" if shared else "unknown")
+        )
     elif left == right:
         state = "pass"
     else:
@@ -219,6 +278,19 @@ def grade_pair(left_attrs: Mapping[str, Any], right_attrs: Mapping[str, Any]) ->
         _check_constraint("material", left_attrs.get("material"), right_attrs.get("material")),
         _check_constraint("unit_class", left_attrs.get("unit_class"), right_attrs.get("unit_class")),
     ]
+    # structural counts are an optional constraint: absent on both sides
+    # means the concept does not apply (most items have no 层/门/星);
+    # stated on one side only stays unknown and downgrades EXACT
+    if left_attrs.get("feature_counts") or right_attrs.get("feature_counts"):
+        checks.append(
+            _check_constraint("feature_counts", left_attrs.get("feature_counts"), right_attrs.get("feature_counts"))
+        )
+    # steel grade likewise: unstated on both sides is not_applicable;
+    # 304 vs 201 stated on both sides is a hard conflict
+    if left_attrs.get("steel_grade") or right_attrs.get("steel_grade"):
+        checks.append(
+            _check_constraint("steel_grade", left_attrs.get("steel_grade"), right_attrs.get("steel_grade"))
+        )
     conflicts = [c for c in checks if c["state"] == "conflict"]
     unknowns = [c["field"] for c in checks if c["state"] == "unknown"]
 
@@ -364,6 +436,16 @@ def evaluate_labeled_pairs(fixture_path: Path, *, verbose: bool = False) -> Dict
             or "",
             "condition": normalize_condition(first_non_empty(side.get("condition"), side.get("name"))),
             "unit_class": normalize_unit(side.get("unit")),
+            "feature_counts": first_non_empty(
+                normalize_feature_counts(side.get("spec")),
+                normalize_feature_counts(side.get("name")),
+            )
+            or (),
+            "steel_grade": first_non_empty(
+                steel_grade(side.get("spec")),
+                steel_grade(side.get("name")),
+            )
+            or "",
         }
 
     confusion: Dict[str, Dict[str, int]] = {}
@@ -388,7 +470,7 @@ def evaluate_labeled_pairs(fixture_path: Path, *, verbose: bool = False) -> Dict
         "exact_predicted": exact_predicted,
         "exact_true": exact_true,
         "exact_correct": exact_correct,
-        "sample_size_note": f"n={len(rows)} labeled pairs; below the planned 100-pair holdout, so the >=95% precision target is NOT claimed",
+        "sample_size_note": f"n={len(rows)} labeled pairs in this file; the >=95% EXACT precision target is only claimed from a clean holdout split",
         "mistakes": mistakes,
         "confusion": confusion,
     }
