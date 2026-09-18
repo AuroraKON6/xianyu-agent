@@ -157,6 +157,41 @@ class CommercePipelineApiTests(unittest.TestCase):
         # nothing is VERIFIED in this baseline
         self.assertEqual(body["verified_count"], 0)
 
+    def test_supplier_file_probe_runs_local_fetch(self):
+        preview = self.client.post(
+            "/commerce/supplier-imports/preview",
+            json={"kind": "pasted_text", "content": QUOTE_TEXT},
+        ).json()
+        self.client.post(
+            f"/commerce/supplier-imports/{preview['preview_id']}/confirm",
+            json={
+                "content_sha256": preview["content_sha256"],
+                "revision": preview["revision"],
+                "supplier": "探测供应商",
+                "operator": "test",
+            },
+        )
+        response = self.client.post("/commerce/data-providers/supplier_file/probe")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["fetch"]["status"], "ok")
+        self.assertGreaterEqual(body["sample_record_count"], 1)
+
+    def test_unverified_provider_probe_refused(self):
+        response = self.client.post("/commerce/data-providers/pinduoduo_duoduojinbao/probe")
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("UNVERIFIED", response.json()["detail"])
+
+    def test_offers_carry_freshness(self):
+        self.client.post(
+            "/commerce/market-observations",
+            json={"sku": "GZ-1299", "title": "t", "spec": "1x1x1cm", "price": "10", "condition": "全新", "unit": "件"},
+        )
+        response = self.client.get("/commerce/offers", params={"provider_id": "market:xianyu_observation"})
+        offers = response.json()["offers"]
+        self.assertGreaterEqual(len(offers), 1)
+        self.assertIn(offers[0]["freshness_meta"]["freshness"], ("current", "expired", "unknown"))
+
 
 if __name__ == "__main__":
     unittest.main()

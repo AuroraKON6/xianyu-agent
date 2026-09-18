@@ -121,9 +121,11 @@ supplier_import_service = SupplierImportService(commerce_repositories, settings.
 product_matching_service = ProductMatchingService(commerce_repositories)
 opportunity_service = OpportunityService(commerce_repositories)
 from .providers import ProviderCapabilityRegistry  # noqa: E402
+from .providers.supplier_file import SupplierFileProvider  # noqa: E402
 
 provider_capability_registry = ProviderCapabilityRegistry(settings.data_dir)
 provider_capability_registry.seed_defaults()
+supplier_file_provider = SupplierFileProvider(commerce_repositories, supplier_import_service)
 product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
@@ -6660,11 +6662,44 @@ async def list_commerce_offers(
     source_item_id: str = "",
     limit: int = 100,
 ) -> Dict[str, Any]:
+    from .providers.freshness import classify_snapshot
+
     records = commerce_repositories.offers.list(
         provider_id=provider_id,
         source_item_id=source_item_id,
     )
-    return {"offers": records[: max(0, limit)], "total": len(records)}
+    decorated = []
+    for record in records[: max(0, limit)]:
+        entry = dict(record)
+        entry["freshness_meta"] = classify_snapshot(entry)
+        decorated.append(entry)
+    return {"offers": decorated, "total": len(records)}
+
+
+@app.post("/commerce/data-providers/{provider_id}/probe")
+async def probe_commerce_data_provider(provider_id: str) -> Dict[str, Any]:
+    """Probe one provider.
+
+    supplier_file performs a real local fetch (repository read) and
+    reports freshness/revocation effects. Online providers stay
+    UNVERIFIED: probing them without credentials is refused instead of
+    fabricated.
+    """
+    capability = provider_capability_registry.get(provider_id)
+    if capability is None:
+        raise HTTPException(status_code=404, detail="provider not registered")
+    if provider_id == "supplier_file":
+        result = supplier_file_provider.fetch_offers()
+        return {
+            "provider_id": provider_id,
+            "capability_status": capability.get("status"),
+            "fetch": {k: v for k, v in result.items() if k != "records"},
+            "sample_record_count": len(result.get("records") or []),
+        }
+    raise HTTPException(
+        status_code=409,
+        detail=f"provider {provider_id} is {capability.get('status')}; probing requires verified credentials",
+    )
 
 
 @app.post("/commerce/product-matches")
