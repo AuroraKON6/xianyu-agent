@@ -212,5 +212,75 @@ class FileLayoutTests(unittest.TestCase):
             self.assertFalse(list(commerce_dir.glob("*.tmp")))
 
 
+class StorageFailureTests(unittest.TestCase):
+    """P1 regression: persist failure must roll memory back and free the lock."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repos = JsonCommerceRepositories(Path(self.tmp.name))
+        self.repos.offers.add(snapshot())
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _store(self):
+        # reach the underlying locked list of the offers repository
+        return self.repos.offers._store
+
+    def test_persist_failure_rolls_back_memory_and_releases_lock(self):
+        store = self._store()
+        disk_before = store.path.read_text(encoding="utf-8")
+        items_before = list(store._items)
+
+        original_persist = store._persist
+        store._persist = lambda: (_ for _ in ()).throw(RuntimeError("disk full"))
+        with self.assertRaises(RuntimeError):
+            with store as items:
+                items._items.append({"record_id": "offer_ghost"})
+        store._persist = original_persist
+
+        # memory unchanged (no ghost record) and lock released (re-enterable)
+        self.assertEqual(store._items, items_before)
+        with store as items:
+            self.assertEqual(len(items._items), 1)
+        # disk unchanged by the failed attempt
+        self.assertEqual(store.path.read_text(encoding="utf-8"), disk_before)
+
+    def test_body_exception_rolls_back_partial_mutation(self):
+        store = self._store()
+        with self.assertRaises(ValueError):
+            with store as items:
+                items._items.append({"record_id": "offer_partial"})
+                raise ValueError("boom mid-write")
+        self.assertEqual(len(store._items), 1)
+        # the rolled-back ghost never reaches disk on the next save
+        self.repos.offers.add(snapshot(payload_hash="later-ok"))
+        text = store.path.read_text(encoding="utf-8")
+        self.assertNotIn("offer_partial", text)
+        self.assertNotIn("offer_ghost", text)
+
+    def test_lock_released_after_persist_failure_under_threads(self):
+        import threading
+
+        store = self._store()
+        store._persist = lambda: (_ for _ in ()).throw(RuntimeError("disk full"))
+        errors = []
+
+        def worker():
+            try:
+                with store as items:
+                    items._items.append({"record_id": "x"})
+            except RuntimeError as exc:
+                errors.append(str(exc))
+
+        threads = [threading.Thread(target=worker) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+        self.assertEqual(len(errors), 3)  # all attempts failed fast, none deadlocked
+        self.assertEqual(len(store._items), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

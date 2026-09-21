@@ -59,6 +59,7 @@ class _LockedJsonList:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._items: List[Dict[str, Any]] = []
+        self._entry_snapshot: List[Dict[str, Any]] = []
         self._load()
 
     def _load(self) -> None:
@@ -79,12 +80,25 @@ class _LockedJsonList:
     # context manager for read-modify-write sections
     def __enter__(self) -> "_LockedJsonList":
         self._lock.acquire()
+        # snapshot for rollback: if the body raises after mutating items,
+        # or persisting fails, memory must return to the last durable
+        # state so a later successful save cannot leak partial writes
+        self._entry_snapshot = list(self._items)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        if exc_type is None:
-            self._persist()
-        self._lock.release()
+        try:
+            if exc_type is None:
+                try:
+                    self._persist()
+                except Exception:
+                    self._items = self._entry_snapshot
+                    raise
+            else:
+                self._items = self._entry_snapshot
+        finally:
+            self._entry_snapshot = []
+            self._lock.release()
 
     def all(self) -> List[Dict[str, Any]]:
         with self._lock:
