@@ -206,5 +206,45 @@ class LedgerIntegrityTests(ScenarioBase):
             self.ledger.reverse(entry["record_id"], reason="  ")
 
 
+class ReversalAbuseTests(ScenarioBase):
+    """P1 regression: duplicate/oversized reversals must not fake profit."""
+
+    def test_duplicate_full_reversal_rejected(self):
+        spend = self.ledger.record_spend(
+            category="procurement", amount=money("100"), order_ref="po-x",
+            opportunity_id="opp-x", payment_evidence_ref="pay://x",
+        )
+        first = self.ledger.reverse(spend["record_id"], reason="first reversal")
+        self.assertIsNotNone(first)
+        with self.assertRaises(LedgerError) as ctx:
+            self.ledger.reverse(spend["record_id"], reason="duplicate reversal")
+        self.assertIn("exceeds original", str(ctx.exception))
+        summary = self.ledger.profit_summary(opportunity_id="opp-x")
+        self.assertEqual(Decimal(summary["settled"]["net"]), Decimal("0"))
+
+    def test_partial_reversals_capped_at_original(self):
+        spend = self.ledger.record_spend(
+            category="procurement", amount=money("100"), order_ref="po-y",
+            opportunity_id="opp-y", payment_evidence_ref="pay://y",
+        )
+        self.ledger.reverse(spend["record_id"], reason="partial 60", amount=money("60"))
+        with self.assertRaises(LedgerError):
+            self.ledger.reverse(spend["record_id"], reason="over cap", amount=money("60"))
+        # completing to exactly the original is allowed
+        self.ledger.reverse(spend["record_id"], reason="remaining 40", amount=money("40"))
+        summary = self.ledger.profit_summary(opportunity_id="opp-y")
+        self.assertEqual(Decimal(summary["settled"]["net"]), Decimal("0"))
+
+    def test_reversal_currency_mismatch_rejected(self):
+        spend = self.ledger.record_spend(
+            category="procurement", amount=money("100"), opportunity_id="opp-z", payment_evidence_ref="p"
+        )
+        with self.assertRaises(LedgerError) as ctx:
+            self.ledger.reverse(
+                spend["record_id"], reason="wrong currency", amount={"state": "known", "amount": "100", "currency": "USD"}
+            )
+        self.assertIn("currency", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

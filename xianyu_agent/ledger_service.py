@@ -19,7 +19,9 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from .commerce.contracts import (
     LEDGER_KIND_SETTLED,
+    PRICE_STATE_KNOWN,
     build_ledger_entry,
+    money_from_mapping,
     utc_now,
 )
 from .commerce.repositories import LockedJsonList
@@ -109,8 +111,10 @@ class LedgerService:
     ) -> Dict[str, Any]:
         """Append a reversal (full by default, partial via ``amount``).
 
-        The original entry is never modified; the reversal carries the
-        opposite direction so tier nets include the correction.
+        The original entry is never modified. Reversals are capped at
+        the original amount in total -- a duplicate full reversal or an
+        oversized partial cannot manufacture fake profit -- and a
+        provided amount must use the original entry's currency.
         """
         if not reason.strip():
             raise LedgerError("reversal requires a reason")
@@ -118,13 +122,41 @@ class LedgerService:
         if not found:
             raise LedgerError(f"entry not found: {entry_id}")
         original = found[0]
+        original_money = original.get("amount") or {}
+        if original_money.get("state") != PRICE_STATE_KNOWN:
+            raise LedgerError("cannot reverse an entry without a known amount")
+        original_value = Decimal(str(original_money.get("amount")))
+        currency = str(original_money.get("currency") or "CNY")
+
+        if amount is not None:
+            provided = money_from_mapping(amount, field_name="reversal_amount")
+            if provided.state != PRICE_STATE_KNOWN:
+                raise LedgerError("reversal requires a known amount")
+            if provided.currency != currency:
+                raise LedgerError(
+                    f"reversal currency {provided.currency} does not match entry currency {currency}"
+                )
+            reversal_value = provided.amount
+        else:
+            reversal_value = original_value
+
+        already_reversed = Decimal("0")
+        for entry in self._store.find(lambda e: str(e.get("reversal_of")) == entry_id):
+            reversed_money = entry.get("amount") or {}
+            if reversed_money.get("state") == PRICE_STATE_KNOWN:
+                already_reversed += Decimal(str(reversed_money.get("amount")))
+        if already_reversed + reversal_value > original_value:
+            raise LedgerError(
+                f"reversal exceeds original amount: already reversed {already_reversed}, "
+                f"attempting {reversal_value}, original {original_value}"
+            )
+
         opposite = "debit" if str(original.get("direction")) == "credit" else "credit"
-        reversal_amount = amount if amount is not None else original.get("amount")
         reversal = build_ledger_entry(
             kind=str(original.get("kind")),
             direction=opposite,
             category=f"reversal:{original.get('category')}",
-            amount=reversal_amount,
+            amount={"state": "known", "amount": str(reversal_value), "currency": currency},
             opportunity_id=str(original.get("opportunity_id") or ""),
             order_ref=str(original.get("order_ref") or ""),
             evidence_ref=evidence_ref,

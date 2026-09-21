@@ -42,6 +42,12 @@ class BudgetReservationStore:
         self._store = LockedJsonList(data_dir / "commerce" / "budget_reservations.json")
 
     def _usage_locked(self, items: LockedJsonList, *, account_id: str, bucket: str, day: str) -> Decimal:
+        """Committed usage for the day: reserved + settled.
+
+        Settled reservations count their ACTUAL settled amount when it
+        differs from the reservation (settle-at-140 after reserving 100
+        must consume 140 of the limit, not 100).
+        """
         total = Decimal("0")
         for record in items._items:
             if (
@@ -50,9 +56,14 @@ class BudgetReservationStore:
                 and str(record.get("business_day")) == day
                 and str(record.get("status")) in (RESERVED, SETTLED)
             ):
-                amount = record.get("amount") or {}
-                if amount.get("state") == PRICE_STATE_KNOWN:
-                    total += Decimal(str(amount.get("amount")))
+                status = str(record.get("status"))
+                source = record.get("amount") or {}
+                if status == SETTLED:
+                    actual = record.get("actual_amount") or {}
+                    if actual.get("state") == PRICE_STATE_KNOWN:
+                        source = actual
+                if source.get("state") == PRICE_STATE_KNOWN:
+                    total += Decimal(str(source.get("amount")))
         return total
 
     def reserve(
@@ -143,11 +154,15 @@ class BudgetReservationStore:
         )
         reserved = settled = released = Decimal("0")
         for record in records:
-            amount = record.get("amount") or {}
-            if amount.get("state") != PRICE_STATE_KNOWN:
-                continue
-            value = Decimal(str(amount.get("amount")))
             status = str(record.get("status"))
+            source = record.get("amount") or {}
+            if status == SETTLED:
+                actual = record.get("actual_amount") or {}
+                if actual.get("state") == PRICE_STATE_KNOWN:
+                    source = actual
+            if source.get("state") != PRICE_STATE_KNOWN:
+                continue
+            value = Decimal(str(source.get("amount")))
             if status == RESERVED:
                 reserved += value
             elif status == SETTLED:

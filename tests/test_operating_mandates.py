@@ -204,6 +204,26 @@ class BudgetReservationTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_settled_actual_over_reservation_consumes_actual(self):
+        """P1 regression: settle 140 after reserving 100 must consume 140."""
+        record = self.store.reserve(
+            account_id="acc-1", budget_bucket="procurement", job_id="job-s", amount=money("100"), limit=money("150")
+        )
+        self.store.settle(record["record_id"], actual_amount=money("140"))
+        usage = self.store.usage(account_id="acc-1", bucket="procurement")
+        self.assertEqual(Decimal(usage["settled"]), Decimal("140"))
+        self.assertEqual(Decimal(usage["committed_total"]), Decimal("140"))
+        # 140 + 50 > 150 must now be refused
+        with self.assertRaises(BudgetError):
+            self.store.reserve(
+                account_id="acc-1", budget_bucket="procurement", job_id="job-t", amount=money("50"), limit=money("150")
+            )
+        # 10 still fits
+        ok = self.store.reserve(
+            account_id="acc-1", budget_bucket="procurement", job_id="job-u", amount=money("10"), limit=money("150")
+        )
+        self.assertEqual(ok["status"], "reserved")
+
     def test_reserve_and_usage(self):
         record = self.store.reserve(
             account_id="acc-1", budget_bucket="procurement", job_id="job-1", amount=money("300"), limit=money("1000")
