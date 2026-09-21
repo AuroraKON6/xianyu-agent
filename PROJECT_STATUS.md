@@ -2,6 +2,19 @@
 
 Updated: 2026-09-21
 
+## 2026-09-21 Pi 链路第四次复验修复轮（7 项缺口）
+
+证据：[docs/acceptance/WP_PI_RELIABILITY_R4_2026-09-21.md](docs/acceptance/WP_PI_RELIABILITY_R4_2026-09-21.md)。全量回归 **1346/1346**（+14 红转绿）。
+
+- 单 worker 互斥（busy 拒绝）+ 停止/认领原子；Pi 客户端 finally 关闭（成败两路）。
+- 截止两侧拒收（起跑前剩余窗口 + 结果侧超时拒收）；per-job/每日 token 预算账本（模型调用前程序拦截）。
+- 决策提交协议：fenced complete 失败 → 追加失效标记；面板/复用均排除迟到决策。
+- 影子额度语义：真实占用 + 影子反事实累计一起进策略；日志先行且按事件 ID 幂等（写失败不推进游标）。
+- 证据固化：pi_evidence 文件持久化输入快照/工具事件/usage + inputs_sha256；报价采集按 committed 批次过滤。
+- 零真实模型调用；下一步等操作者提供非空标注来源的报价样本做真实 Pi 验证。
+
+---
+
 ## 2026-09-21 Pi 阶段第二批（角色扩展 + 持续影子观察 + 面板任务台）
 
 证据：[docs/acceptance/WP_PI_STAGE2_2026-09-21.md](docs/acceptance/WP_PI_STAGE2_2026-09-21.md)。全量回归 **1331/1331**（+15）。
