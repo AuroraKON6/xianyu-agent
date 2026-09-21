@@ -212,6 +212,21 @@ class InventoryAllocationService:
         with self._store as items:
             return mutate(items)
 
+    def list_locks(self, *, account_id: str = "") -> List[Dict[str, Any]]:
+        """Read-only projection of all order locks (recovery/ops use)."""
+        locks: List[Dict[str, Any]] = []
+        for record in self._store.find(lambda r: (not account_id) or str(r.get("account_id")) == account_id):
+            for order_id, quantity in (record.get("locks") or {}).items():
+                locks.append(
+                    {
+                        "account_id": record.get("account_id"),
+                        "sku": record.get("sku"),
+                        "order_id": order_id,
+                        "quantity": int(quantity),
+                    }
+                )
+        return locks
+
     def list_allocations(self, *, account_id: str = "") -> List[Dict[str, Any]]:
         records = self._store.find(lambda r: (not account_id) or str(r.get("account_id")) == account_id)
         return [
