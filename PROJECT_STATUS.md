@@ -2,6 +2,17 @@
 
 Updated: 2026-09-18
 
+## 2026-09-18 演练轮（跨文件失败 / 重启恢复 / 完整业务流程组合）
+
+证据：[docs/acceptance/WP_DRILLS_2026-09-18.md](docs/acceptance/WP_DRILLS_2026-09-18.md)。全量回归 **1294/1294**。
+
+- 跨文件失败：采购落库失败→预留自动释放；取消后释放失败→重启对账收尾（幂等）。
+- 重启恢复：新增 recovery.reconcile_orphan_reservations（孤儿预留对账，dry_run 支持）；六类事实重建一致；过期任务租约恢复（分析重排队/写转 unknown）。
+- 完整组合流：导入→匹配→核算→采购→付款回款（settled 134）→部分退款（34）→撤销批次拒采购→纠正匹配转 paused→取消退库存+重放无效→最终重启一致。
+- 多进程并发仍按 ADR-0001 等 Postgres 决策；Pi 扩展阶段继续冻结。
+
+---
+
 ## 2026-09-18 第二次复验修复轮（4 项 P1：深拷贝/并发采购/并发冲正/重复取消）
 
 输入：操作者第二次复验"仍不通过"。证据：[docs/acceptance/WP_RELIABILITY_FIXES_R2_2026-09-18.md](docs/acceptance/WP_RELIABILITY_FIXES_R2_2026-09-18.md)。全量回归 **1288/1288**。
