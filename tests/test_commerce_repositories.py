@@ -281,6 +281,36 @@ class StorageFailureTests(unittest.TestCase):
         self.assertEqual(len(errors), 3)  # all attempts failed fast, none deadlocked
         self.assertEqual(len(store._items), 1)
 
+    def test_rollback_restores_in_place_mutation_of_existing_record(self):
+        """P1 regression (re-verify): a shallow snapshot cannot roll back
+        in-place mutations of EXISTING records; the snapshot must be deep."""
+        store = self._store()
+        original_status = store._items[0].get("revision")
+        original_price = dict(store._items[0]["eligible_price"])
+
+        original_persist = store._persist
+        store._persist = lambda: (_ for _ in ()).throw(RuntimeError("disk full"))
+        with self.assertRaises(RuntimeError):
+            with store as items:
+                record = items._items[0]
+                record["revision"] = 999  # top-level field of an EXISTING record
+                record["eligible_price"]["amount"] = "0.01"  # nested dict mutation
+                items._items.append({"record_id": "offer_ghost"})
+        store._persist = original_persist
+
+        # memory must be back to the pre-entry state, top level AND nested
+        self.assertEqual(store._items[0]["revision"], original_status)
+        self.assertEqual(store._items[0]["eligible_price"]["amount"], original_price["amount"])
+        self.assertEqual(len(store._items), 1)
+
+        # a later successful save must not leak the wrong update to disk
+        with store as items:
+            pass  # triggers a clean persist
+        disk = store.path.read_text(encoding="utf-8")
+        self.assertNotIn("999", disk)
+        self.assertNotIn("0.01", disk)
+        self.assertNotIn("offer_ghost", disk)
+
 
 if __name__ == "__main__":
     unittest.main()

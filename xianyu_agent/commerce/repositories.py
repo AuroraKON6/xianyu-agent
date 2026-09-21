@@ -22,6 +22,7 @@ Semantics:
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 import threading
@@ -80,10 +81,11 @@ class _LockedJsonList:
     # context manager for read-modify-write sections
     def __enter__(self) -> "_LockedJsonList":
         self._lock.acquire()
-        # snapshot for rollback: if the body raises after mutating items,
-        # or persisting fails, memory must return to the last durable
-        # state so a later successful save cannot leak partial writes
-        self._entry_snapshot = list(self._items)
+        # DEEP snapshot for rollback: records are nested dicts, so a
+        # shallow list copy would share them with in-place mutations --
+        # a failed write must roll back existing records and their
+        # nested fields too, or a later save leaks the bad update
+        self._entry_snapshot = copy.deepcopy(self._items)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -102,23 +104,25 @@ class _LockedJsonList:
 
     def all(self) -> List[Dict[str, Any]]:
         with self._lock:
-            return [dict(item) for item in self._items]
+            # deep copies: callers mutating a returned record (including
+            # nested dicts) must never touch stored state
+            return [copy.deepcopy(item) for item in self._items]
 
     def find(self, predicate) -> List[Dict[str, Any]]:
         with self._lock:
-            return [dict(item) for item in self._items if predicate(item)]
+            return [copy.deepcopy(item) for item in self._items if predicate(item)]
 
     def append(self, item: Dict[str, Any]) -> Dict[str, Any]:
         with self as items:
             items._items.append(item)
-        return dict(item)
+        return copy.deepcopy(item)
 
     def update(self, record_id: str, mutate) -> Dict[str, Any]:
         with self as items:
             for existing in items._items:
                 if str(existing.get("record_id")) == record_id:
                     mutate(existing)
-                    return dict(existing)
+                    return copy.deepcopy(existing)
         raise KeyError(f"record not found: {record_id}")
 
 

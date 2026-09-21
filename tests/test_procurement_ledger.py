@@ -362,5 +362,179 @@ class ReversalAbuseTests(ScenarioBase):
         self.assertIn("currency", str(ctx.exception))
 
 
+class ConcurrentProcurementTests(ScenarioBase):
+    """P1 re-verify regression: duplicate-check + reserve + store must be
+    one atomic sequence. Two threads submitting the same sales order
+    must end with exactly ONE procurement and ONE reservation."""
+
+    def setUp(self):
+        super().setUp()
+        import sys
+
+        self._old_switch = sys.getswitchinterval()
+        sys.setswitchinterval(1e-6)  # force frequent GIL switches so the race window is hit
+
+    def tearDown(self):
+        import sys
+
+        sys.setswitchinterval(self._old_switch)
+        super().tearDown()
+
+    def test_concurrent_same_sales_order_creates_single_procurement(self):
+        import threading
+
+        for round_no in range(20):
+            ref = f"sale-race-{round_no}"
+            barrier = threading.Barrier(2)
+            outcomes = []
+            lock = threading.Lock()
+
+            def worker():
+                barrier.wait()
+                try:
+                    order = self.procurement.create_from_sales_order(
+                        account_id="acc-1", sku="GZ-1200", quantity=4, sales_order_ref=ref
+                    )
+                    with lock:
+                        outcomes.append(("ok", order["record_id"]))
+                except ProcurementError as exc:
+                    with lock:
+                        outcomes.append(("rejected", str(exc)))
+
+            threads = [threading.Thread(target=worker) for _ in range(2)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=10)
+
+            created = [o for o in outcomes if o[0] == "ok"]
+            rejected = [o for o in outcomes if o[0] == "rejected"]
+            self.assertEqual(len(created), 1, f"round {round_no}: outcomes={outcomes}")
+            # the loser must lose on the duplicate check, not on stock
+            self.assertIn("already exists", rejected[0][1], f"round {round_no}: {outcomes}")
+            for_this_ref = [o for o in self.procurement.list() if o["sales_order_ref"] == ref]
+            self.assertEqual(len(for_this_ref), 1, f"round {round_no}: duplicate orders on disk")
+            allocation = self.inventory.allocation(account_id="acc-1", sku="GZ-1200")
+            self.assertEqual(allocation["locked"], 4, f"round {round_no}: locked={allocation['locked']}")
+            self.assertEqual(allocation["available"], 6, f"round {round_no}: available={allocation['available']}")
+            # release this round's reservation so the next round starts full
+            self.procurement.cancel(created[0][1], reason="round teardown", operator="test")
+            restored = self.inventory.allocation(account_id="acc-1", sku="GZ-1200")
+            self.assertEqual(restored["available"], 10, f"round {round_no}: teardown left {restored['available']}")
+
+
+class ConcurrentReversalTests(ScenarioBase):
+    """P1 re-verify regression: cap check and append must be atomic."""
+
+    def setUp(self):
+        super().setUp()
+        import sys
+
+        self._old_switch = sys.getswitchinterval()
+        sys.setswitchinterval(1e-6)  # force frequent GIL switches so the race window is hit
+
+    def tearDown(self):
+        import sys
+
+        sys.setswitchinterval(self._old_switch)
+        super().tearDown()
+
+    def _entry(self, tag):
+        return self.ledger.record_spend(
+            category="procurement", amount=money("100"), order_ref=f"po-{tag}",
+            opportunity_id=f"opp-{tag}", payment_evidence_ref=f"pay://{tag}",
+        )
+
+    def test_concurrent_full_reversals_yield_single_reversal(self):
+        import threading
+
+        for round_no in range(20):
+            tag = f"race-full-{round_no}"
+            entry = self._entry(tag)
+            barrier = threading.Barrier(2)
+            results = []
+            lock = threading.Lock()
+
+            def worker():
+                barrier.wait()
+                try:
+                    self.ledger.reverse(entry["record_id"], reason="race")
+                    with lock:
+                        results.append("ok")
+                except LedgerError:
+                    with lock:
+                        results.append("rejected")
+
+            threads = [threading.Thread(target=worker) for _ in range(2)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=10)
+
+            self.assertEqual(
+                sorted(results), ["ok", "rejected"], f"round {round_no}: {results}"
+            )
+            summary = self.ledger.profit_summary(opportunity_id=f"opp-{tag}")
+            self.assertEqual(Decimal(summary["settled"]["net"]), Decimal("0"), f"round {round_no}")
+
+    def test_concurrent_partial_reversals_respect_cap(self):
+        import threading
+
+        for round_no in range(20):
+            tag = f"race-part-{round_no}"
+            entry = self._entry(tag)
+            barrier = threading.Barrier(2)
+            results = []
+            lock = threading.Lock()
+
+            def worker():
+                barrier.wait()
+                try:
+                    self.ledger.reverse(entry["record_id"], reason="race", amount=money("60"))
+                    with lock:
+                        results.append("ok")
+                except LedgerError:
+                    with lock:
+                        results.append("rejected")
+
+            threads = [threading.Thread(target=worker) for _ in range(2)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(timeout=10)
+
+            # 60+60 > 100: at most ONE partial may succeed
+            self.assertLessEqual(results.count("ok"), 1, f"round {round_no}: {results}")
+            summary = self.ledger.profit_summary(opportunity_id=f"opp-{tag}")
+            # net is -100 (no reversal) or -40 (one 60 reversal); never positive
+            self.assertLessEqual(Decimal(summary["settled"]["net"]), Decimal("-40"), f"round {round_no}")
+
+
+class CancelIdempotencyTests(ScenarioBase):
+    """P1 re-verify regression: re-cancelling an OLD order must not
+    release the NEW order's reservation for the same sales ref."""
+
+    def test_repeat_cancel_of_old_order_keeps_new_reservation(self):
+        old = self.procurement.create_from_sales_order(
+            account_id="acc-1", sku="GZ-1200", quantity=8, sales_order_ref="sale-cycle"
+        )
+        self.procurement.cancel(old["record_id"], reason="first cancel", operator="o")
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 10)
+
+        new = self.procurement.create_from_sales_order(
+            account_id="acc-1", sku="GZ-1200", quantity=8, sales_order_ref="sale-cycle"
+        )
+        self.assertEqual(new["status"], "awaiting_approval")
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 2)
+
+        # re-cancelling the OLD order must be a no-op for inventory
+        repeated = self.procurement.cancel(old["record_id"], reason="stale retry", operator="o")
+        self.assertEqual(repeated["status"], "cancelled")
+        self.assertEqual(new["status"], "awaiting_approval")
+        allocation = self.inventory.allocation(account_id="acc-1", sku="GZ-1200")
+        self.assertEqual(allocation["available"], 2, "stale cancel released the new order's stock")
+        self.assertEqual(allocation["locked"], 8)
+
+
 if __name__ == "__main__":
     unittest.main()
