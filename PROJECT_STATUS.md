@@ -1,6 +1,16 @@
 # Xianyu Pi Commercial Alpha Status
 
-Updated: 2026-09-18
+Updated: 2026-09-21
+
+## 2026-09-21 Pi 持久任务执行链路：第一批交付
+
+证据：[docs/acceptance/WP_PI_STAGE1_2026-09-21.md](docs/acceptance/WP_PI_STAGE1_2026-09-21.md)。全量回归 **1316/1316**（+20 条 Pi 链路 mock）。
+
+- 7 步验收表全部 PASS（进程内范围）：单实例边界、真实 PiRpcClient（独立 jobs 会话，弃 DeepSeekClient 直连）、只读网关（中间件程序执行：非 GET/白名单外/超 cap 全 403）、生命周期（迟到结果拒收、重试不重复决策）、结构化落库+崩溃对账、证据端点（任务→决策→输入；未知成本显示 unknown 不显示 0）、mock/真实分层计数。
+- 真实运行 3 次：1 次如实失败（旧 shell key 401，重排队）+ 1 次重试成功 + 1 次成功（pi-jobs-xianyu / deepseek-flash / 3241 tokens，结论"当前无 committed 报价可审"）。脚本已改为从 .env 固定 key 防残留覆盖。
+- 未开放自动回复/发布/采购/退款；下一步：扩展角色 + 持续影子观察。
+
+---
 
 ## 2026-09-18 第三次复验修复轮（2 项 P1 同步缺口）
 
