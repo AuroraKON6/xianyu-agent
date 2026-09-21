@@ -16,6 +16,7 @@ from xianyu_agent.commerce import (
     build_product_match,
 )
 from xianyu_agent.opportunity_service import OpportunityError, OpportunityService
+from xianyu_agent.product_matching import ProductMatchingService
 from xianyu_agent.unit_economics import (
     EconomicsError,
     SCENARIO_BASE,
@@ -326,6 +327,80 @@ class OpportunityServiceTests(unittest.TestCase):
         first = self._create()
         second = self._create()
         self.assertEqual(first["record_id"], second["record_id"])
+
+
+class QualificationInvalidationTests(unittest.TestCase):
+    """P1 regression: corrections and worse economics must invalidate ready_for_test."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repos = JsonCommerceRepositories(Path(self.tmp.name))
+        self.service = OpportunityService(self.repos)
+        self.matcher = ProductMatchingService(self.repos)
+        self.market = self.repos.offers.add(market_snapshot())[0]
+        self.supplier = self.repos.offers.add(supplier_snapshot())[0]
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _evaluate(self, opportunity_id, **kwargs):
+        params = dict(
+            platform_fee_rate="0.03",
+            packaging=money("5"),
+            expected_return_loss=money("12"),
+            attributable_costs=money("4"),
+        )
+        params.update(kwargs)
+        return self.service.evaluate(opportunity_id, **params)
+
+    def _exact_match(self):
+        record = build_product_match(
+            left_snapshot_id=self.market["record_id"],
+            right_snapshot_id=self.supplier["record_id"],
+            grade="EXACT",
+            rule_version="hard-constraints-v1",
+        )
+        stored = self.repos.matches.add(record)
+        return stored["record_id"]
+
+    def test_human_correction_to_not_match_pauses_opportunity(self):
+        match_id = self._exact_match()
+        opportunity = self.service.create_from_match(
+            market_snapshot_id=self.market["record_id"],
+            supplier_snapshot_id=self.supplier["record_id"],
+            match_id=match_id,
+        )
+        first = self._evaluate(opportunity["record_id"])
+        self.assertEqual(first["opportunity"]["status"], "ready_for_test")
+
+        # operator corrects the match to NOT_MATCH; re-evaluation must
+        # judge against the correction, not the original record
+        self.matcher.correct_grade(
+            match_id, corrected_grade="NOT_MATCH", operator="operator", reason="spec mismatch found"
+        )
+        second = self._evaluate(opportunity["record_id"])
+        self.assertFalse(second["qualification"]["qualified"])
+        self.assertIn("below EXACT", " ".join(second["qualification"]["reasons"]))
+        self.assertEqual(second["opportunity"]["status"], "paused")
+        self.assertIn("invalidated", second["opportunity"]["status_reason"])
+
+    def test_negative_conservative_profit_pauses_ready_opportunity(self):
+        match_id = self._exact_match()
+        opportunity = self.service.create_from_match(
+            market_snapshot_id=self.market["record_id"],
+            supplier_snapshot_id=self.supplier["record_id"],
+            match_id=match_id,
+        )
+        self._evaluate(opportunity["record_id"])
+        # supplier price rises: conservative scenario turns negative
+        pricier = self.repos.offers.add(supplier_snapshot(price="290"))[0]
+        updated = self.repos.opportunities.get(opportunity["record_id"])
+        self.repos.opportunities.attach(
+            updated["record_id"], field="offer_snapshot_ids", value=[pricier["record_id"]]
+        )
+        result = self._evaluate(opportunity["record_id"])
+        self.assertFalse(result["qualification"]["qualified"])
+        self.assertEqual(result["opportunity"]["status"], "paused")
 
 
 if __name__ == "__main__":

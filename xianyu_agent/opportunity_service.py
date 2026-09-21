@@ -33,10 +33,11 @@ from .commerce.contracts import (
     MATCH_EXACT,
     MATCH_NOT_MATCH,
     MATCH_UNKNOWN,
-    PRICE_STATE_KNOWN,
     OPPORTUNITY_DISCOVERED,
+    OPPORTUNITY_PAUSED,
     OPPORTUNITY_READY_FOR_TEST,
     OPPORTUNITY_RESEARCHING,
+    PRICE_STATE_KNOWN,
     Money,
     build_decision_record,
     build_opportunity,
@@ -124,7 +125,18 @@ class OpportunityService:
         supplier = self._repos.offers.get(supplier_ids[-1]) if supplier_ids else None
         if market is None or supplier is None:
             raise OpportunityError("opportunity snapshots missing; re-import or re-observe")
-        match = self._repos.matches.get(str(opportunity.get("match_id") or ""))
+
+        # always judge against the LATEST match record for this pair --
+        # a human correction supersedes the original judgment
+        stored_match = self._repos.matches.get(str(opportunity.get("match_id") or ""))
+        match = stored_match
+        if stored_match is not None:
+            latest = self._repos.matches.latest_for_pair(
+                str(stored_match.get("left_snapshot_id") or ""),
+                str(stored_match.get("right_snapshot_id") or ""),
+            )
+            if latest is not None:
+                match = latest
 
         now = utc_now()
         freshness = self._freshness(market, supplier, now)
@@ -196,6 +208,20 @@ class OpportunityService:
                     f"deterministic gates passed: EXACT match, conservative profit "
                     f"{profit.get('amount')} {profit.get('currency') or ''}, fresh inputs"
                 ),
+                evidence_refs=[decision["record_id"]],
+            )
+            current = self._repos.opportunities.get(opportunity_id)
+        elif (
+            not qualification["qualified"]
+            and str(current.get("status")) == OPPORTUNITY_READY_FOR_TEST
+        ):
+            # a re-evaluation that fails any gate invalidates the earlier
+            # qualification; the opportunity pauses until the cause is fixed
+            self._repos.opportunities.transition(
+                opportunity_id,
+                to_status=OPPORTUNITY_PAUSED,
+                reason="qualification invalidated on re-evaluation: "
+                + "; ".join(qualification["reasons"]),
                 evidence_refs=[decision["record_id"]],
             )
             current = self._repos.opportunities.get(opportunity_id)
