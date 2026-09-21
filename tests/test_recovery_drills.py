@@ -340,5 +340,143 @@ class FullFlowCombinationDrill(DrillBase):
         self.assertNotIn(f"proc:{order_b['record_id']}", locks)  # cancelled order released
 
 
+class SyncGapDrills(DrillBase):
+    """P1 re-verify round 3: synchronization gaps between recovery and
+    creation, and between cancel and supplier-order registration."""
+
+    def _create_and_approve(self, ref):
+        order = self.procurement.create_from_sales_order(
+            account_id="acc-1", sku="GZ-1200", quantity=4, sales_order_ref=ref
+        )
+        self.procurement.approve(order["record_id"], operator="o")
+        return order
+
+    def test_reconcile_cannot_release_a_reservation_being_created(self):
+        """Reconcile must not run between the inventory lock and the
+        procurement append of a concurrent creation."""
+        import threading
+
+        self.seed_live_pipeline()
+        append_entered = threading.Event()
+        allow_append = threading.Event()
+        original_append = self.procurement._store.append
+
+        def paused_append(item):
+            append_entered.set()  # creation holds the mutation lock, lock+checks done
+            allow_append.wait(timeout=10)
+            return original_append(item)
+
+        self.procurement._store.append = paused_append
+
+        create_result = {}
+
+        def creator():
+            try:
+                order = self.procurement.create_from_sales_order(
+                    account_id="acc-1", sku="GZ-1200", quantity=4, sales_order_ref="sale-sync-1"
+                )
+                create_result["order"] = order
+            except Exception as exc:  # noqa: BLE001
+                create_result["error"] = str(exc)
+
+        thread = threading.Thread(target=creator)
+        thread.start()
+        self.assertTrue(append_entered.wait(timeout=5))
+
+        # run reconcile while the creation is parked inside its append
+        report = reconcile_orphan_reservations(self.procurement, self.inventory)
+
+        allow_append.set()
+        thread.join(timeout=10)
+
+        # the creation must have succeeded
+        self.assertNotIn("error", create_result)
+        order = create_result["order"]
+        self.assertEqual(order["status"], "awaiting_approval")
+
+        # the reservation of the LIVE order must survive: reconcile either
+        # waited for the creation (correct) or released it (bug)
+        locks = {lock["order_id"] for lock in self.inventory.list_locks()}
+        self.assertIn(
+            f"proc:{order['record_id']}", locks,
+            "reconcile released the reservation of an in-flight creation",
+        )
+        allocation = self.inventory.allocation(account_id="acc-1", sku="GZ-1200")
+        self.assertEqual(allocation["available"], 6)
+        self.assertEqual(allocation["locked"], 4)
+        # and the reconcile report must have seen the live order
+        self.assertEqual(report["released"], [])
+        self.assertGreaterEqual(report["kept_live"], 1)
+
+    def test_cancel_cannot_overwrite_a_registered_supplier_order(self):
+        """Cancel must not overwrite an order that concurrently moved to
+        `ordered`; state changes need one synchronization domain and a
+        re-check under the lock."""
+        import threading
+
+        self.seed_live_pipeline()
+        order = self._create_and_approve("sale-sync-2")
+
+        # park ONLY the cancel transition; other transitions pass through
+        transition_entered = threading.Event()
+        allow_transition = threading.Event()
+        original_transition = self.procurement._transition
+
+        def paused_transition(procurement_id, to_status, **kwargs):
+            if to_status == "cancelled":
+                transition_entered.set()
+                allow_transition.wait(timeout=10)
+            return original_transition(procurement_id, to_status, **kwargs)
+
+        self.procurement._transition = paused_transition
+
+        cancel_result = {}
+
+        def canceller():
+            try:
+                self.procurement.cancel(order["record_id"], reason="交错取消", operator="o")
+                cancel_result["ok"] = True
+            except ProcurementError as exc:
+                cancel_result["blocked"] = str(exc)
+
+        thread = threading.Thread(target=canceller)
+        thread.start()
+        self.assertTrue(transition_entered.wait(timeout=5))
+
+        # while cancel is parked, the supplier order registers
+        registration_error = None
+        try:
+            self.procurement.record_supplier_order(
+                order["record_id"], supplier_order_id="SO-RACE-1", operator="o"
+            )
+        except ProcurementError as exc:
+            registration_error = str(exc)
+
+        allow_transition.set()
+        thread.join(timeout=10)
+
+        stored = self.procurement.get(order["record_id"])
+        supplier_id = str(stored.get("supplier_order_id") or "")
+
+        if stored["status"] == "cancelled":
+            # cancel won: it must have cancelled a still-approved order,
+            # and the late supplier registration must have been refused
+            self.assertEqual(supplier_id, "", "cancelled order must not carry a supplier order id")
+            self.assertIsNotNone(registration_error, "registration on a cancelled order must fail")
+            self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 10)
+        else:
+            # registration won: the order is ordered with its id and cancel
+            # must have been refused (ordered orders are not cancellable)
+            self.assertEqual(stored["status"], "ordered")
+            self.assertEqual(supplier_id, "SO-RACE-1")
+            self.assertIn("blocked", cancel_result)
+            self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 6)
+        # either way, the impossible combination must not exist
+        self.assertFalse(
+            stored["status"] == "cancelled" and supplier_id,
+            "cancel overwrote a registered supplier order",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

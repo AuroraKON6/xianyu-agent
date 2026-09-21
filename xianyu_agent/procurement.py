@@ -16,6 +16,7 @@ as provisional entries; corrections happen by reversal, never edits.
 from __future__ import annotations
 
 import threading
+from contextlib import contextmanager
 from decimal import Decimal
 from datetime import datetime
 from typing import Any, Dict, List, Mapping, Optional
@@ -45,6 +46,18 @@ class ProcurementService:
         # of the same sales order cannot interleave; inventory operations
         # always happen under this lock, never the reverse order
         self._mutation_lock = threading.RLock()
+
+    @contextmanager
+    def mutation_guard(self):
+        """The single synchronization domain for procurement state.
+
+        Every state-changing flow (create, approve, supplier-order
+        registration, receipt, cancel) and the recovery reconciler hold
+        this lock across the whole check-then-write sequence, so no two
+        of them can interleave.
+        """
+        with self._mutation_lock:
+            yield
 
     # ---- creation with re-verification ----
 
@@ -147,15 +160,17 @@ class ProcurementService:
     # ---- human steps ----
 
     def approve(self, procurement_id: str, *, operator: str) -> Dict[str, Any]:
-        return self._transition(procurement_id, "approved", require_status="awaiting_approval", actor=operator)
+        with self._mutation_lock:
+            return self._transition(procurement_id, "approved", require_status="awaiting_approval", actor=operator)
 
     def record_supplier_order(self, procurement_id: str, *, supplier_order_id: str, operator: str) -> Dict[str, Any]:
         if not supplier_order_id.strip():
             raise ProcurementError("a real supplier order id is required")
-        return self._transition(
-            procurement_id, "ordered", require_status="approved", actor=operator,
-            extra={"supplier_order_id": supplier_order_id},
-        )
+        with self._mutation_lock:
+            return self._transition(
+                procurement_id, "ordered", require_status="approved", actor=operator,
+                extra={"supplier_order_id": supplier_order_id},
+            )
 
     def record_receipt(
         self,
@@ -168,14 +183,15 @@ class ProcurementService:
     ) -> Dict[str, Any]:
         if not receipt_ref.strip():
             raise ProcurementError("receipt evidence reference required")
-        return self._transition(
-            procurement_id, "received", require_status="ordered", actor=operator,
-            extra={
-                "receipt_ref": receipt_ref,
-                "actual_unit_cost": actual_unit_cost,
-                "actual_freight": actual_freight,
-            },
-        )
+        with self._mutation_lock:
+            return self._transition(
+                procurement_id, "received", require_status="ordered", actor=operator,
+                extra={
+                    "receipt_ref": receipt_ref,
+                    "actual_unit_cost": actual_unit_cost,
+                    "actual_freight": actual_freight,
+                },
+            )
 
     def cancel(self, procurement_id: str, *, reason: str, operator: str) -> Dict[str, Any]:
         with self._mutation_lock:
