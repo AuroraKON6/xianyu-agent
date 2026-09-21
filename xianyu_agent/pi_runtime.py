@@ -201,6 +201,9 @@ class PiRpcClient:
             "google": {"GOOGLE_API_KEY", "GEMINI_API_KEY"},
         }
         allowed.update(provider_keys.get(self.config.provider.lower(), set()))
+        # controlled passthrough for the job runner's read-only tool gate;
+        # absent for normal operator sessions (no behavior change)
+        allowed.update({"XIANYU_PI_JOB_TOKEN"})
         env = {
             key: value
             for key, value in self._base_env.items()

@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import math
+import os
 import time
 from pathlib import Path
 from threading import RLock
@@ -125,6 +126,12 @@ from .providers.supplier_file import SupplierFileProvider  # noqa: E402
 from .agent_jobs import AgentJobError, AgentJobStore, FencingError  # noqa: E402
 from .budget_reservations import BudgetError, BudgetReservationStore, ShadowAuthorizationLog  # noqa: E402
 from .reply_drafts import DraftReplyService  # noqa: E402
+from .pi_jobs import (  # noqa: E402
+    JOB_TOKEN_HEADER,
+    JobPolicyError,
+    PiTaskRunner,
+    ReadOnlyJobGate,
+)
 from .operating_mandates import (  # noqa: E402
     ActionRequest,
     MandateError,
@@ -141,6 +148,34 @@ operating_mandate_store = OperatingMandateStore(settings.data_dir)
 budget_reservation_store = BudgetReservationStore(settings.data_dir)
 shadow_authorization_log = ShadowAuthorizationLog(settings.data_dir)
 reply_draft_service = DraftReplyService(settings.data_dir, product_facts_store, price_commitment_store)
+pi_job_gate = ReadOnlyJobGate()
+pi_task_runner = PiTaskRunner(
+    agent_job_store,
+    commerce_repositories.decisions,
+    commerce_repositories.offers,
+    gate=pi_job_gate,
+)
+pi_task_runner.start()
+
+
+@app.middleware("http")
+async def pi_job_readonly_gate(request, call_next):
+    """Program-enforced read-only policy for job Pi sessions.
+
+    Requests carrying a job token are restricted to GET on the
+    read-only allowlist and capped in count; violations get 403 with
+    the policy reason. Operator sessions (no token) are untouched.
+    """
+    token = request.headers.get(JOB_TOKEN_HEADER)
+    if not token:
+        return await call_next(request)
+    from fastapi.responses import JSONResponse
+
+    try:
+        pi_job_gate.authorize(token, method=request.method, path=request.url.path)
+    except JobPolicyError as exc:
+        return JSONResponse(status_code=403, content={"detail": f"job tool policy: {exc}"})
+    return await call_next(request)
 product_facts_store.configure(settings.data_dir / "product_facts.json")
 message_import_scheduler_store = MessageImportSchedulerStore(settings.data_dir / "message_import_scheduler.json")
 bridge_events.configure(settings.data_dir / "bridge_events.json")
@@ -7092,3 +7127,76 @@ async def create_reply_draft(request: Request) -> Dict[str, Any]:
 @app.get("/commerce/reply-drafts")
 async def list_reply_drafts(chat_id: str = "", item_id: str = "") -> Dict[str, Any]:
     return {"drafts": reply_draft_service.list_drafts(chat_id=chat_id, item_id=item_id)}
+
+
+# ---------------------------------------------------------------------------
+# Pi persistent task chain: submit -> run through the real PiRpcClient ->
+# structured decision -> evidence traceable from the panel. The runner
+# enforces the read-only gate and tool cap programmatically; model output
+# never changes business state, it only produces DecisionRecords.
+# ---------------------------------------------------------------------------
+
+PI_JOB_SESSION_ID = os.environ.get("PI_JOB_SESSION_ID") or f"pi-jobs-{PROJECT_ROOT.name}"
+
+
+def _pi_job_client_factory(token_env: Dict[str, str]):
+    from .pi_runtime import PiRpcClient
+
+    env = dict(os.environ)
+    env.update(token_env)
+    env["PI_SESSION_ID"] = PI_JOB_SESSION_ID
+    return PiRpcClient.from_env(PROJECT_ROOT, settings.data_dir, env=env)
+
+
+@app.post("/commerce/pi-tasks/quote-review")
+async def submit_pi_quote_review(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    return pi_task_runner.submit_quote_review_job(
+        idempotency_key=str(payload.get("idempotency_key") or ""),
+    )
+
+
+@app.post("/commerce/pi-tasks/run-next")
+def run_next_pi_task() -> Dict[str, Any]:
+    """Execute at most one queued job through the real Pi RPC client.
+
+    Synchronous on purpose (runs in the threadpool): one analysis
+    worker, one job at a time, per the fixed run boundary.
+    """
+    result = pi_task_runner.run_once(pi_factory=_pi_job_client_factory)
+    if result is None:
+        return {"outcome": "no_claimable_job", "runner": pi_task_runner.status}
+    return result
+
+
+@app.post("/commerce/pi-tasks/reconcile")
+def reconcile_pi_tasks() -> Dict[str, Any]:
+    return pi_task_runner.reconcile_task_decisions()
+
+
+@app.get("/commerce/pi-tasks/{job_id}/evidence")
+async def pi_task_evidence(job_id: str) -> Dict[str, Any]:
+    """Task -> decision -> inputs traceability for the panel."""
+    job = agent_job_store.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    decisions = [
+        d
+        for d in commerce_repositories.decisions.list()
+        if str(d.get("source_ref")) == f"agent_job:{job_id}"
+    ]
+    latest = decisions[-1] if decisions else None
+    cost = (latest or {}).get("cost") or {}
+    usage_known = cost.get("total_tokens") is not None
+    return {
+        "job": job,
+        "decision_ids": [d["record_id"] for d in decisions],
+        "latest_decision": latest,
+        "pi": {
+            "session_id": ((latest or {}).get("evidence_refs") or [{}])[0].get("ref_id"),
+            "model": cost.get("model"),
+            "cost_display": cost if usage_known else {**cost, "total_tokens": None, "display": "unknown (not zero)"},
+        },
+        "inputs": {"input_refs": job.get("input_refs"), "role": job.get("role")},
+        "runner": pi_task_runner.status,
+    }

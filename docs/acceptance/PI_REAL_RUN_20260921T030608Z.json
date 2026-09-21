@@ -1,0 +1,146 @@
+{
+  "job": {
+    "record_type": "agent_job",
+    "record_id": "job_1dccf9b6ef684375",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_b0eebefc9b9348e3",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-09-21T03:05:23.241092+00:00",
+    "role": "supplier_quote_gap_review",
+    "goal_id": "supplier_quote_gap_review",
+    "project_id": "",
+    "input_refs": [
+      "commerce:offers:committed"
+    ],
+    "input_versions": {},
+    "priority": 5,
+    "deadline": "2026-09-21T03:10:23.241092+00:00",
+    "status": "succeeded",
+    "attempt": 1,
+    "lease_owner": "",
+    "lease_until": null,
+    "fencing_token": 1,
+    "model_budget": {
+      "max_tool_calls": 12
+    },
+    "parent_job_id": "",
+    "idempotency_key": "real-20260921T030518Z",
+    "write_required": false,
+    "max_attempts": 3,
+    "result_ref": "decision:dec_a8ef88eb460444ef",
+    "error": null,
+    "cancel_reason": null,
+    "cost": {
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "input_tokens": 250,
+      "output_tokens": 47,
+      "total_tokens": 3241,
+      "note": null
+    },
+    "lease_claimed_at": "2026-09-21T03:06:12.400027+00:00",
+    "last_heartbeat_at": "2026-09-21T03:06:18.766293+00:00",
+    "completed_at": "2026-09-21T03:06:18.771807+00:00"
+  },
+  "decision_ids": [
+    "dec_a8ef88eb460444ef"
+  ],
+  "latest_decision": {
+    "record_type": "decision_record",
+    "record_id": "dec_a8ef88eb460444ef",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "agent_job:job_1dccf9b6ef684375",
+    "trace_id": "trace_de45edde0cae4cfc",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-09-21T03:06:18.769300+00:00",
+    "summary": "报价快照为空（committed_offer_count=0，offers=[]），没有任何 SKU 报价记录可供缺口审查。",
+    "actor_role": "supplier_quote_gap_review",
+    "decision_type": "supplier_quote_gap_review",
+    "target_ref": "supplier_quote_gap_review",
+    "opportunity_id": "",
+    "options": [],
+    "recommendation": "no gaps found in the reviewed snapshots",
+    "evidence_refs": [
+      {
+        "ref_type": "pi_session",
+        "ref_id": "pi-jobs-xianyu"
+      },
+      {
+        "ref_type": "pi_tool_events",
+        "ref_id": "job:job_1dccf9b6ef684375"
+      },
+      {
+        "ref_type": "offers_query",
+        "ref_id": "commerce:offers:committed"
+      },
+      {
+        "ref_type": "agent_job",
+        "ref_id": "job_1dccf9b6ef684375"
+      }
+    ],
+    "input_versions": {
+      "job_revision": 1,
+      "job_attempt": 1,
+      "job_inputs": {}
+    },
+    "constraint_checks": [],
+    "unknowns": [
+      "none"
+    ],
+    "model_version": "deepseek-flash",
+    "cost": {
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "input_tokens": 250,
+      "output_tokens": 47,
+      "total_tokens": 3241,
+      "note": null
+    },
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": {
+      "findings": [],
+      "summary": "报价快照为空（committed_offer_count=0，offers=[]），没有任何 SKU 报价记录可供缺口审查。"
+    }
+  },
+  "pi": {
+    "session_id": "pi-jobs-xianyu",
+    "model": "deepseek-flash",
+    "cost_display": {
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "input_tokens": 250,
+      "output_tokens": 47,
+      "total_tokens": 3241,
+      "note": null
+    }
+  },
+  "inputs": {
+    "input_refs": [
+      "commerce:offers:committed"
+    ],
+    "role": "supplier_quote_gap_review"
+  },
+  "runner": {
+    "started": true,
+    "stopped": false
+  },
+  "submitted_job_id": "job_be7e79f3f16a4494",
+  "real_run": {
+    "executed_at": "2026-09-21T03:06:18.793037+00:00",
+    "run_outcome": {
+      "job_id": "job_1dccf9b6ef684375",
+      "outcome": "succeeded",
+      "decision_id": "dec_a8ef88eb460444ef",
+      "findings": 0,
+      "tool_calls": 0
+    },
+    "layer": "REAL (PiRpcClient subprocess; mock runs counted separately in tests)",
+    "server_port": 8788
+  }
+}

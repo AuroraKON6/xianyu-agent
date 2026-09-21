@@ -1,0 +1,70 @@
+{
+  "job": {
+    "record_type": "agent_job",
+    "record_id": "job_1dccf9b6ef684375",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_b0eebefc9b9348e3",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-09-21T03:05:23.241092+00:00",
+    "role": "supplier_quote_gap_review",
+    "goal_id": "supplier_quote_gap_review",
+    "project_id": "",
+    "input_refs": [
+      "commerce:offers:committed"
+    ],
+    "input_versions": {},
+    "priority": 5,
+    "deadline": "2026-09-21T03:10:23.241092+00:00",
+    "status": "queued",
+    "attempt": 0,
+    "lease_owner": "",
+    "lease_until": null,
+    "fencing_token": 0,
+    "model_budget": {
+      "max_tool_calls": 12
+    },
+    "parent_job_id": "",
+    "idempotency_key": "real-20260921T030518Z",
+    "write_required": false,
+    "max_attempts": 3,
+    "result_ref": null,
+    "error": null,
+    "cancel_reason": null,
+    "cost": null
+  },
+  "decision_ids": [],
+  "latest_decision": null,
+  "pi": {
+    "session_id": null,
+    "model": null,
+    "cost_display": {
+      "total_tokens": null,
+      "display": "unknown (not zero)"
+    }
+  },
+  "inputs": {
+    "input_refs": [
+      "commerce:offers:committed"
+    ],
+    "role": "supplier_quote_gap_review"
+  },
+  "runner": {
+    "started": true,
+    "stopped": false
+  },
+  "real_run": {
+    "executed_at": "2026-09-21T03:05:30.834383+00:00",
+    "run_outcome": {
+      "job_id": "job_12a2b0896c4e4c28",
+      "outcome": "succeeded",
+      "decision_id": "dec_b3e89f3257084266",
+      "findings": 0,
+      "tool_calls": 0
+    },
+    "layer": "REAL (PiRpcClient subprocess; mock runs counted separately in tests)",
+    "server_port": 8788
+  }
+}

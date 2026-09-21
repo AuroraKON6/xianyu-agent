@@ -383,7 +383,8 @@ class SyncGapDrills(DrillBase):
         thread.start()
         self.assertTrue(append_entered.wait(timeout=5))
 
-        # run reconcile while the creation is parked inside its append
+        # run reconcile while the creation is parked inside its append;
+        # the main thread releases the park explicitly afterwards
         report = reconcile_orphan_reservations(self.procurement, self.inventory)
 
         allow_append.set()

@@ -40,6 +40,11 @@ async function apiRequest(
     signal: combined,
     headers: {
       Accept: "application/json",
+      // job-runner sessions carry a read-only gate token (set by
+      // PiTaskRunner); normal operator sessions send nothing
+      ...(process.env.XIANYU_PI_JOB_TOKEN
+        ? { "X-Xianyu-Job-Token": process.env.XIANYU_PI_JOB_TOKEN }
+        : {}),
       ...(init.body ? { "Content-Type": "application/json" } : {}),
       ...(init.headers || {}),
     },
