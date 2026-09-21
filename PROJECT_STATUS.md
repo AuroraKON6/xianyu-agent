@@ -2,6 +2,16 @@
 
 Updated: 2026-09-18
 
+## 2026-09-18 第三次复验修复轮（2 项 P1 同步缺口）
+
+证据：[docs/acceptance/WP_RELIABILITY_FIXES_R3_2026-09-18.md](docs/acceptance/WP_RELIABILITY_FIXES_R3_2026-09-18.md)。全量回归 **1296/1296**。
+
+- 先红后修：对账×创建交错、取消×供应商单登记交错两条确定性失败测试复现操作者症状 → 修复 → 3 连跑全绿。
+- 修复：新增 `ProcurementService.mutation_guard()`；对账全程持同一守卫（检查+释放同区间）；approve/record_supplier_order/record_receipt 纳入同一 mutation 域（与 create/cancel 同锁）。
+- 重启测试边界表述保持：文件重载一致性，非进程强杀恢复。Pi 阶段继续冻结。
+
+---
+
 ## 2026-09-18 演练轮（跨文件失败 / 重启恢复 / 完整业务流程组合）
 
 证据：[docs/acceptance/WP_DRILLS_2026-09-18.md](docs/acceptance/WP_DRILLS_2026-09-18.md)。全量回归 **1294/1294**。
