@@ -5477,3 +5477,53 @@ $("#match-run-btn")?.addEventListener("click", commerceRunMatch);
 $("#opp-create-btn")?.addEventListener("click", commerceCreateOpportunity);
 $("#opp-evaluate-btn")?.addEventListener("click", commerceEvaluate);
 $("#commerce-refresh")?.addEventListener("click", commerceRefreshFunnel);
+
+// Pi task desk: submit read-only analysis roles and execute through real Pi
+async function piSubmitTask() {
+  const role = $("#pi-role-select")?.value;
+  try {
+    const job = await api("/commerce/pi-tasks/submit", {
+      method: "POST",
+      body: JSON.stringify({ role }),
+    });
+    $("#pi-task-result").innerHTML = `任务已入队：<code>${escapeHtml(job.record_id)}</code>（${escapeHtml(role)}）`;
+  } catch (e) {
+    $("#pi-task-result").textContent = `提交失败：${e.message}`;
+  }
+}
+
+async function piRunNext() {
+  const node = $("#pi-task-result");
+  node.textContent = "正在通过真实 Pi 执行（约 1-2 分钟）…";
+  try {
+    const result = await api("/commerce/pi-tasks/run-next", { method: "POST" });
+    if (result.outcome === "no_claimable_job") {
+      node.textContent = "没有可执行任务，请先提交";
+      return;
+    }
+    node.innerHTML = `<p>结果：<strong>${escapeHtml(result.outcome)}</strong> ｜ 任务 <code>${escapeHtml(result.job_id || "")}</code>` +
+      `${result.decision_id ? ` ｜ 决策 <code>${escapeHtml(result.decision_id)}</code>` : ""}</p>` +
+      `<p>证据：GET /commerce/pi-tasks/${escapeHtml(result.job_id || "")}/evidence</p>`;
+  } catch (e) {
+    node.textContent = `执行失败：${e.message}`;
+  }
+}
+
+async function piRefreshStatus() {
+  try {
+    const stats = await api("/commerce/agent-jobs/stats");
+    const shadow = await api("/commerce/shadow-observer/status");
+    const rows = Object.entries(stats.by_status || {})
+      .map(([status, count]) => `${escapeHtml(status)}: ${count}`)
+      .join(" ｜ ");
+    $("#pi-task-result").innerHTML =
+      `<p>任务：${rows || "无"} ｜ 影子线程：${shadow.background_thread ? "运行中" : "关闭"} ｜ 影子样本：${shadow.metrics?.total ?? 0} 条（${shadow.metrics?.allowed ?? 0} 允许）</p>` +
+      `<p>${escapeHtml(shadow.metrics?.readiness_note || "")}</p>`;
+  } catch (e) {
+    $("#pi-task-result").textContent = `状态读取失败：${e.message}`;
+  }
+}
+
+$("#pi-submit-btn")?.addEventListener("click", piSubmitTask);
+$("#pi-run-btn")?.addEventListener("click", piRunNext);
+$("#pi-status-btn")?.addEventListener("click", piRefreshStatus);

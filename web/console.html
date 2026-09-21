@@ -330,6 +330,21 @@
                 <div id="decision-card" class="commerce-result">核算后自动展示</div>
               </section>
             </div>
+            <div class="panel-head"><h4>Pi 任务台（只读分析角色 · 影子观察）</h4></div>
+            <div class="commerce-step">
+              <div class="commerce-grid">
+                <select id="pi-role-select">
+                  <option value="supplier_quote_gap_review">供应商报价缺口审查</option>
+                  <option value="match_audit">同款匹配审计</option>
+                  <option value="pricing_review">定价复核</option>
+                  <option value="opportunity_screening">商机筛选</option>
+                </select>
+                <button id="pi-submit-btn" class="text-btn" type="button">提交任务</button>
+                <button id="pi-run-btn" class="primary" type="button">执行一个任务（真实 Pi）</button>
+                <button id="pi-status-btn" class="text-btn" type="button">刷新状态</button>
+              </div>
+              <div id="pi-task-result" class="commerce-result">提交后点「执行一个任务」；执行经过真实 Pi，耗时约 1-2 分钟</div>
+            </div>
             <div class="panel-head"><h4>商机漏斗（记录事实，非经营结果）</h4></div>
             <div id="commerce-funnel" class="commerce-result">点击刷新查看</div>
           </article>

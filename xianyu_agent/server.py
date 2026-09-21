@@ -132,6 +132,7 @@ from .pi_jobs import (  # noqa: E402
     PiTaskRunner,
     ReadOnlyJobGate,
 )
+from .shadow_observer import ShadowObserver, start_background_observer  # noqa: E402
 from .operating_mandates import (  # noqa: E402
     ActionRequest,
     MandateError,
@@ -151,11 +152,22 @@ reply_draft_service = DraftReplyService(settings.data_dir, product_facts_store, 
 pi_job_gate = ReadOnlyJobGate()
 pi_task_runner = PiTaskRunner(
     agent_job_store,
-    commerce_repositories.decisions,
-    commerce_repositories.offers,
+    commerce_repositories,
     gate=pi_job_gate,
 )
 pi_task_runner.start()
+shadow_observer = ShadowObserver(
+    settings.data_dir,
+    draft_service=reply_draft_service,
+    opportunities=commerce_repositories.opportunities,
+    mandates=operating_mandate_store,
+    shadow_log=shadow_authorization_log,
+)
+shadow_observer_thread = start_background_observer(
+    shadow_observer,
+    interval_seconds=float(os.environ.get("SHADOW_OBSERVER_INTERVAL_SECONDS", "60")),
+    enabled=os.environ.get("SHADOW_OBSERVER_ENABLED", "1") not in ("0", "false", "False"),
+)
 
 
 @app.middleware("http")
@@ -7156,6 +7168,19 @@ async def submit_pi_quote_review(request: Request) -> Dict[str, Any]:
     )
 
 
+@app.post("/commerce/pi-tasks/submit")
+async def submit_pi_task(request: Request) -> Dict[str, Any]:
+    """Submit a job for any supported read-only analysis role."""
+    payload = await request.json()
+    try:
+        return pi_task_runner.submit_job(
+            str(payload.get("role") or ""),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/commerce/pi-tasks/run-next")
 def run_next_pi_task() -> Dict[str, Any]:
     """Execute at most one queued job through the real Pi RPC client.
@@ -7172,6 +7197,20 @@ def run_next_pi_task() -> Dict[str, Any]:
 @app.post("/commerce/pi-tasks/reconcile")
 def reconcile_pi_tasks() -> Dict[str, Any]:
     return pi_task_runner.reconcile_task_decisions()
+
+
+@app.post("/commerce/shadow-observer/tick")
+def shadow_observer_tick() -> Dict[str, Any]:
+    return shadow_observer.run_tick()
+
+
+@app.get("/commerce/shadow-observer/status")
+async def shadow_observer_status() -> Dict[str, Any]:
+    return {
+        "background_thread": shadow_observer_thread is not None,
+        "metrics": shadow_authorization_log.metrics(),
+        "note": "shadow records only; no action is ever executed by the observer",
+    }
 
 
 @app.get("/commerce/pi-tasks/{job_id}/evidence")

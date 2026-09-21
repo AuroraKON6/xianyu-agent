@@ -62,7 +62,7 @@ def make_runner(tmp, **kwargs):
     root = Path(tmp)
     jobs = AgentJobStore(root)
     repos = JsonCommerceRepositories(root)
-    runner = PiTaskRunner(jobs, repos.decisions, repos.offers, **kwargs)
+    runner = PiTaskRunner(jobs, repos, **kwargs)
     runner.start()
     return runner, jobs, repos
 
@@ -81,7 +81,7 @@ class RunnerBoundaryTests(unittest.TestCase):
     def test_run_before_start_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            runner = PiTaskRunner(AgentJobStore(root), JsonCommerceRepositories(root).decisions, JsonCommerceRepositories(root).offers)
+            runner = PiTaskRunner(AgentJobStore(root), JsonCommerceRepositories(root))
             with self.assertRaises(RuntimeError):
                 runner.run_once(pi_factory=lambda env: FakePi())
 
