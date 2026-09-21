@@ -55,7 +55,7 @@ class InventoryAllocationTests(unittest.TestCase):
         self.service.register_supplier_snapshot(account_id="acc-1", sku="GZ-1200", snapshot=snapshot)
         allocation = self.service.allocation(account_id="acc-1", sku="GZ-1200")
         self.assertEqual(allocation["sellable"], 0)
-        self.assertIn("unknown or expired", allocation["sellable_reason"])
+        self.assertIn("unknown", allocation["sellable_reason"])
 
     def test_expired_supplier_stock_sells_zero(self):
         stale = supplier_snapshot(stock=10, observed=datetime.now(UTC) - timedelta(hours=30))

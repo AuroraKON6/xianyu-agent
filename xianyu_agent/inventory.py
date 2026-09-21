@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Mapping, Optional
 from .candidate_activation import QUOTE_MAX_AGE_SECONDS
 from .commerce.repositories import LockedJsonList
 from .commerce.contracts import new_id, utc_now
-from .providers.freshness import classify_snapshot
+from .providers.freshness import FRESH_CURRENT, classify_snapshot
 
 DEFAULT_SAFETY_MARGIN = 1
 
@@ -35,6 +35,14 @@ class InventoryAllocationService:
     def __init__(self, data_dir, *, safety_margin: int = DEFAULT_SAFETY_MARGIN) -> None:
         self._store = LockedJsonList(data_dir / "commerce" / "inventory.json")
         self._safety_margin = max(0, int(safety_margin))
+
+    @staticmethod
+    def _stock_is_current(record: Mapping[str, Any], now: datetime) -> bool:
+        observed = str(record.get("supplier_observed_at") or "")
+        if not observed:
+            return False
+        meta = classify_snapshot({"provider_id": "supplier_file:x", "observed_at": observed}, now=now)
+        return meta["freshness"] == FRESH_CURRENT
 
     # ---- supplier stock registration ----
 
@@ -99,7 +107,8 @@ class InventoryAllocationService:
                 return record
         return None
 
-    def allocation(self, *, account_id: str, sku: str) -> Dict[str, Any]:
+    def allocation(self, *, account_id: str, sku: str, now: Optional[datetime] = None) -> Dict[str, Any]:
+        moment = now or utc_now()
         found = self._store.find(
             lambda r: str(r.get("account_id")) == account_id and str(r.get("sku")) == sku
         )
@@ -114,7 +123,18 @@ class InventoryAllocationService:
             }
         record = found[0]
         locked = sum(int(q) for q in (record.get("locks") or {}).values())
-        available = max(0, int(record.get("sellable_base") or 0) - locked)
+        current = self._stock_is_current(record, moment)
+        base = int(record.get("sellable_base") or 0) if current else 0
+        available = max(0, base - locked) if current else 0
+        reason = (
+            "ok"
+            if current and record.get("supplier_stock") is not None
+            else (
+                "supplier stock expired; refresh the snapshot before selling"
+                if not current
+                else "supplier stock unknown; paused"
+            )
+        )
         return {
             "account_id": account_id,
             "sku": sku,
@@ -122,24 +142,41 @@ class InventoryAllocationService:
             "supplier_stock": record.get("supplier_stock"),
             "supplier_observed_at": record.get("supplier_observed_at"),
             "freshness": record.get("freshness"),
-            "sellable": int(record.get("sellable_base") or 0),
+            "stock_current_at_read": current,
+            "sellable": base,
             "locked": locked,
             "available": available,
-            "sellable_reason": "ok" if record.get("supplier_stock") is not None else "supplier stock unknown or expired; paused",
+            "sellable_reason": reason,
         }
 
     # ---- order locks ----
 
-    def lock_for_order(self, *, account_id: str, sku: str, order_id: str, quantity: int) -> Dict[str, Any]:
+    def lock_for_order(
+        self,
+        *,
+        account_id: str,
+        sku: str,
+        order_id: str,
+        quantity: int,
+        now: Optional[datetime] = None,
+    ) -> Dict[str, Any]:
         if quantity <= 0:
             raise InventoryError("lock quantity must be positive")
         if not order_id.strip():
             raise InventoryError("order_id required")
+        moment = now or utc_now()
 
         def mutate(items: LockedJsonList) -> Dict[str, Any]:
             record = self._find(items, account_id, sku)
             if record is None:
                 raise InventoryError(f"no inventory registered for {account_id}/{sku}; refusing to oversell")
+            # re-validate freshness at lock time: a snapshot that was
+            # current at registration may have expired since
+            if not self._stock_is_current(record, moment):
+                raise InventoryError(
+                    f"supplier stock for {account_id}/{sku} expired "
+                    f"(observed {record.get('supplier_observed_at')}); refresh before locking"
+                )
             locks = record.setdefault("locks", {})
             if order_id in locks:
                 return dict(record)  # idempotent re-lock

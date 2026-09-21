@@ -16,6 +16,7 @@ as provisional entries; corrections happen by reversal, never edits.
 from __future__ import annotations
 
 from decimal import Decimal
+from datetime import datetime
 from typing import Any, Dict, List, Mapping, Optional
 
 from .commerce.contracts import (
@@ -24,6 +25,7 @@ from .commerce.contracts import (
     utc_now,
 )
 from .commerce.repositories import LockedJsonList
+from .inventory import InventoryError
 from .providers.freshness import FRESH_CURRENT, classify_snapshot
 
 
@@ -32,12 +34,26 @@ class ProcurementError(RuntimeError):
 
 
 class ProcurementService:
-    def __init__(self, data_dir, repos, inventory) -> None:
+    def __init__(self, data_dir, repos, inventory, import_service=None) -> None:
         self._store = LockedJsonList(data_dir / "commerce" / "procurement_orders.json")
         self._repos = repos
         self._inventory = inventory
+        self._import_service = import_service
 
     # ---- creation with re-verification ----
+
+    def _snapshot_allowed(self, snapshot: Mapping[str, Any]) -> bool:
+        """Quotes from import batches are only usable while the batch is committed.
+
+        Revoked and failed batches leave their snapshots in history for
+        audit, but those snapshots must never drive a new procurement.
+        """
+        source_ref = str(snapshot.get("source_ref") or "")
+        if not source_ref.startswith("import_batch:"):
+            return True
+        if self._import_service is None:
+            return False  # no batch authority wired: refuse rather than guess
+        return self._import_service.batch_status(source_ref.split(":", 1)[1]) == "committed"
 
     def create_from_sales_order(
         self,
@@ -47,22 +63,36 @@ class ProcurementService:
         quantity: int,
         sales_order_ref: str,
         opportunity_id: str = "",
+        now: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         if not sales_order_ref.strip():
             raise ProcurementError("sales_order_ref required")
         if quantity <= 0:
             raise ProcurementError("quantity must be positive")
 
-        # select the freshest supplier_file snapshot for this SKU
+        # business idempotency: one live procurement per sales order
+        duplicates = [
+            order
+            for order in self._store.find(lambda o: str(o.get("sales_order_ref")) == sales_order_ref)
+            if str(order.get("status")) != "cancelled"
+        ]
+        if duplicates:
+            raise ProcurementError(
+                f"procurement already exists for sales order {sales_order_ref}: "
+                f"{duplicates[0]['record_id']} ({duplicates[0]['status']})"
+            )
+
+        # select the freshest supplier_file snapshot for this SKU that is
+        # still backed by a committed import batch
         candidates = [
             record
             for record in self._repos.offers.list(source_item_id=sku)
-            if str(record.get("provider_id", "")).startswith("supplier_file")
+            if str(record.get("provider_id", "")).startswith("supplier_file") and self._snapshot_allowed(record)
         ]
         if not candidates:
-            raise ProcurementError(f"no supplier offer for sku {sku}; procurement refused")
+            raise ProcurementError(f"no usable supplier offer for sku {sku}; procurement refused")
         latest = max(candidates, key=lambda r: str(r.get("observed_at") or ""))
-        freshness = classify_snapshot(latest)
+        freshness = classify_snapshot(latest, now=now)
         if freshness["freshness"] != FRESH_CURRENT:
             raise ProcurementError(
                 f"supplier quote for {sku} is {freshness['freshness']}; refresh before procuring"
@@ -71,7 +101,7 @@ class ProcurementService:
         freight = latest.get("shipping_quote") or {}
         if price.get("state") != PRICE_STATE_KNOWN:
             raise ProcurementError(f"supplier price unknown for {sku}; procurement refused")
-        allocation = self._inventory.allocation(account_id=account_id, sku=sku)
+        allocation = self._inventory.allocation(account_id=account_id, sku=sku, now=now)
         if allocation["available"] < quantity:
             raise ProcurementError(
                 f"allocation {allocation['available']} < requested {quantity} for {account_id}/{sku}"
@@ -86,10 +116,20 @@ class ProcurementService:
             sales_order_ref=sales_order_ref,
             opportunity_id=opportunity_id,
             status="awaiting_approval",
+            account_id=account_id,
         )
         order["supplier_snapshot_id"] = latest["record_id"]
         order["supplier_price_at_creation"] = price.get("amount")
-        return self._store.append(order)
+
+        # atomic inventory reservation keyed to the sales order; if the
+        # procurement record cannot be stored, the reservation unwinds
+        lock_key = f"sales:{sales_order_ref}"
+        self._inventory.lock_for_order(account_id=account_id, sku=sku, order_id=lock_key, quantity=quantity)
+        try:
+            return self._store.append(order)
+        except Exception:
+            self._inventory.release_order(account_id=account_id, sku=sku, order_id=lock_key, reason="procurement store failed")
+            raise
 
     # ---- human steps ----
 
@@ -128,7 +168,20 @@ class ProcurementService:
         found = self._get(procurement_id)
         if str(found.get("status")) in ("ordered", "received"):
             raise ProcurementError("cannot cancel after supplier order; use the after-sales flow")
-        return self._transition(procurement_id, "cancelled", require_status=None, actor=operator, extra={"cancel_reason": reason})
+        cancelled = self._transition(procurement_id, "cancelled", require_status=None, actor=operator, extra={"cancel_reason": reason})
+        # return the reserved stock to the allocation
+        sales_order_ref = str(found.get("sales_order_ref") or "")
+        if sales_order_ref:
+            try:
+                self._inventory.release_order(
+                    account_id=str(found.get("account_id") or ""),
+                    sku=str(found.get("canonical_sku") or ""),
+                    order_id=f"sales:{sales_order_ref}",
+                    reason=f"procurement cancelled: {reason}",
+                )
+            except InventoryError:
+                pass  # no lock held (e.g. created before the reservation fix)
+        return cancelled
 
     def _transition(
         self,

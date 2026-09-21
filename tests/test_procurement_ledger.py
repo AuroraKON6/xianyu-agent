@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
 from xianyu_agent.commerce import JsonCommerceRepositories
 from xianyu_agent.commerce.contracts import build_offer_snapshot
-from xianyu_agent.inventory import InventoryAllocationService
+from xianyu_agent.inventory import InventoryAllocationService, InventoryError
 from xianyu_agent.ledger_service import LedgerError, LedgerService
 from xianyu_agent.procurement import ProcurementError, ProcurementService
+from xianyu_agent.supplier_import import SupplierImportService
 
 UTC = timezone.utc
 
@@ -204,6 +205,121 @@ class LedgerIntegrityTests(ScenarioBase):
         entry = self.ledger.record_spend(category="x", amount=money("1"), opportunity_id="o")
         with self.assertRaises(LedgerError):
             self.ledger.reverse(entry["record_id"], reason="  ")
+
+
+class ProcurementIdempotencyTests(ScenarioBase):
+    """P1 regression: duplicate sales orders and missing stock reservation."""
+
+    def test_duplicate_sales_order_rejected_and_stock_reserved(self):
+        first = self.procurement.create_from_sales_order(
+            account_id="acc-1", sku="GZ-1200", quantity=8, sales_order_ref="sale-dup"
+        )
+        self.assertEqual(first["status"], "awaiting_approval")
+        # the reservation is visible immediately
+        allocation = self.inventory.allocation(account_id="acc-1", sku="GZ-1200")
+        self.assertEqual(allocation["available"], 2)  # 10 registered, 8 reserved
+        # duplicate submission is refused
+        with self.assertRaises(ProcurementError) as ctx:
+            self.procurement.create_from_sales_order(
+                account_id="acc-1", sku="GZ-1200", quantity=8, sales_order_ref="sale-dup"
+            )
+        self.assertIn("already exists", str(ctx.exception))
+        # cancelling releases the reservation
+        self.procurement.cancel(first["record_id"], reason="buyer cancelled", operator="操作者")
+        released = self.inventory.allocation(account_id="acc-1", sku="GZ-1200")
+        self.assertEqual(released["available"], 10)
+        # after cancellation a new procurement for the same order is allowed
+        second = self.procurement.create_from_sales_order(
+            account_id="acc-1", sku="GZ-1200", quantity=8, sales_order_ref="sale-dup"
+        )
+        self.assertEqual(second["status"], "awaiting_approval")
+
+
+class RevokedBatchIsolationTests(unittest.TestCase):
+    """P1 regression: revoked import batches must not drive procurement."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        self.repos = JsonCommerceRepositories(root)
+        self.importer = SupplierImportService(self.repos, root)
+        self.inventory = InventoryAllocationService(root, safety_margin=0)
+        self.procurement = ProcurementService(root, self.repos, self.inventory, self.importer)
+        quote = (
+            "货号,品名,单价,单位,起订量,库存,运费,规格,品牌,成色\n"
+            "GZ-1200,商用不锈钢工作台,150,件,2,10,15,120x60x85cm,众商,全新\n"
+        ).encode("utf-8")
+        preview = self.importer.preview_bytes(quote, kind="csv")
+        self.confirm = self.importer.confirm(
+            preview["preview_id"],
+            content_sha256=preview["content_sha256"],
+            revision=preview["revision"],
+            supplier="撤销测试供应商",
+            operator="test",
+        )
+        snapshot = self.confirm["snapshots"][0]
+        self.inventory.register_supplier_snapshot(account_id="acc-1", sku="GZ-1200", snapshot=snapshot)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_revoked_batch_quote_cannot_procure(self):
+        self.importer.revoke_batch(self.confirm["batch"]["record_id"], operator="t", reason="错误版本")
+        with self.assertRaises(ProcurementError) as ctx:
+            self.procurement.create_from_sales_order(
+                account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-r1"
+            )
+        self.assertIn("no usable supplier offer", str(ctx.exception))
+
+    def test_committed_batch_quote_still_procures(self):
+        order = self.procurement.create_from_sales_order(
+            account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-r2"
+        )
+        self.assertEqual(order["status"], "awaiting_approval")
+
+
+class StockExpiryRevalidationTests(ScenarioBase):
+    """P1 regression: expired stock must fail new locks at read/lock time."""
+
+    def test_expired_stock_blocks_new_locks_and_allocation_reads_zero(self):
+        later = datetime.now(UTC) + timedelta(hours=30)
+        # allocation re-validates freshness at read time
+        allocation = self.inventory.allocation(account_id="acc-1", sku="GZ-1200", now=later)
+        self.assertEqual(allocation["available"], 0)
+        self.assertFalse(allocation["stock_current_at_read"])
+        self.assertIn("expired", allocation["sellable_reason"])
+        # locking is refused with the expiry reason
+        with self.assertRaises(InventoryError) as ctx:
+            self.inventory.lock_for_order(
+                account_id="acc-1", sku="GZ-1200", order_id="late-order", quantity=1, now=later
+            )
+        self.assertIn("expired", str(ctx.exception))
+        # procurement is refused too (allocation check sees 0 at that time)
+        with self.assertRaises(ProcurementError):
+            self.procurement.create_from_sales_order(
+                account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-late", now=later
+            )
+        # a fresh snapshot unblocks selling again
+        fresh = build_offer_snapshot(
+            provider_id="supplier_file:S供应商",
+            source_item_id="GZ-1200",
+            source_sku_id="GZ-1200",
+            observed_at=datetime.now(UTC),
+            attributes={"name": "不锈钢工作台"},
+            condition="全新",
+            unit="件",
+            price_type="supplier_confirmed",
+            eligible_price=money("150"),
+            shipping_quote=money("15"),
+            stock_state="in_stock",
+            stock_quantity=10,
+            payload_hash="fresh-again",
+            account_id="",
+            source_ref="test",
+        )
+        self.repos.offers.add(fresh)
+        self.inventory.register_supplier_snapshot(account_id="acc-1", sku="GZ-1200", snapshot=fresh)
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 10)
 
 
 class ReversalAbuseTests(ScenarioBase):

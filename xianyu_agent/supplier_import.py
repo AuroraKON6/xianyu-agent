@@ -694,6 +694,15 @@ class SupplierImportService:
 
         return self._batches.find(predicate)
 
+    def batch_status(self, batch_id: str) -> str:
+        """Status of one import batch ("" when unknown).
+
+        Downstream consumers (procurement, providers) use this to
+        refuse quotes from revoked or failed batches.
+        """
+        found = self._batches.find(lambda b: str(b.get("record_id")) == batch_id)
+        return str(found[0].get("status")) if found else ""
+
     def revoke_batch(self, batch_id: str, *, operator: str, reason: str) -> Dict[str, Any]:
         if not reason.strip():
             raise ImportPreviewError("revocation requires a reason")
