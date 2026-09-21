@@ -353,7 +353,14 @@ class SyncGapDrills(DrillBase):
 
     def test_reconcile_cannot_release_a_reservation_being_created(self):
         """Reconcile must not run between the inventory lock and the
-        procurement append of a concurrent creation."""
+        procurement append of a concurrent creation.
+
+        Deterministic order control: the creator parks INSIDE its append
+        (holding the mutation lock); reconcile runs in a second thread and
+        must be BLOCKED while the creation is in flight; the main thread
+        releases the park explicitly (no timeout reliance) and reconcile
+        then sees the live order.
+        """
         import threading
 
         self.seed_live_pipeline()
@@ -363,7 +370,7 @@ class SyncGapDrills(DrillBase):
 
         def paused_append(item):
             append_entered.set()  # creation holds the mutation lock, lock+checks done
-            allow_append.wait(timeout=10)
+            allow_append.wait(timeout=10)  # deadlock safety only, never the driver
             return original_append(item)
 
         self.procurement._store.append = paused_append
@@ -379,16 +386,29 @@ class SyncGapDrills(DrillBase):
             except Exception as exc:  # noqa: BLE001
                 create_result["error"] = str(exc)
 
-        thread = threading.Thread(target=creator)
-        thread.start()
+        creator_thread = threading.Thread(target=creator)
+        creator_thread.start()
         self.assertTrue(append_entered.wait(timeout=5))
 
-        # run reconcile while the creation is parked inside its append;
-        # the main thread releases the park explicitly afterwards
-        report = reconcile_orphan_reservations(self.procurement, self.inventory)
+        # reconcile in its own thread: it must WAIT for the creation
+        reconcile_result = {}
 
+        def reconciler():
+            reconcile_result["report"] = reconcile_orphan_reservations(self.procurement, self.inventory)
+
+        reconcile_thread = threading.Thread(target=reconciler)
+        reconcile_thread.start()
+        # while the creation is parked, reconcile stays blocked on the
+        # mutation guard (join with a short timeout proves liveness)
+        reconcile_thread.join(timeout=1.0)
+        self.assertTrue(reconcile_thread.is_alive(), "reconcile must wait for the in-flight creation")
+
+        # main thread releases the park explicitly; creation finishes first
         allow_append.set()
-        thread.join(timeout=10)
+        creator_thread.join(timeout=10)
+        reconcile_thread.join(timeout=10)
+        self.assertFalse(reconcile_thread.is_alive())
+        report = reconcile_result["report"]
 
         # the creation must have succeeded
         self.assertNotIn("error", create_result)
@@ -409,27 +429,29 @@ class SyncGapDrills(DrillBase):
         self.assertEqual(report["released"], [])
         self.assertGreaterEqual(report["kept_live"], 1)
 
-    def test_cancel_cannot_overwrite_a_registered_supplier_order(self):
-        """Cancel must not overwrite an order that concurrently moved to
-        `ordered`; state changes need one synchronization domain and a
-        re-check under the lock."""
+    def _park_transition(self, to_status, entered, allow):
+        """Park ONLY the transition of `to_status`; others pass through."""
+        original_transition = self.procurement._transition
+
+        def paused_transition(procurement_id, target_status, **kwargs):
+            if target_status == to_status:
+                entered.set()
+                allow.wait(timeout=10)  # deadlock safety only, never the driver
+            return original_transition(procurement_id, target_status, **kwargs)
+
+        self.procurement._transition = paused_transition
+
+    def test_cancel_first_registration_refused(self):
+        """Order A: cancel acquires the lock; the concurrent supplier-order
+        registration must WAIT and then be refused on the cancelled order."""
         import threading
 
         self.seed_live_pipeline()
-        order = self._create_and_approve("sale-sync-2")
+        order = self._create_and_approve("sale-sync-2a")
 
-        # park ONLY the cancel transition; other transitions pass through
-        transition_entered = threading.Event()
-        allow_transition = threading.Event()
-        original_transition = self.procurement._transition
-
-        def paused_transition(procurement_id, to_status, **kwargs):
-            if to_status == "cancelled":
-                transition_entered.set()
-                allow_transition.wait(timeout=10)
-            return original_transition(procurement_id, to_status, **kwargs)
-
-        self.procurement._transition = paused_transition
+        entered = threading.Event()
+        allow = threading.Event()
+        self._park_transition("cancelled", entered, allow)
 
         cancel_result = {}
 
@@ -440,43 +462,90 @@ class SyncGapDrills(DrillBase):
             except ProcurementError as exc:
                 cancel_result["blocked"] = str(exc)
 
-        thread = threading.Thread(target=canceller)
-        thread.start()
-        self.assertTrue(transition_entered.wait(timeout=5))
+        cancel_thread = threading.Thread(target=canceller)
+        cancel_thread.start()
+        self.assertTrue(entered.wait(timeout=5))  # cancel parked inside the lock
 
-        # while cancel is parked, the supplier order registers
-        registration_error = None
-        try:
-            self.procurement.record_supplier_order(
-                order["record_id"], supplier_order_id="SO-RACE-1", operator="o"
-            )
-        except ProcurementError as exc:
-            registration_error = str(exc)
+        registration_result = {}
 
-        allow_transition.set()
-        thread.join(timeout=10)
+        def registrar():
+            try:
+                self.procurement.record_supplier_order(
+                    order["record_id"], supplier_order_id="SO-RACE-A", operator="o"
+                )
+                registration_result["ok"] = True
+            except ProcurementError as exc:
+                registration_result["refused"] = str(exc)
 
+        registration_thread = threading.Thread(target=registrar)
+        registration_thread.start()
+        # registration waits for the cancel to finish
+        registration_thread.join(timeout=1.0)
+        self.assertTrue(registration_thread.is_alive(), "registration must wait for the cancelling owner")
+
+        allow.set()  # main thread releases the park explicitly
+        cancel_thread.join(timeout=10)
+        registration_thread.join(timeout=10)
+
+        self.assertTrue(cancel_result.get("ok"), f"cancel should win its own order: {cancel_result}")
+        self.assertIn("refused", registration_result, f"late registration must fail: {registration_result}")
         stored = self.procurement.get(order["record_id"])
-        supplier_id = str(stored.get("supplier_order_id") or "")
+        self.assertEqual(stored["status"], "cancelled")
+        self.assertEqual(str(stored.get("supplier_order_id") or ""), "")
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 10)
 
-        if stored["status"] == "cancelled":
-            # cancel won: it must have cancelled a still-approved order,
-            # and the late supplier registration must have been refused
-            self.assertEqual(supplier_id, "", "cancelled order must not carry a supplier order id")
-            self.assertIsNotNone(registration_error, "registration on a cancelled order must fail")
-            self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 10)
-        else:
-            # registration won: the order is ordered with its id and cancel
-            # must have been refused (ordered orders are not cancellable)
-            self.assertEqual(stored["status"], "ordered")
-            self.assertEqual(supplier_id, "SO-RACE-1")
-            self.assertIn("blocked", cancel_result)
-            self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 6)
-        # either way, the impossible combination must not exist
-        self.assertFalse(
-            stored["status"] == "cancelled" and supplier_id,
-            "cancel overwrote a registered supplier order",
-        )
+    def test_registration_first_cancel_refused(self):
+        """Order B: registration acquires the lock; the concurrent cancel
+        must WAIT and then be refused on the ordered order."""
+        import threading
+
+        self.seed_live_pipeline()
+        order = self._create_and_approve("sale-sync-2b")
+
+        entered = threading.Event()
+        allow = threading.Event()
+        self._park_transition("ordered", entered, allow)
+
+        registration_result = {}
+
+        def registrar():
+            try:
+                self.procurement.record_supplier_order(
+                    order["record_id"], supplier_order_id="SO-RACE-B", operator="o"
+                )
+                registration_result["ok"] = True
+            except ProcurementError as exc:
+                registration_result["refused"] = str(exc)
+
+        registration_thread = threading.Thread(target=registrar)
+        registration_thread.start()
+        self.assertTrue(entered.wait(timeout=5))  # registration parked inside the lock
+
+        cancel_result = {}
+
+        def canceller():
+            try:
+                self.procurement.cancel(order["record_id"], reason="交错取消", operator="o")
+                cancel_result["ok"] = True
+            except ProcurementError as exc:
+                cancel_result["blocked"] = str(exc)
+
+        cancel_thread = threading.Thread(target=canceller)
+        cancel_thread.start()
+        # cancel waits for the registration to finish
+        cancel_thread.join(timeout=1.0)
+        self.assertTrue(cancel_thread.is_alive(), "cancel must wait for the registering owner")
+
+        allow.set()  # main thread releases the park explicitly
+        registration_thread.join(timeout=10)
+        cancel_thread.join(timeout=10)
+
+        self.assertTrue(registration_result.get("ok"), f"registration should win: {registration_result}")
+        self.assertIn("blocked", cancel_result, f"cancel of an ordered item must fail: {cancel_result}")
+        stored = self.procurement.get(order["record_id"])
+        self.assertEqual(stored["status"], "ordered")
+        self.assertEqual(str(stored.get("supplier_order_id") or ""), "SO-RACE-B")
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 6)
 
 
 if __name__ == "__main__":
