@@ -57,6 +57,17 @@ class PolishGuardTests(unittest.TestCase):
         self.assertEqual(polished["body"], draft["body"])
         self.assertTrue(any("absent from the deterministic draft" in n for n in polished["polish_guard_notes"]))
 
+    def test_polish_cannot_replace_offer_with_the_internal_floor(self):
+        """P2 regression: quoting 200 but polishing to the floor 180 is a
+        price change, not a rewording -- even though 180 is internally
+        known (floor). The buyer-facing price must stay 200."""
+        draft = self._draft()  # floor=180, offer=200 accepted at 200
+        self.assertIn("200", draft["body"])
+        polished = self.service.polish_draft(draft, client=FakeClient(reply="可以，180 元给您！"))
+        self.assertFalse(polished["polish_accepted"])
+        self.assertEqual(polished["body"], draft["body"])
+        self.assertIn("200", polished["body"])
+
     def test_added_promise_rejected(self):
         draft = self.service.draft_reply(
             cookie_id="acc-1", chat_id="chat-2", item_id="item-1", buyer_text="还有货吗", floor=None

@@ -340,9 +340,10 @@ class DraftReplyService:
             return dict(draft)
 
         allowed_amounts = {m["amount"] for m in _scan_amounts(original_body)}
-        for extra in (draft.get("effective_floor"), draft.get("offer_amount")):
-            if extra is not None:
-                allowed_amounts.add(round(float(extra), 2))
+        # the allowed set is ONLY what the deterministic draft already
+        # says to the buyer; internal values (floor, buyer offer) are
+        # NOT permitted in polished text -- polish must never change
+        # the quoted price, even to another internally-known number
 
         system = (
             "你是闲鱼卖家客服措辞助手。只改写输入的回复草稿，使其更自然礼貌。"
