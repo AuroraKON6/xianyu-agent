@@ -213,11 +213,19 @@ class ShadowAuthorizationLog:
         decision: Mapping[str, Any],
         action_summary: str,
         now: Optional[datetime] = None,
+        event_id: str = "",
     ) -> Dict[str, Any]:
+        # idempotent by event id: a retry after a crash between the log
+        # write and the cursor advance must not duplicate the sample
+        if event_id:
+            existing = self._store.find(lambda r: str(r.get("event_id")) == event_id)
+            if existing:
+                return existing[0]
         entry = {
             "record_type": "shadow_authorization",
             "record_id": new_id("shadow"),
             "mode": "shadow",
+            "event_id": event_id or None,
             "business_day": business_day(now or utc_now()),
             "recorded_at": (now or utc_now()).isoformat(),
             "action_summary": action_summary,

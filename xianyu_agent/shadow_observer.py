@@ -14,11 +14,13 @@ opportunity ids have already been observed; ticks reprocess nothing.
 from __future__ import annotations
 
 import threading
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
 from .budget_reservations import ShadowAuthorizationLog
 from .commerce.repositories import LockedJsonList
-from .operating_mandates import ActionRequest, OperatingMandateStore, evaluate_action
+from .operating_mandates import ActionRequest, OperatingMandateStore, evaluate_action, today_key
 from .reply_drafts import DRAFT_COUNTER_OFFER, DRAFT_DECLINE, DRAFT_FACT_ANSWER
 
 OPPORTUNITY_READY_FOR_TEST = "ready_for_test"
@@ -33,12 +35,16 @@ class ShadowObserver:
         opportunities,
         mandates: OperatingMandateStore,
         shadow_log: ShadowAuthorizationLog,
+        budget_store=None,
     ) -> None:
         self._cursor = LockedJsonList(data_dir / "commerce" / "shadow_cursor.json")
+        # counterfactual accumulation: shadow allowances only, never real money
+        self._shadow_usage = LockedJsonList(data_dir / "commerce" / "shadow_usage.json")
         self._drafts = draft_service
         self._opportunities = opportunities
         self._mandates = mandates
         self._log = shadow_log
+        self._budgets = budget_store
         self._tick_lock = threading.Lock()
 
     def _load_processed(self) -> Dict[str, List[str]]:
@@ -51,7 +57,61 @@ class ShadowObserver:
     def _mark_processed(self, kind: str, record_id: str) -> None:
         self._cursor.append({"kind": kind, "id": record_id})
 
-    def _record(self, *, action_type: str, account_id: str, sku: str, summary: str, amount=None, listing_price=None) -> None:
+    def _usage_projection(self, active_mandates: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Real committed usage today PLUS shadow-allowed accumulation.
+
+        Real usage comes from the budget reservation store; shadow usage
+        is this observer's own counterfactual ledger (allowed actions
+        only). Neither is ever fabricated as zero when unknown -- a
+        missing real store simply contributes nothing extra.
+        """
+        day = today_key()
+        usage: Dict[str, float] = {}
+        counts: Dict[str, int] = {}
+        for mandate in active_mandates:
+            mandate_id = str(mandate.get("record_id"))
+            total = Decimal("0")
+            if self._budgets is not None and str(mandate.get("account_id") or ""):
+                real = self._budgets.usage(
+                    account_id=str(mandate.get("account_id")), bucket="mandate_daily", day=day
+                )
+                total += Decimal(str(real.get("committed_total") or "0"))
+            shadow_count = 0
+            for entry in self._shadow_usage.find(
+                lambda r, mid=mandate_id, d=day: str(r.get("mandate_id")) == mid and str(r.get("business_day")) == d
+            ):
+                amount = (entry.get("amount") or {}).get("amount")
+                if amount is not None:
+                    total += Decimal(str(amount))
+                shadow_count += 1
+            usage[mandate_id] = float(total)
+            counts[mandate_id] = shadow_count
+        return {"usage": usage, "counts": counts}
+
+    def _record_shadow_allowance(self, mandate_id: str, *, amount, day: str, event_id: str) -> None:
+        self._shadow_usage.append(
+            {
+                "mandate_id": mandate_id,
+                "business_day": day,
+                "amount": amount if amount is not None else None,
+                "event_id": event_id,
+                "recorded_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+    def _record(
+        self,
+        *,
+        event_id: str,
+        action_type: str,
+        account_id: str,
+        sku: str,
+        summary: str,
+        amount=None,
+        listing_price=None,
+    ) -> None:
+        active = self._mandates.list_active()
+        projection = self._usage_projection(active)
         try:
             request = ActionRequest(
                 action_type=action_type,
@@ -60,10 +120,22 @@ class ShadowObserver:
                 amount=amount,
                 listing_price=listing_price,
             )
-            decision = evaluate_action(request, active_mandates=self._mandates.list_active())
+            decision = evaluate_action(
+                request,
+                active_mandates=active,
+                budget_usage_today=projection["usage"],
+                mandate_action_counts=projection["counts"],
+            )
         except Exception as exc:  # noqa: BLE001 - policy errors become denied records
             decision = {"allowed": False, "reasons": [f"policy evaluation error: {exc}"], "matched_mandate": None}
-        self._log.record(decision=decision, action_summary=summary[:60])
+        # the LOG write happens FIRST and is idempotent by event id; the
+        # cursor only advances after the record is durably stored
+        self._log.record(decision=decision, action_summary=summary[:60], event_id=event_id)
+        if decision.get("allowed") and decision.get("matched_mandate"):
+            mandate_id = str(decision["matched_mandate"].get("mandate_id"))
+            self._record_shadow_allowance(
+                mandate_id, amount=amount, day=today_key(), event_id=event_id
+            )
 
     def run_tick(self) -> Dict[str, Any]:
         """Observe new events once; returns what was evaluated."""
@@ -78,7 +150,6 @@ class ShadowObserver:
                 draft_id = str(draft.get("record_id"))
                 if draft_id in seen_drafts:
                     continue
-                self._mark_processed("draft", draft_id)
                 draft_type = str(draft.get("draft_type") or "")
                 if draft_type == DRAFT_FACT_ANSWER:
                     action_type = "faq_reply"
@@ -88,27 +159,33 @@ class ShadowObserver:
                     offer = draft.get("offer_amount")
                     amount = {"state": "known", "amount": str(offer), "currency": "CNY"} if offer else None
                 else:
-                    continue  # escalate/takeover drafts are never auto-send candidates
+                    self._mark_processed("draft", draft_id)  # never a send candidate
+                    continue
+                # log-first: a failure here aborts the tick BEFORE the
+                # cursor advances, so a retry reprocesses the event
                 self._record(
+                    event_id=f"draft:{draft_id}",
                     action_type=action_type,
                     account_id=str(draft.get("cookie_id") or ""),
                     sku=str(draft.get("item_id") or ""),
                     summary=f"draft:{draft_type} {draft.get('chat_id')}",
                     amount=amount,
                 )
+                self._mark_processed("draft", draft_id)
                 evaluated["reply_drafts"] += 1
 
             for opportunity in self._opportunities.list(status=OPPORTUNITY_READY_FOR_TEST):
                 opportunity_id = str(opportunity.get("record_id"))
                 if opportunity_id in seen_opportunities:
                     continue
-                self._mark_processed("opportunity", opportunity_id)
                 self._record(
+                    event_id=f"opportunity:{opportunity_id}",
                     action_type="listing_publish",
                     account_id=str(opportunity.get("account_id") or ""),
                     sku=str(opportunity.get("canonical_sku") or ""),
                     summary=f"qualified:{opportunity.get('canonical_sku')}",
                 )
+                self._mark_processed("opportunity", opportunity_id)
                 evaluated["qualified_opportunities"] += 1
 
             evaluated["mode"] = "shadow"

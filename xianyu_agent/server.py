@@ -153,7 +153,11 @@ pi_job_gate = ReadOnlyJobGate()
 pi_task_runner = PiTaskRunner(
     agent_job_store,
     commerce_repositories,
+    data_dir=settings.data_dir,
+    import_service=supplier_import_service,
     gate=pi_job_gate,
+    per_job_token_budget=int(os.environ.get("PI_JOB_TOKEN_BUDGET", "50000")),
+    daily_token_budget=int(os.environ.get("PI_DAILY_TOKEN_BUDGET", "200000")),
 )
 pi_task_runner.start()
 shadow_observer = ShadowObserver(
@@ -162,6 +166,7 @@ shadow_observer = ShadowObserver(
     opportunities=commerce_repositories.opportunities,
     mandates=operating_mandate_store,
     shadow_log=shadow_authorization_log,
+    budget_store=budget_reservation_store,
 )
 shadow_observer_thread = start_background_observer(
     shadow_observer,
@@ -7215,26 +7220,61 @@ async def shadow_observer_status() -> Dict[str, Any]:
 
 @app.get("/commerce/pi-tasks/{job_id}/evidence")
 async def pi_task_evidence(job_id: str) -> Dict[str, Any]:
-    """Task -> decision -> inputs traceability for the panel."""
+    """Task -> decision -> inputs traceability for the panel.
+
+    Invalidated (late/stale) decisions are listed separately and never
+    shown as valid; the persisted evidence file replays the actual
+    inputs and tool events the decision was based on.
+    """
     job = agent_job_store.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
+    all_decisions = commerce_repositories.decisions.list()
+    # invalidated set is global: an invalidation marker may come from any
+    # actor, with or without this job's source_ref
+    invalidated = {
+        str(d.get("target_ref"))
+        for d in all_decisions
+        if str(d.get("decision_type")) == "decision_invalidated" and d.get("target_ref")
+    }
     decisions = [
         d
-        for d in commerce_repositories.decisions.list()
+        for d in all_decisions
         if str(d.get("source_ref")) == f"agent_job:{job_id}"
     ]
-    latest = decisions[-1] if decisions else None
+    valid = [d for d in decisions if d["record_id"] not in invalidated and str(d.get("decision_type")) != "decision_invalidated"]
+    latest = valid[-1] if valid else None
+
+    evidence_file_payload = None
+    evidence_file_path = str(((latest or {}).get("input_versions") or {}).get("evidence_file") or "")
+    if evidence_file_path:
+        candidate = Path(evidence_file_path)
+        if candidate.is_file():
+            try:
+                evidence_file_payload = json.loads(candidate.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001 - unreadable evidence is reported, not hidden
+                evidence_file_payload = {"error": f"evidence file unreadable: {candidate}"}
+        else:
+            evidence_file_payload = {"error": f"evidence file missing: {candidate}"}
+
     cost = (latest or {}).get("cost") or {}
     usage_known = cost.get("total_tokens") is not None
     return {
         "job": job,
-        "decision_ids": [d["record_id"] for d in decisions],
+        "decision_ids": [d["record_id"] for d in valid],
+        "invalidated_decision_ids": sorted(invalidated),
         "latest_decision": latest,
         "pi": {
             "session_id": ((latest or {}).get("evidence_refs") or [{}])[0].get("ref_id"),
             "model": cost.get("model"),
             "cost_display": cost if usage_known else {**cost, "total_tokens": None, "display": "unknown (not zero)"},
+        },
+        "evidence_file": {
+            "path": evidence_file_path or None,
+            "inputs": (evidence_file_payload or {}).get("inputs"),
+            "tool_calls": (evidence_file_payload or {}).get("tool_calls"),
+            "usage": (evidence_file_payload or {}).get("usage"),
+            "inputs_sha256": ((latest or {}).get("input_versions") or {}).get("inputs_sha256"),
         },
         "inputs": {"input_refs": job.get("input_refs"), "role": job.get("role")},
         "runner": pi_task_runner.status,
