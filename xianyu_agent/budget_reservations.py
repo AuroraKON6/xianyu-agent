@@ -237,6 +237,11 @@ class ShadowAuthorizationLog:
         }
         return self._store.append(entry)
 
+    def find_by_event(self, event_id: str) -> Optional[Dict[str, Any]]:
+        """Return the stored record for one event id (idempotent replay)."""
+        found = self._store.find(lambda r: str(r.get("event_id")) == event_id)
+        return found[0] if found else None
+
     def metrics(self) -> Dict[str, Any]:
         records = self._store.all()
         total = len(records)

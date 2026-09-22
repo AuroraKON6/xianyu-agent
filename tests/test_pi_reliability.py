@@ -389,5 +389,191 @@ class EvidenceSnapshotTests(unittest.TestCase):
             self.assertEqual(inputs["excluded_non_committed"], 1)
 
 
+class Round5ModelUsageTests(unittest.TestCase):
+    """Round 5: consumption must be recorded per model ATTEMPT, including
+    rejected/failed/timeout paths; unknown usage is never zero."""
+
+    def test_overspend_rejection_still_records_usage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, repos = make_runner(tmp, per_job_token_budget=500)
+            runner.submit_quote_review_job()
+            outcome = runner.run_once(
+                pi_factory=lambda env: FakePi(usage={"input": 900, "output": 100, "totalTokens": 1000})
+            )
+            self.assertEqual(outcome["outcome"], "budget_exceeded")
+            day = datetime.now(UTC).strftime("%Y-%m-%d")
+            self.assertEqual(runner.model_usage.used_today(day=day), 1000,
+                             "rejected-overspend attempt must still consume the daily ledger")
+
+    def test_second_rejected_attempt_accumulates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, repos = make_runner(tmp, per_job_token_budget=500)
+            for _ in range(2):
+                runner.submit_quote_review_job()
+                runner.run_once(
+                    pi_factory=lambda env: FakePi(usage={"input": 900, "output": 100, "totalTokens": 1000})
+                )
+            day = datetime.now(UTC).strftime("%Y-%m-%d")
+            self.assertEqual(runner.model_usage.used_today(day=day), 2000)
+
+    def test_invalid_output_records_usage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, repos = make_runner(tmp)
+            runner.submit_quote_review_job()
+            runner.run_once(pi_factory=lambda env: FakePi(message="不是JSON"))
+            day = datetime.now(UTC).strftime("%Y-%m-%d")
+            self.assertEqual(runner.model_usage.used_today(day=day), 15)
+
+    def test_prompt_failure_records_unknown_not_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, repos = make_runner(tmp)
+            runner.submit_quote_review_job()
+            runner.run_once(pi_factory=lambda env: FakePi(error=RuntimeError("rpc died")))
+            day = datetime.now(UTC).strftime("%Y-%m-%d")
+            entries = runner.model_usage.entries_today(day=day)
+            self.assertEqual(len(entries), 1, "failed attempt must still create a ledger entry")
+            self.assertIsNone(entries[0]["total_tokens"], "unknown usage stays None, never zero")
+            self.assertEqual(runner.model_usage.used_today(day=day), 0)
+
+
+class Round5ValidityWithoutMarkerTests(unittest.TestCase):
+    """Round 5: validity derives from job state (status/result_ref/attempt),
+    so a failed invalidation-marker write cannot resurrect a stale decision."""
+
+    def test_cancelled_job_dangling_decision_hidden_after_marker_write_failure(self):
+        from xianyu_agent.pi_jobs import decision_validity
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, repos = make_runner(tmp)
+            job = runner.submit_quote_review_job()
+            claimed = runner._jobs.claim_next(worker_id="pi_worker_1")
+            runner._jobs.start(job["record_id"], worker_id="pi_worker_1", fencing_token=claimed["fencing_token"])
+            # crash window: decision written, completion never happened
+            decision = runner._decision_for_attempt(
+                claimed,
+                review={"findings": [], "summary": "late"},
+                payload={"session_id": "s", "provider": "p", "model": "m", "tool_calls": [], "usage": {}},
+                cost={"model": "m", "total_tokens": None},
+            )
+            # job gets cancelled; the invalidation marker write FAILS
+            runner._jobs.cancel(job["record_id"], actor="operator", reason="cancel")
+            original_persist = repos.decisions._store._persist
+            repos.decisions._store._persist = lambda: (_ for _ in ()).throw(RuntimeError("disk full"))
+            try:
+                runner._invalidate_decision(job, decision_id=decision["record_id"], reason="lease lost")
+            except RuntimeError:
+                pass  # marker write failed -- exactly the crash window
+            repos.decisions._store._persist = original_persist
+            self.assertFalse(
+                any(d["decision_type"] == "decision_invalidated" for d in repos.decisions.list())
+            )
+
+            # RESTART: fresh store instances over the same files, validity
+            # recomputed from the persisted job record alone
+            restarted_jobs = AgentJobStore(Path(tmp))
+            restarted_repos = JsonCommerceRepositories(Path(tmp))
+            restarted_job = restarted_jobs.get(job["record_id"])
+            self.assertEqual(restarted_job["status"], "cancelled")
+            classification = decision_validity(restarted_job, restarted_repos.decisions.list())
+            self.assertEqual([d["record_id"] for d in classification["valid"]], [])
+            self.assertIn(decision["record_id"], [d["record_id"] for d in classification["stale"]])
+
+    def test_succeeded_job_only_validates_result_ref_decision(self):
+        from xianyu_agent.commerce.contracts import build_decision_record
+        from xianyu_agent.pi_jobs import decision_validity
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, repos = make_runner(tmp)
+            runner.submit_quote_review_job()
+            outcome = runner.run_once(pi_factory=lambda env: FakePi())
+            job_id = outcome["job_id"]
+            dangling = repos.decisions.append(
+                build_decision_record(
+                    summary="dangling duplicate",
+                    actor_role="supplier_quote_gap_review",
+                    decision_type="supplier_quote_gap_review",
+                    source_ref=f"agent_job:{job_id}",
+                    result={"findings": []},
+                )
+            )
+            job = AgentJobStore(Path(tmp)).get(job_id)
+            classification = decision_validity(job, repos.decisions.list())
+            self.assertEqual([d["record_id"] for d in classification["valid"]], [outcome["decision_id"]])
+            self.assertIn(dangling["record_id"], [d["record_id"] for d in classification["stale"]])
+
+
+class Round5ShadowIdempotentAccrualTests(unittest.TestCase):
+    """Round 5: shadow usage accrual is idempotent by event id; replay
+    reuses the saved verdict instead of re-evaluating."""
+
+    def test_cursor_write_failure_retry_does_not_double_accrue(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, repos, facts, drafts, mandates, budgets, log, observer = setup_shadow_env(tmp)
+            mandates.issue(
+                operator="o",
+                account_id="acc-1",
+                action_types=["price_adjust"],
+                per_transaction_limit={"state": "known", "amount": "500", "currency": "CNY"},
+                daily_limit={"state": "known", "amount": "500", "currency": "CNY"},
+                valid_until=datetime.now(UTC) + timedelta(days=1),
+            )
+            facts.upsert(cookie_id="acc-1", item_id="item-1", list_price=299.0)
+            drafts.draft_reply(cookie_id="acc-1", chat_id="c0", item_id="item-1", buyer_text="60卖吗", floor=50.0)
+
+            original_cursor_persist = observer._cursor._persist
+            state = {"failed": False}
+
+            def failing_cursor_persist():
+                if not state["failed"]:
+                    state["failed"] = True
+                    raise RuntimeError("disk full")
+                return original_cursor_persist()
+
+            observer._cursor._persist = failing_cursor_persist
+            with self.assertRaises(RuntimeError):
+                observer.run_tick()  # log written, cursor write failed
+            observer._cursor._persist = original_cursor_persist
+
+            result = observer.run_tick()  # retry replays the event
+            self.assertEqual(result["reply_drafts"], 1)
+            usage_entries = [
+                e for e in observer._shadow_usage.all() if str(e.get("event_id", "")).startswith("draft:")
+            ]
+            self.assertEqual(len(usage_entries), 1, "shadow usage must accrue once per event")
+            # and the replayed verdict is the SAVED one (allowed), not re-evaluated
+            self.assertEqual(log.metrics()["total"], 1)
+            self.assertEqual(log.metrics()["allowed"], 1)
+
+            # the next event within the same daily amount sees a single accrual
+            drafts.draft_reply(cookie_id="acc-1", chat_id="c1", item_id="item-1", buyer_text="70卖吗", floor=50.0)
+            observer.run_tick()
+            metrics = log.metrics()
+            self.assertEqual(metrics["total"], 2)
+            self.assertEqual(metrics["allowed"], 2, "60+70 <= 500 with single accrual: both allowed")
+
+    def test_record_replay_reuses_saved_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, repos, facts, drafts, mandates, budgets, log, observer = setup_shadow_env(tmp)
+            # no mandates at all -> first evaluation denied
+            facts.upsert(cookie_id="acc-1", item_id="item-1", list_price=299.0, stock_available=2)
+            drafts.draft_reply(cookie_id="acc-1", chat_id="c0", item_id="item-1", buyer_text="还有货吗")
+            observer._record(
+                event_id="draft:fixed", action_type="faq_reply",
+                account_id="acc-1", sku="item-1", summary="s",
+            )
+            # a mandate appears later; replay must NOT flip the saved verdict
+            mandates.issue(
+                operator="o", account_id="acc-1", action_types=["faq_reply"],
+                valid_until=datetime.now(UTC) + timedelta(days=1),
+            )
+            observer._record(
+                event_id="draft:fixed", action_type="faq_reply",
+                account_id="acc-1", sku="item-1", summary="s",
+            )
+            metrics = log.metrics()
+            self.assertEqual(metrics["total"], 1)
+            self.assertEqual(metrics["allowed"], 0, "replay must reuse the saved denied verdict")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -89,6 +89,11 @@ class ShadowObserver:
         return {"usage": usage, "counts": counts}
 
     def _record_shadow_allowance(self, mandate_id: str, *, amount, day: str, event_id: str) -> None:
+        # idempotent by event id: a replay after a cursor-write crash must
+        # not accrue the same allowance twice
+        existing = self._shadow_usage.find(lambda r: str(r.get("event_id")) == event_id)
+        if existing:
+            return
         self._shadow_usage.append(
             {
                 "mandate_id": mandate_id,
@@ -110,6 +115,12 @@ class ShadowObserver:
         amount=None,
         listing_price=None,
     ) -> None:
+        # REPLAY uses the saved verdict: if this event was already judged
+        # (e.g. the cursor write failed after the log write), the stored
+        # record is authoritative -- no re-evaluation, no re-accrual
+        existing = self._log.find_by_event(event_id)
+        if existing is not None:
+            return
         active = self._mandates.list_active()
         projection = self._usage_projection(active)
         try:

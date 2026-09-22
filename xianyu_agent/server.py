@@ -7229,20 +7229,11 @@ async def pi_task_evidence(job_id: str) -> Dict[str, Any]:
     job = agent_job_store.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="job not found")
-    all_decisions = commerce_repositories.decisions.list()
-    # invalidated set is global: an invalidation marker may come from any
-    # actor, with or without this job's source_ref
-    invalidated = {
-        str(d.get("target_ref"))
-        for d in all_decisions
-        if str(d.get("decision_type")) == "decision_invalidated" and d.get("target_ref")
-    }
-    decisions = [
-        d
-        for d in all_decisions
-        if str(d.get("source_ref")) == f"agent_job:{job_id}"
-    ]
-    valid = [d for d in decisions if d["record_id"] not in invalidated and str(d.get("decision_type")) != "decision_invalidated"]
+    from .pi_jobs import decision_validity
+
+    classification = decision_validity(job, commerce_repositories.decisions.list())
+    valid = classification["valid"]
+    stale = classification["stale"]
     latest = valid[-1] if valid else None
 
     evidence_file_payload = None
@@ -7262,7 +7253,8 @@ async def pi_task_evidence(job_id: str) -> Dict[str, Any]:
     return {
         "job": job,
         "decision_ids": [d["record_id"] for d in valid],
-        "invalidated_decision_ids": sorted(invalidated),
+        "invalidated_decision_ids": classification["invalidated_ids"],
+        "stale_decision_ids": [d["record_id"] for d in stale],
         "latest_decision": latest,
         "pi": {
             "session_id": ((latest or {}).get("evidence_refs") or [{}])[0].get("ref_id"),

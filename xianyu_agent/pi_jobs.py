@@ -82,6 +82,10 @@ class ModelUsageLedger:
             for e in self._store.find(lambda r: str(r.get("business_day")) == day)
         )
 
+    def entries_today(self, *, day: str) -> List[Dict[str, Any]]:
+        """Every attempt entry for the day, including unknown-usage ones."""
+        return self._store.find(lambda r: str(r.get("business_day")) == day)
+
     def record(self, *, day: str, job_id: str, total_tokens: Optional[int], model: str = "") -> Dict[str, Any]:
         entry = {
             "business_day": day,
@@ -259,6 +263,42 @@ def _load_json_object(text: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
+
+
+def decision_validity(job: Mapping[str, Any], all_decisions: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Classify decisions of one job as valid / stale / invalidated.
+
+    Validity derives from the JOB RECORD (status == succeeded,
+    result_ref == decision:{id}, attempt match) -- invalidation markers
+    are an additional signal, never the only one, so a marker write
+    failure cannot resurrect a stale decision after a restart.
+    """
+    job_id = str(job.get("record_id"))
+    marker_invalidated = {
+        str(d.get("target_ref"))
+        for d in all_decisions
+        if str(d.get("decision_type")) == "decision_invalidated" and d.get("target_ref")
+    }
+
+    def _valid(d: Mapping[str, Any]) -> bool:
+        if str(d.get("decision_type")) == "decision_invalidated":
+            return False
+        if d["record_id"] in marker_invalidated:
+            return False
+        if str(job.get("status")) != "succeeded":
+            return False
+        if str(job.get("result_ref") or "") != f"decision:{d['record_id']}":
+            return False
+        return int((d.get("input_versions") or {}).get("job_attempt") or -1) == int(job.get("attempt") or 0)
+
+    own = [d for d in all_decisions if str(d.get("source_ref")) == f"agent_job:{job_id}"]
+    valid = [d for d in own if _valid(d)]
+    stale = [d for d in own if not _valid(d) and str(d.get("decision_type")) != "decision_invalidated"]
+    return {
+        "valid": valid,
+        "stale": stale,
+        "invalidated_ids": sorted(marker_invalidated),
+    }
 
 
 class PiTaskRunner:
@@ -605,20 +645,32 @@ class PiTaskRunner:
                         pass
         except Exception as exc:  # noqa: BLE001 - real failures become job failures
             self.gate.release(token)
+            # the model call ATTEMPTED and failed: consumption is unknown,
+            # not zero -- record the attempt before failing the job
+            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=None)
             return fail_job(f"pi execution failed: {exc}", True, "failed")
         self.gate.release(token)
 
+        payload = result.get("result") or {}
+        usage = payload.get("usage") or {}
+        total_tokens = usage.get("totalTokens")
+
         # program-enforced deadline, result side: a result landing after
-        # the deadline is rejected even if the call succeeded
+        # the deadline is rejected even if the call succeeded -- but the
+        # consumed tokens still count against today's budget
         if deadline is not None:
             post_moment = now_post or utc_now()
             if post_moment.tzinfo is None:
                 post_moment = post_moment.replace(tzinfo=moment.tzinfo)
             if post_moment > deadline:
+                self.model_usage.record(
+                    day=day, job_id=job["record_id"], total_tokens=total_tokens
+                )
                 return fail_job("result arrived after deadline; rejected", False, "rejected_deadline_result")
 
         # lease re-check BEFORE accepting the result: if the lease was
-        # lost or the job cancelled mid-run, the result is discarded
+        # lost or the job cancelled mid-run, the result is discarded --
+        # the consumed tokens still count
         try:
             self._jobs.heartbeat(
                 job["record_id"], worker_id=JOB_WORKER_ID,
@@ -626,15 +678,15 @@ class PiTaskRunner:
                 lease_seconds=self._lease_padding + 300.0,
             )
         except Exception:  # noqa: BLE001 - lost lease or terminal state -> discard
+            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens)
             return {"job_id": job["record_id"], "outcome": "discarded_stale"}
 
-        payload = result.get("result") or {}
         message_text = str(payload.get("message") or "")
 
-        # program-enforced per-job token budget
-        usage = payload.get("usage") or {}
-        total_tokens = usage.get("totalTokens")
+        # program-enforced per-job token budget: overspend consumes the
+        # daily ledger even though the result is rejected
         if total_tokens is not None and int(total_tokens) > self.per_job_token_budget:
+            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens)
             return fail_job(
                 f"model usage {total_tokens} exceeded per-job budget {self.per_job_token_budget}",
                 False, "budget_exceeded",
@@ -643,6 +695,7 @@ class PiTaskRunner:
         try:
             review = validator(message_text)
         except ValueError as exc:
+            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens)
             return fail_job(f"invalid structured output: {exc}", True, "invalid_output")
 
         cost = {
@@ -654,6 +707,9 @@ class PiTaskRunner:
             "note": None if usage else "usage not reported by this run; unknown, not zero",
         }
         evidence_path = self._write_evidence_file(job, inputs=inputs, payload=payload, message=message_text)
+        # consumption is recorded BEFORE completion: a crash after this
+        # point still leaves the attempt accounted in the daily ledger
+        self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens, model=str(payload.get("model") or ""))
         decision = self._decision_for_attempt(
             job, review=review, payload=payload, cost=cost, inputs=inputs, evidence_path=evidence_path
         )
@@ -664,10 +720,13 @@ class PiTaskRunner:
             )
         except FencingError:
             # the decision was written but the job left our hands: the late
-            # product must never surface as a valid decision
-            self._invalidate_decision(job, decision_id=decision["record_id"], reason="lease lost before completion")
+            # product must never surface as a valid decision; the marker is
+            # best-effort -- validity also derives from job state
+            try:
+                self._invalidate_decision(job, decision_id=decision["record_id"], reason="lease lost before completion")
+            except Exception:  # noqa: BLE001 - marker write failure must not mask the discard
+                pass
             return {"job_id": job["record_id"], "outcome": "discarded_stale", "decision_id": decision["record_id"]}
-        self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens, model=str(payload.get("model") or ""))
         return {
             "job_id": job["record_id"],
             "outcome": "succeeded",
@@ -723,11 +782,7 @@ class PiTaskRunner:
 
     @staticmethod
     def _invalidated_decision_ids(decisions: Sequence[Mapping[str, Any]]) -> set:
-        return {
-            str(d.get("target_ref"))
-            for d in decisions
-            if str(d.get("decision_type")) == "decision_invalidated" and d.get("target_ref")
-        }
+        return set(decision_validity({"record_id": ""}, decisions)["invalidated_ids"])
 
     def _decision_for_attempt(
         self,
