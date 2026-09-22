@@ -2,6 +2,16 @@
 
 Updated: 2026-09-21
 
+## 2026-09-21 Pi 链路第五轮修复（R5：记账/有效性/影子幂等）
+
+证据：[docs/acceptance/WP_PI_RELIABILITY_R5_2026-09-21.md](docs/acceptance/WP_PI_RELIABILITY_R5_2026-09-21.md)。全量回归 **1354/1354**（+8 红转绿）。新提交 `92b644a`。
+
+- 按调用尝试记账：拒收/超时/无效输出/失租丢弃/失败路径全部先记实耗再失败；失败路径记 unknown≠零；成功路径记账前移到 complete 前。
+- 决策有效性从 job 记录派生（succeeded + result_ref + attempt 匹配），失效标记降级为附加信号（写失败不再能复活迟到决策）；证据端点输出 stale_decision_ids。
+- 影子额度按事件 ID 幂等；重放复用已存裁决（不重评估、不再累计）。
+
+---
+
 ## 2026-09-21 Pi 链路第四次复验修复轮（7 项缺口）
 
 证据：[docs/acceptance/WP_PI_RELIABILITY_R4_2026-09-21.md](docs/acceptance/WP_PI_RELIABILITY_R4_2026-09-21.md)。全量回归 **1346/1346**（+14 红转绿）。
