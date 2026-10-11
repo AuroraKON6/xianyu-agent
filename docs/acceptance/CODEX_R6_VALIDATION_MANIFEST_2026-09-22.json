@@ -1,0 +1,222 @@
+{
+  "scope": "offline R6 acceptance; not live release",
+  "date": "2026-09-22",
+  "base_head": "4bd2cf7",
+  "committed": false,
+  "full_suite": {
+    "tests": 1386,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 44.209,
+    "exit_code": 0
+  },
+  "focused_runs": [
+    {
+      "tests": 32,
+      "seconds": 1.07,
+      "exit_code": 0
+    },
+    {
+      "tests": 32,
+      "seconds": 1.129,
+      "exit_code": 0
+    },
+    {
+      "tests": 32,
+      "seconds": 1.087,
+      "exit_code": 0
+    }
+  ],
+  "live_data": {
+    "root": "E:\\闲鱼\\xianyu\\data\\live",
+    "unchanged": true,
+    "before": [
+      {
+        "path": "\\agent_collaboration.jsonl",
+        "hash": "1D5D15F5B2799C6ADB5523DA187AD0253418359D6C3054BF66FD9F536FBE8CED"
+      },
+      {
+        "path": "\\commerce\\agent_jobs.json",
+        "hash": "FB738AA4AB2E3EB59CC5F43F14E92EE96C645B9D6168F5AB05615960B9E5E98E"
+      },
+      {
+        "path": "\\commerce\\decisions.json",
+        "hash": "165E7B8359E18357A84C70A25AA291AFAFD945B51B653F04226B3C3C7658CD43"
+      },
+      {
+        "path": "\\commerce\\provider_capabilities.json",
+        "hash": "0001BA6CBD1C7015D0FA1B27842CCF4B6F59D4917A70E88AF89F9620CCB5A14A"
+      },
+      {
+        "path": "\\commercial_trial_reports\\ct_1535df990771.md",
+        "hash": "D133C61ED07A002220EE7E4B7FF5AB650EF54D9C553EEB53843E04CAECC608DA"
+      },
+      {
+        "path": "\\events.jsonl",
+        "hash": "8FC2348F7B0F1C612C59A7AD7A49A92895139A83FF12917F9B9D419B6AD64295"
+      },
+      {
+        "path": "\\execution_jobs.json.lock",
+        "hash": "5FECEB66FFC86F38D952786C6D696C79C2DBC239DD4E91B46729D73A27FB57E9"
+      },
+      {
+        "path": "\\memory\\profile.json",
+        "hash": "9480EA0BF6BAD8B8A602098A0D79AD238D61D7646A5C3A894057DC2639BBA2E7"
+      },
+      {
+        "path": "\\order_runtime_state.json",
+        "hash": "B7B0601FFE0697A94B0FA815279251266CA36C98CDDADA64425409E6807DA922"
+      },
+      {
+        "path": "\\pi_agent\\auth.json",
+        "hash": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A"
+      },
+      {
+        "path": "\\pi_agent\\models-store.json",
+        "hash": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A"
+      },
+      {
+        "path": "\\pi_sessions\\2026-08-17T18-32-52-966Z_7c0d869e-8133-5686-8ef6-1d0fbcb9a2f4.jsonl",
+        "hash": "4296CB30ABE06F1FF1595E876CF763A24F2C81FDA8243188D5E998FA741C137C"
+      },
+      {
+        "path": "\\pi_sessions\\2026-09-21T03-04-30-273Z_pi-jobs-xianyu.jsonl",
+        "hash": "11BA83A18B3C00C4F7A13693D74CF58F9D501D15B30630CC7BB94B962ADFD864"
+      },
+      {
+        "path": "\\price_commitments.json.lock",
+        "hash": "5FECEB66FFC86F38D952786C6D696C79C2DBC239DD4E91B46729D73A27FB57E9"
+      },
+      {
+        "path": "\\resale_candidates.json",
+        "hash": "EECCF9BF98853D6CCD9C9D14DCDA2490C39C3E15958AA779ED439519021FE47E"
+      },
+      {
+        "path": "\\research\\2026-08-02T10-29-58-github-opportunities.json",
+        "hash": "D513254CB63F360F6B013145E83B8C76BB25747117DBF58B1C4E79643522D74F"
+      },
+      {
+        "path": "\\research\\2026-08-02T10-30-00-github-opportunities.json",
+        "hash": "D513254CB63F360F6B013145E83B8C76BB25747117DBF58B1C4E79643522D74F"
+      },
+      {
+        "path": "\\research\\2026-08-11T10-30-00-github-opportunities.json",
+        "hash": "D513254CB63F360F6B013145E83B8C76BB25747117DBF58B1C4E79643522D74F"
+      },
+      {
+        "path": "\\work_orders.json",
+        "hash": "73B8EB77E4C66AA1F1727DB349DF4272122A875D51F434100CE5C76C6747D9BD"
+      },
+      {
+        "path": "\\xianyu_data.db",
+        "hash": "FF592FE4260460DDD53876E97EEC68753BE8F2E08D054517C7EB7A0517124564"
+      }
+    ],
+    "after": [
+      {
+        "path": "\\agent_collaboration.jsonl",
+        "hash": "1D5D15F5B2799C6ADB5523DA187AD0253418359D6C3054BF66FD9F536FBE8CED"
+      },
+      {
+        "path": "\\commerce\\agent_jobs.json",
+        "hash": "FB738AA4AB2E3EB59CC5F43F14E92EE96C645B9D6168F5AB05615960B9E5E98E"
+      },
+      {
+        "path": "\\commerce\\decisions.json",
+        "hash": "165E7B8359E18357A84C70A25AA291AFAFD945B51B653F04226B3C3C7658CD43"
+      },
+      {
+        "path": "\\commerce\\provider_capabilities.json",
+        "hash": "0001BA6CBD1C7015D0FA1B27842CCF4B6F59D4917A70E88AF89F9620CCB5A14A"
+      },
+      {
+        "path": "\\commercial_trial_reports\\ct_1535df990771.md",
+        "hash": "D133C61ED07A002220EE7E4B7FF5AB650EF54D9C553EEB53843E04CAECC608DA"
+      },
+      {
+        "path": "\\events.jsonl",
+        "hash": "8FC2348F7B0F1C612C59A7AD7A49A92895139A83FF12917F9B9D419B6AD64295"
+      },
+      {
+        "path": "\\execution_jobs.json.lock",
+        "hash": "5FECEB66FFC86F38D952786C6D696C79C2DBC239DD4E91B46729D73A27FB57E9"
+      },
+      {
+        "path": "\\memory\\profile.json",
+        "hash": "9480EA0BF6BAD8B8A602098A0D79AD238D61D7646A5C3A894057DC2639BBA2E7"
+      },
+      {
+        "path": "\\order_runtime_state.json",
+        "hash": "B7B0601FFE0697A94B0FA815279251266CA36C98CDDADA64425409E6807DA922"
+      },
+      {
+        "path": "\\pi_agent\\auth.json",
+        "hash": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A"
+      },
+      {
+        "path": "\\pi_agent\\models-store.json",
+        "hash": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A"
+      },
+      {
+        "path": "\\pi_sessions\\2026-08-17T18-32-52-966Z_7c0d869e-8133-5686-8ef6-1d0fbcb9a2f4.jsonl",
+        "hash": "4296CB30ABE06F1FF1595E876CF763A24F2C81FDA8243188D5E998FA741C137C"
+      },
+      {
+        "path": "\\pi_sessions\\2026-09-21T03-04-30-273Z_pi-jobs-xianyu.jsonl",
+        "hash": "11BA83A18B3C00C4F7A13693D74CF58F9D501D15B30630CC7BB94B962ADFD864"
+      },
+      {
+        "path": "\\price_commitments.json.lock",
+        "hash": "5FECEB66FFC86F38D952786C6D696C79C2DBC239DD4E91B46729D73A27FB57E9"
+      },
+      {
+        "path": "\\resale_candidates.json",
+        "hash": "EECCF9BF98853D6CCD9C9D14DCDA2490C39C3E15958AA779ED439519021FE47E"
+      },
+      {
+        "path": "\\research\\2026-08-02T10-29-58-github-opportunities.json",
+        "hash": "D513254CB63F360F6B013145E83B8C76BB25747117DBF58B1C4E79643522D74F"
+      },
+      {
+        "path": "\\research\\2026-08-02T10-30-00-github-opportunities.json",
+        "hash": "D513254CB63F360F6B013145E83B8C76BB25747117DBF58B1C4E79643522D74F"
+      },
+      {
+        "path": "\\research\\2026-08-11T10-30-00-github-opportunities.json",
+        "hash": "D513254CB63F360F6B013145E83B8C76BB25747117DBF58B1C4E79643522D74F"
+      },
+      {
+        "path": "\\work_orders.json",
+        "hash": "73B8EB77E4C66AA1F1727DB349DF4272122A875D51F434100CE5C76C6747D9BD"
+      },
+      {
+        "path": "\\xianyu_data.db",
+        "hash": "FF592FE4260460DDD53876E97EEC68753BE8F2E08D054517C7EB7A0517124564"
+      }
+    ]
+  },
+  "source_hashes_after_full_suite": [
+    {
+      "Path": "E:\\闲鱼\\xianyu\\xianyu_agent\\pi_jobs.py",
+      "Hash": "9A81C5323AED366274B63EDF3AD4678790A5E8B40CFCB01A0F084D00A22CD1F8"
+    },
+    {
+      "Path": "E:\\闲鱼\\xianyu\\xianyu_agent\\budget_reservations.py",
+      "Hash": "BF331F3E3B034AF52BC79361476257B69125063A408AE44AD8587A03759CF0B1"
+    },
+    {
+      "Path": "E:\\闲鱼\\xianyu\\xianyu_agent\\shadow_observer.py",
+      "Hash": "2699631A066081323CA7B8D1DD824D98336C2796CD1F2E94F68A1E248EB8C156"
+    },
+    {
+      "Path": "E:\\闲鱼\\xianyu\\tests\\test_pi_recovery_round6.py",
+      "Hash": "17C7958F037B32578D2B45477A34F01CB1C080BB94C9241872D4F91C30755491"
+    },
+    {
+      "Path": "E:\\闲鱼\\xianyu\\tests\\test_pi_recovery_completion.py",
+      "Hash": "B3CF6476D068504399756678A322F7889F252782B1CEE6858C54A5092EB992F8"
+    }
+  ],
+  "real_model_calls": 0,
+  "platform_actions": 0
+}

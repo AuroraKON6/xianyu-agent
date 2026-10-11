@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from quote_fixtures import with_declared_quote_provenance
 
 from xianyu_agent.commerce.contracts import build_offer_snapshot
 from xianyu_agent.inventory import InventoryAllocationService, InventoryError
@@ -16,7 +17,7 @@ UTC = timezone.utc
 
 def supplier_snapshot(*, stock=None, stock_state="in_stock", price="150", observed=None):
     observed = observed or datetime.now(UTC)
-    return build_offer_snapshot(
+    return with_declared_quote_provenance(build_offer_snapshot(
         provider_id="supplier_file:S供应商",
         source_item_id="GZ-1200",
         source_sku_id="GZ-1200",
@@ -32,7 +33,7 @@ def supplier_snapshot(*, stock=None, stock_state="in_stock", price="150", observ
         payload_hash=f"inv-{stock}-{stock_state}-{price}-{observed.isoformat()}",
         account_id="",
         source_ref="test",
-    )
+    ))
 
 
 class InventoryAllocationTests(unittest.TestCase):

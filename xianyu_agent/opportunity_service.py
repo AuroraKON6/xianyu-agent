@@ -27,7 +27,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Dict, List, Mapping, Optional
 
-from .candidate_activation import MARKET_MAX_AGE_SECONDS, QUOTE_MAX_AGE_SECONDS
+from .providers.freshness import classify_snapshot, FRESH_CURRENT
 from .commerce.contracts import (
     MATCH_COMPARABLE,
     MATCH_EXACT,
@@ -230,29 +230,18 @@ class OpportunityService:
     # ---- helpers ----
 
     def _freshness(self, market: Mapping[str, Any], supplier: Mapping[str, Any], now: Any) -> Dict[str, Any]:
-        def age_seconds(observed_at: Any) -> Optional[float]:
-            if not observed_at:
-                return None
-            from datetime import datetime
-
-            try:
-                moment = datetime.fromisoformat(str(observed_at))
-            except ValueError:
-                return None
-            if moment.tzinfo is None:
-                return None
-            return (now - moment).total_seconds()
-
-        market_age = age_seconds(market.get("observed_at"))
-        supplier_age = age_seconds(supplier.get("observed_at"))
-        market_fresh = market_age is not None and market_age <= MARKET_MAX_AGE_SECONDS
-        supplier_fresh = supplier_age is not None and supplier_age <= QUOTE_MAX_AGE_SECONDS
+        market_meta = classify_snapshot(market, now=now)
+        supplier_meta = classify_snapshot(supplier, now=now)
+        market_fresh = market_meta["freshness"] == FRESH_CURRENT
+        supplier_fresh = supplier_meta["freshness"] == FRESH_CURRENT
         return {
-            "market_age_seconds": market_age,
-            "supplier_age_seconds": supplier_age,
+            "market_age_seconds": market_meta.get("age_seconds"),
+            "supplier_age_seconds": supplier_meta.get("age_seconds"),
             "market_fresh": market_fresh,
             "supplier_fresh": supplier_fresh,
             "all_fresh": market_fresh and supplier_fresh,
+            "supplier_provenance": supplier_meta,
+            "market_provenance": market_meta,
         }
 
     def _qualify(
@@ -282,7 +271,7 @@ class OpportunityService:
                 reasons.append(f"conservative profit {profit.get('amount')} not positive")
         if not checks["inputs_fresh"]:
             reasons.append(
-                "inputs stale (market fresh={market}, supplier fresh={supplier})".format(
+                "inputs stale or source-ineligible (market fresh={market}, supplier fresh={supplier})".format(
                     market=freshness.get("market_fresh"), supplier=freshness.get("supplier_fresh")
                 )
             )

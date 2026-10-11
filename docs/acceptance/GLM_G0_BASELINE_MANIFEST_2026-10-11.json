@@ -1,0 +1,73 @@
+{
+  "package_id": "GLM-G0-BASELINE",
+  "generated_at": "2026-10-11",
+  "source_revision": "4bd2cf79227fc32d6805d5e3f188a42ad87863b2",
+  "worktree": {
+    "modified_tracked": 24,
+    "untracked": 40,
+    "total_dirty_entries": 65,
+    "rollback_performed": false
+  },
+  "environment": {
+    "python": "3.8.5 (.venv)",
+    "node": "v24.16.0",
+    "ports_8000_8788_9223_listening": false,
+    "env_file_present": true,
+    "env_values_included": false
+  },
+  "isolated_regression": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_tests_isolated.ps1",
+    "exit_code": 0,
+    "tests": 1489,
+    "failures": 0,
+    "errors": 0,
+    "duration_seconds": 474.009
+  },
+  "node_checks": {
+    "web/app.js": 0,
+    "web/pi-usage.js": 0
+  },
+  "git_diff_check_exit": 0,
+  "live_data": {
+    "file_count": 20,
+    "sha256_before_after_identical": true,
+    "files": {
+      "data/live/agent_collaboration.jsonl": "1d5d15f5b2799c6adb5523da187ad0253418359d6c3054bf66fd9f536fbe8ced",
+      "data/live/commerce/agent_jobs.json": "fb738aa4ab2e3eb59cc5f43f14e92ee96c645b9d6168f5ab05615960b9e5e98e",
+      "data/live/commerce/decisions.json": "165e7b8359e18357a84c70a25aa291afafd945b51b653f04226b3c3c7658cd43",
+      "data/live/commerce/provider_capabilities.json": "0001ba6cbd1c7015d0fa1b27842ccf4b6f59d4917a70e88af89f9620ccb5a14a",
+      "data/live/commercial_trial_reports/ct_1535df990771.md": "d133c61ed07a002220ee7e4b7ff5ab650ef54d9c553eeb53843e04caecc608da",
+      "data/live/events.jsonl": "8fc2348f7b0f1c612c59a7ad7a49a92895139a83ff12917f9b9d419b6ad64295",
+      "data/live/execution_jobs.json.lock": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "data/live/memory/profile.json": "9480ea0bf6bad8b8a602098a0d79ad238d61d7646a5c3a894057dc2639bba2e7",
+      "data/live/order_runtime_state.json": "b7b0601ffe0697a94b0fa815279251266ca36c98cddada64425409e6807da922",
+      "data/live/pi_agent/auth.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "data/live/pi_agent/models-store.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "data/live/pi_sessions/2026-08-17T18-32-52-966Z_7c0d869e-8133-5686-8ef6-1d0fbcb9a2f4.jsonl": "4296cb30abe06f1ff1595e876cf763a24f2c81fda8243188d5e998fa741c137c",
+      "data/live/pi_sessions/2026-09-21T03-04-30-273Z_pi-jobs-xianyu.jsonl": "11ba83a18b3c00c4f7a13693d74cf58f9d501d15b30630cc7bb94b962adfd864",
+      "data/live/price_commitments.json.lock": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "data/live/resale_candidates.json": "eeccf9bf98853d6ccd9c9d14dcda2490c39c3e15958aa779ed439519021fe47e",
+      "data/live/research/2026-08-02T10-29-58-github-opportunities.json": "d513254cb63f360f6b013145e83b8c76bb25747117dbf58b1c4e79643522d74f",
+      "data/live/research/2026-08-02T10-30-00-github-opportunities.json": "d513254cb63f360f6b013145e83b8c76bb25747117dbf58b1c4e79643522d74f",
+      "data/live/research/2026-08-11T10-30-00-github-opportunities.json": "d513254cb63f360f6b013145e83b8c76bb25747117dbf58b1c4e79643522d74f",
+      "data/live/work_orders.json": "73b8eb77e4c66aa1f1727db349df4272122a875d51f434100ce5c76c6747d9bd",
+      "data/live/xianyu_data.db": "ff592fe4260460ddd53876e97eec68753be8f2e08d054517c7eb7a0517124564"
+    }
+  },
+  "source_monitor": {
+    "files_hashed": 268,
+    "changed_during_tests": false,
+    "note": "py/js/html/css/ps1/json/txt/md outside docs/, incl. untracked"
+  },
+  "live_commerce_files_present": [
+    "agent_jobs.json",
+    "decisions.json",
+    "provider_capabilities.json"
+  ],
+  "live_commerce_files_absent": [
+    "offers.json",
+    "matches.json",
+    "opportunities.json",
+    "procurement/inventory/ledger stores"
+  ]
+}

@@ -18,6 +18,15 @@ EVIDENCE_KINDS = (
     "image_rights",
     "market_baseline",
 )
+# Owner-scoped archive extension (G1A): immutable originals that belong to a
+# supplier import batch rather than a resale candidate. These artifacts never
+# satisfy candidate launch gates; EVIDENCE_KINDS above stays unchanged.
+OWNER_TYPES = ("candidate", "supplier_batch")
+SUPPLIER_INTAKE_KINDS = (
+    "supplier_quote_original",
+    "supplier_identity_material",
+    "supplier_use_permission_material",
+)
 EVIDENCE_KIND_CONFIG: Dict[str, Dict[str, str]] = {
     "supplier_quote": {
         "ref_field": "supplier_quote_evidence_ref",
@@ -57,12 +66,14 @@ _EXTENSION_MIME_TYPES: Dict[str, Tuple[str, ...]] = {
     ".txt": ("text/plain",),
     ".md": ("text/markdown", "text/plain"),
     ".json": ("application/json", "text/json", "text/plain"),
+    ".csv": ("text/csv", "text/plain"),
+    ".xlsx": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",),
 }
 _CANONICAL_MIME_TYPE = {
     extension: mime_types[0]
     for extension, mime_types in _EXTENSION_MIME_TYPES.items()
 }
-_TEXT_EXTENSIONS = {".html", ".htm", ".txt", ".md", ".json"}
+_TEXT_EXTENSIONS = {".html", ".htm", ".txt", ".md", ".json", ".csv"}
 _ARTIFACT_ID_PATTERN = re.compile(r"^cea_[a-f0-9]{24}$")
 _CANDIDATE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{2,119}$")
 _BLOB_KEY_PATTERN = re.compile(r"^blobs/[a-f0-9]{2}/[a-f0-9]{64}\.bin$")

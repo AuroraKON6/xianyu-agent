@@ -1,0 +1,29 @@
+{
+  "batch_id": "",
+  "content_sha256": "",
+  "supplier": "",
+  "source_kind": "unknown",
+  "origin_ref": "",
+  "supplier_identity_ref": "",
+  "use_permission_ref": "",
+  "local_review_permitted": null,
+  "external_llm_permitted": null,
+  "issued_at": "",
+  "received_at": "",
+  "valid_until": "",
+  "offers": {
+    "REPLACE_WITH_IMPORTED_SNAPSHOT_ID": {
+      "currency": "",
+      "price_unit": "",
+      "quantity_unit": "",
+      "freight_basis": "unknown",
+      "freight_destination": "",
+      "tax_terms": "",
+      "delivery_terms": "",
+      "after_sales_terms": "",
+      "stock_observed_at": "",
+      "stock_valid_until": "",
+      "evidence_ref": ""
+    }
+  }
+}

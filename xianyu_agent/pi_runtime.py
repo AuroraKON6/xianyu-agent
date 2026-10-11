@@ -448,7 +448,7 @@ class PiRpcClient:
             tool_calls: list[Dict[str, Any]] = []
             tool_by_id: Dict[str, Dict[str, Any]] = {}
             turns = 0
-            usage: Dict[str, Any] = {}
+            turn_usage = []
             for event in events:
                 event_type = event.get("type")
                 if event_type == "turn_end":
@@ -479,16 +479,18 @@ class PiRpcClient:
                         final_text = "".join(text_parts).strip()
                     if candidate.get("errorMessage"):
                         error_message = _safe_text(candidate.get("errorMessage"), 2000)
-                    if isinstance(candidate.get("usage"), Mapping):
-                        usage = {
-                            key: candidate["usage"].get(key)
-                            for key in ("input", "output", "cacheRead", "cacheWrite", "totalTokens")
-                            if candidate["usage"].get(key) is not None
-                        }
+                    turn_usage.append(candidate.get("usage") if isinstance(candidate.get("usage"), Mapping) else {})
 
+            # A prompt may use several model turns around tool calls. A missing
+            # field in any turn remains unknown rather than counting a subset.
+            usage = {}
+            for key in ("input", "output", "cacheRead", "cacheWrite", "totalTokens"):
+                values = [item.get(key) for item in turn_usage]
+                if values and all(type(value) is int and value >= 0 for value in values):
+                    usage[key] = sum(values)
+            if error_message:
+                raise PiRuntimeError(f"Pi agent failed: {error_message}")
             if not final_text:
-                if error_message:
-                    raise PiRuntimeError(f"Pi agent failed: {error_message}")
                 raise PiRuntimeError("Pi agent completed without an assistant response")
 
             return {

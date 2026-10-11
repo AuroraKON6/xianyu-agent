@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-22",
+  "scope": "isolated Pi validation and multi-turn accounting",
+  "acceptance": "PASS within scoped backend/CLI validation; not live trading or final UI acceptance",
+  "uncommitted": true,
+  "closing_test": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run_tests_isolated.ps1",
+    "tests": 1424,
+    "seconds": 89.498,
+    "exit_code": 0
+  },
+  "monitored_sources": {
+    "file_count": 22,
+    "whole_snapshot_unchanged": false,
+    "changed_during_tests": [
+      "web/style.css",
+      "tests/test_pi_usage_ui.py"
+    ],
+    "backend_cli_subset_count": 17,
+    "backend_cli_subset_unchanged": true,
+    "before": [
+      {
+        "path": "xianyu_agent/pi_jobs.py",
+        "sha256": "fc2fabeb0db1e1b844de89770f041284a55e12e9632dd9b519657c66dc79e890"
+      },
+      {
+        "path": "xianyu_agent/pi_runtime.py",
+        "sha256": "c1e650a9402250c0ecb1fa38907e204f7a6e0823e99f071e39925086ae1f5db2"
+      },
+      {
+        "path": "xianyu_agent/pi_validation.py",
+        "sha256": "7b0ce5c9000c4897bbafad030aae9fa0d3ae0f3e8124ed7648e83d540dd5f0ad"
+      },
+      {
+        "path": "xianyu_agent/pi_usage_reconciliation.py",
+        "sha256": "6c479ad68a2725360cea3f182b6796aa8270e76f09d2e375d60213279932999f"
+      },
+      {
+        "path": "xianyu_agent/server.py",
+        "sha256": "f54f8b7f7ba414b988db3062ab5af71ff28e34b7e13ef3855e150a3ef32cad9b"
+      },
+      {
+        "path": "xianyu_agent/budget_reservations.py",
+        "sha256": "bf331f3e3b034af52bc79361476257b69125063a408ae44ad8587a03759cf0b1"
+      },
+      {
+        "path": "xianyu_agent/shadow_observer.py",
+        "sha256": "2699631a066081323ca7b8d1dd824d98336c2796cd1f2e94f68a1e248eb8c156"
+      },
+      {
+        "path": "tests/test_pi_jobs.py",
+        "sha256": "d9a5045149cb0e0d3efd73f641beeef0d890bcecc05aa4f0702c433bd6173356"
+      },
+      {
+        "path": "tests/test_pi_reliability.py",
+        "sha256": "2d9976d782c51f5f21192b59a5623ebc2a76f7f84b81d822b55fce6b4521c0b4"
+      },
+      {
+        "path": "tests/test_pi_recovery_round6.py",
+        "sha256": "17c7958f037b32578d2b45477a34f01cb1c080bb94c9241872d4f91c30755491"
+      },
+      {
+        "path": "tests/test_pi_recovery_completion.py",
+        "sha256": "b3cf6476d068504399756678a322f7889f252782b1cee6858c54a5092eb992f8"
+      },
+      {
+        "path": "tests/test_pi_runtime.py",
+        "sha256": "a0c88ab517b96c812b355a7c0c641c5d21a835585093032c3ce33280730edf5c"
+      },
+      {
+        "path": "tests/test_pi_validation.py",
+        "sha256": "510a88faf32a3a73b566b81e336583838a3c7b07237ffa44a8fda21b7d8ea6ef"
+      },
+      {
+        "path": "tests/test_pi_usage_reconciliation.py",
+        "sha256": "9f043a8106b99b24deaa7057e0e795719e73816a7dc022faf9d6563ef7778a54"
+      },
+      {
+        "path": "scripts/run_pi_quote_review_real.py",
+        "sha256": "b6f9c0639bfdfd8a23cad6fab5692d78d3ad2fbcb87908ba398044de04182a47"
+      },
+      {
+        "path": "requirements.txt",
+        "sha256": "4558a95e51623fbc7b2422189565dfa9e7bf1aa56a38fcc05c41b99f46caa540"
+      },
+      {
+        "path": ".env.example",
+        "sha256": "ded66aa9befe01cccf9b7ce709d800318be56fb185ed5207497cfa87ef6621d2"
+      },
+      {
+        "path": "web/console.html",
+        "sha256": "4e4954f6b69986ea2b3ffa300d7fbeaa8e29fce610565b2b11bc8911a8fc8984"
+      },
+      {
+        "path": "web/style.css",
+        "sha256": "c4ecf29014e8b48355bb59ff34022965eb572155cf01038a41c5d1300cad3871"
+      },
+      {
+        "path": "web/pi-usage.js",
+        "sha256": "1d39385e97be1c5e48dd71677b3fa19f4eb7dade598ceecbaa38e7eb1cc5add7"
+      },
+      {
+        "path": "tests/test_pi_usage_ui.py",
+        "sha256": "ed6d690b8acdb694a9c66d6153f01197211fe50540f9cc36471fdefb019f683a"
+      },
+      {
+        "path": "tests/pi_usage_ui_fixture.py",
+        "sha256": "bb597394463a9c03c2826b1c01954cff9c1e244a8a53d457151a4e7b9160a102"
+      }
+    ],
+    "after": [
+      {
+        "path": "xianyu_agent/pi_jobs.py",
+        "sha256": "fc2fabeb0db1e1b844de89770f041284a55e12e9632dd9b519657c66dc79e890"
+      },
+      {
+        "path": "xianyu_agent/pi_runtime.py",
+        "sha256": "c1e650a9402250c0ecb1fa38907e204f7a6e0823e99f071e39925086ae1f5db2"
+      },
+      {
+        "path": "xianyu_agent/pi_validation.py",
+        "sha256": "7b0ce5c9000c4897bbafad030aae9fa0d3ae0f3e8124ed7648e83d540dd5f0ad"
+      },
+      {
+        "path": "xianyu_agent/pi_usage_reconciliation.py",
+        "sha256": "6c479ad68a2725360cea3f182b6796aa8270e76f09d2e375d60213279932999f"
+      },
+      {
+        "path": "xianyu_agent/server.py",
+        "sha256": "f54f8b7f7ba414b988db3062ab5af71ff28e34b7e13ef3855e150a3ef32cad9b"
+      },
+      {
+        "path": "xianyu_agent/budget_reservations.py",
+        "sha256": "bf331f3e3b034af52bc79361476257b69125063a408ae44ad8587a03759cf0b1"
+      },
+      {
+        "path": "xianyu_agent/shadow_observer.py",
+        "sha256": "2699631a066081323ca7b8d1dd824d98336c2796cd1f2e94f68a1e248eb8c156"
+      },
+      {
+        "path": "tests/test_pi_jobs.py",
+        "sha256": "d9a5045149cb0e0d3efd73f641beeef0d890bcecc05aa4f0702c433bd6173356"
+      },
+      {
+        "path": "tests/test_pi_reliability.py",
+        "sha256": "2d9976d782c51f5f21192b59a5623ebc2a76f7f84b81d822b55fce6b4521c0b4"
+      },
+      {
+        "path": "tests/test_pi_recovery_round6.py",
+        "sha256": "17c7958f037b32578d2b45477a34f01cb1c080bb94c9241872d4f91c30755491"
+      },
+      {
+        "path": "tests/test_pi_recovery_completion.py",
+        "sha256": "b3cf6476d068504399756678a322f7889f252782b1cee6858c54a5092eb992f8"
+      },
+      {
+        "path": "tests/test_pi_runtime.py",
+        "sha256": "a0c88ab517b96c812b355a7c0c641c5d21a835585093032c3ce33280730edf5c"
+      },
+      {
+        "path": "tests/test_pi_validation.py",
+        "sha256": "510a88faf32a3a73b566b81e336583838a3c7b07237ffa44a8fda21b7d8ea6ef"
+      },
+      {
+        "path": "tests/test_pi_usage_reconciliation.py",
+        "sha256": "9f043a8106b99b24deaa7057e0e795719e73816a7dc022faf9d6563ef7778a54"
+      },
+      {
+        "path": "scripts/run_pi_quote_review_real.py",
+        "sha256": "b6f9c0639bfdfd8a23cad6fab5692d78d3ad2fbcb87908ba398044de04182a47"
+      },
+      {
+        "path": "requirements.txt",
+        "sha256": "4558a95e51623fbc7b2422189565dfa9e7bf1aa56a38fcc05c41b99f46caa540"
+      },
+      {
+        "path": ".env.example",
+        "sha256": "ded66aa9befe01cccf9b7ce709d800318be56fb185ed5207497cfa87ef6621d2"
+      },
+      {
+        "path": "web/console.html",
+        "sha256": "4e4954f6b69986ea2b3ffa300d7fbeaa8e29fce610565b2b11bc8911a8fc8984"
+      },
+      {
+        "path": "web/style.css",
+        "sha256": "519a194f9910be6dd66ea6c174dcc2fabf06cee786972142ed94a756c2400ca8"
+      },
+      {
+        "path": "web/pi-usage.js",
+        "sha256": "1d39385e97be1c5e48dd71677b3fa19f4eb7dade598ceecbaa38e7eb1cc5add7"
+      },
+      {
+        "path": "tests/test_pi_usage_ui.py",
+        "sha256": "2126ea5a0bb37aa06f28e0f52ae32d93173faa826a3742d49823477a8fb39337"
+      },
+      {
+        "path": "tests/pi_usage_ui_fixture.py",
+        "sha256": "bb597394463a9c03c2826b1c01954cff9c1e244a8a53d457151a4e7b9160a102"
+      }
+    ]
+  },
+  "live": {
+    "file_count": 20,
+    "unchanged_since_batch_start": true,
+    "contents_not_copied": true
+  },
+  "real_validation": {
+    "passed": true,
+    "mode": "real",
+    "source": "demo",
+    "quote_count": 2,
+    "run_id": "430369ef-a9ca-4bcc-865b-96af68573beb",
+    "session_id": "bdd78fc3-6f36-41c7-8a94-4235bed6099a",
+    "job_id": "job_1c0429db084d4e5a",
+    "attempt": 1,
+    "decision_id": "dec_59d65bd30cee481d",
+    "model": "deepseek-flash",
+    "reported_model_turns": 2,
+    "model_attempt_intents": 1,
+    "total_tokens": 3401,
+    "tool_calls": [
+      {
+        "tool_call_id": "call_00_xMnc8ww0ui8u0Fu8hVVv0512",
+        "name": "xianyu_business_snapshot",
+        "ok": true
+      }
+    ],
+    "gate_probe": {
+      "read": 200,
+      "write": 403,
+      "unlisted": 403
+    },
+    "forced_shutdown": false,
+    "worker_exit_code": 0,
+    "live_unchanged": true,
+    "input_sha256": "1b5e9a17a9f83b88e0a78f54f6fec5f2e81613daa4ab4a0cc5151da555daf29a"
+  },
+  "artifacts": [
+    {
+      "path": "data/pi-validation/r7-real-20260922/validation.json",
+      "sha256": "35b68475a3a4cca7cfce558828eb61fc7ecd078e0920ee3d46cdb989dbc00460"
+    },
+    {
+      "path": "data/pi-validation/r7-real-20260922/live-hashes.json",
+      "sha256": "3c6ad2118a2bf14af40c8fb8cf864115a54146a708430420319ad323f6e69295"
+    },
+    {
+      "path": "data/pi-validation/r7-real-20260922/data/commerce/model_usage.json",
+      "sha256": "283610bb7f8b79b2dc0330a10891584ef8dc7ba33c720f66bde104ecbde8f73e"
+    },
+    {
+      "path": "data/pi-validation/r7-real-20260922/data/commerce/pi_evidence/job_1c0429db084d4e5a__attempt1.json",
+      "sha256": "01dba50a76177537dc22de7f7521e7e83392efa43d38c025a9bec57787c1bb7c"
+    }
+  ],
+  "limitations": [
+    "source=demo does not establish supplier validity or realized profit",
+    "local reported usage is not a provider billing export",
+    "task token acceptance budget is not a hard upstream spending ceiling",
+    "single-process persistence guarantees only",
+    "concurrent UI edits require independent final visual and snapshot acceptance",
+    "no real usage reconciliation, platform write, or automatic trading enablement"
+  ]
+}

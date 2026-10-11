@@ -15,11 +15,11 @@ conservative sellable allocation per account + SKU, with order locks:
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Mapping, Optional
 
-from .candidate_activation import QUOTE_MAX_AGE_SECONDS
 from .commerce.repositories import LockedJsonList
 from .commerce.contracts import new_id, utc_now
 from .providers.freshness import FRESH_CURRENT, classify_snapshot
@@ -37,12 +37,15 @@ class InventoryAllocationService:
         self._safety_margin = max(0, int(safety_margin))
 
     @staticmethod
-    def _stock_is_current(record: Mapping[str, Any], now: datetime) -> bool:
-        observed = str(record.get("supplier_observed_at") or "")
-        if not observed:
-            return False
-        meta = classify_snapshot({"provider_id": "supplier_file:x", "observed_at": observed}, now=now)
-        return meta["freshness"] == FRESH_CURRENT
+    def _stock_freshness(record: Mapping[str, Any], now: datetime) -> Dict[str, Any]:
+        facts = record.get("supplier_time_provenance")
+        if not isinstance(facts, Mapping):
+            return {"freshness": "unknown", "reasons": ["legacy_inventory_provenance_missing"]}
+        return classify_snapshot(facts, now=now)
+
+    @classmethod
+    def _stock_is_current(cls, record: Mapping[str, Any], now: datetime) -> bool:
+        return cls._stock_freshness(record, now)["freshness"] == FRESH_CURRENT
 
     # ---- supplier stock registration ----
 
@@ -83,6 +86,8 @@ class InventoryAllocationService:
             record["supplier_snapshot_id"] = snapshot.get("record_id")
             record["supplier_stock"] = stock_quantity if known else None
             record["supplier_observed_at"] = snapshot.get("observed_at")
+            record["supplier_time_provenance"] = deepcopy({key: snapshot.get(key) for key in (
+                "provider_id", "observed_at", "fetched_at", "expires_at", "attributes")})
             record["freshness"] = freshness
             record["sellable_base"] = sellable
             record["updated_at"] = utc_now().isoformat()
@@ -123,14 +128,15 @@ class InventoryAllocationService:
             }
         record = found[0]
         locked = sum(int(q) for q in (record.get("locks") or {}).values())
-        current = self._stock_is_current(record, moment)
+        freshness = self._stock_freshness(record, moment)
+        current = freshness["freshness"] == FRESH_CURRENT
         base = int(record.get("sellable_base") or 0) if current else 0
         available = max(0, base - locked) if current else 0
         reason = (
             "ok"
             if current and record.get("supplier_stock") is not None
             else (
-                "supplier stock expired; refresh the snapshot before selling"
+                "supplier stock expired or source unknown; refresh the snapshot before selling"
                 if not current
                 else "supplier stock unknown; paused"
             )
@@ -141,7 +147,7 @@ class InventoryAllocationService:
             "supplier_snapshot_id": record.get("supplier_snapshot_id"),
             "supplier_stock": record.get("supplier_stock"),
             "supplier_observed_at": record.get("supplier_observed_at"),
-            "freshness": record.get("freshness"),
+            "freshness": freshness,
             "stock_current_at_read": current,
             "sellable": base,
             "locked": locked,
@@ -174,7 +180,7 @@ class InventoryAllocationService:
             # current at registration may have expired since
             if not self._stock_is_current(record, moment):
                 raise InventoryError(
-                    f"supplier stock for {account_id}/{sku} expired "
+                    f"supplier stock for {account_id}/{sku} expired or source unknown "
                     f"(observed {record.get('supplier_observed_at')}); refresh before locking"
                 )
             locks = record.setdefault("locks", {})

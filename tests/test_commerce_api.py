@@ -2,16 +2,17 @@
 from __future__ import annotations
 
 import unittest
+from quote_fixtures import declared_quote_csv
 
 from fastapi.testclient import TestClient
 
 from xianyu_agent import server
 
 
-QUOTE_TEXT = (
+QUOTE_TEXT = declared_quote_csv((
     "货号,品名,单价,单位,起订量,库存,运费,规格,品牌,成色\n"
     "GZ-1200,不锈钢工作台,150,件,2,10,包邮,120x60x85cm,众商,全新\n"
-)
+).encode("utf-8")).decode("utf-8")
 
 
 class CommercePipelineApiTests(unittest.TestCase):

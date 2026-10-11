@@ -6,6 +6,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
+from quote_fixtures import with_declared_quote_provenance
 
 from xianyu_agent.commerce import (
     MATCH_COMPARABLE,
@@ -193,7 +194,7 @@ def market_snapshot(*, price="299", observed=None, name="不锈钢工作台 GZ-1
 
 def supplier_snapshot(*, price="150", freight="15", observed=None, sku="GZ-1200", moq=1):
     observed = observed or datetime.now(UTC)
-    return build_offer_snapshot(
+    return with_declared_quote_provenance(build_offer_snapshot(
         provider_id="supplier_file:杭州五金供应商",
         source_item_id=sku,
         source_sku_id=sku,
@@ -208,7 +209,7 @@ def supplier_snapshot(*, price="150", freight="15", observed=None, sku="GZ-1200"
         payload_hash=f"sup-{sku}-{price}-{freight}-{observed.isoformat()}",
         account_id="",
         source_ref="import_batch:test",
-    )
+    ))
 
 
 class OpportunityServiceTests(unittest.TestCase):

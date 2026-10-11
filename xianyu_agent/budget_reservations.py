@@ -13,6 +13,7 @@ is refused with a budget error, not queued.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Mapping, Optional
@@ -214,6 +215,8 @@ class ShadowAuthorizationLog:
         action_summary: str,
         now: Optional[datetime] = None,
         event_id: str = "",
+        allowance_amount: Optional[Mapping[str, Any]] = None,
+        provenance: Optional[Mapping[str, Any]] = None,
     ) -> Dict[str, Any]:
         # idempotent by event id: a retry after a crash between the log
         # write and the cursor advance must not duplicate the sample
@@ -226,6 +229,8 @@ class ShadowAuthorizationLog:
             "record_id": new_id("shadow"),
             "mode": "shadow",
             "event_id": event_id or None,
+            "allowance_amount": dict(allowance_amount) if allowance_amount is not None else None,
+            "provenance": deepcopy(dict(provenance or {"eligible": False, "source_kind": "unknown"})),
             "business_day": business_day(now or utc_now()),
             "recorded_at": (now or utc_now()).isoformat(),
             "action_summary": action_summary,
@@ -242,11 +247,28 @@ class ShadowAuthorizationLog:
         found = self._store.find(lambda r: str(r.get("event_id")) == event_id)
         return found[0] if found else None
 
+    def list_events(self) -> List[Dict[str, Any]]:
+        """Durable observer events, excluding ad-hoc policy previews."""
+        return self._store.find(lambda r: bool(r.get("event_id")))
+
     def metrics(self) -> Dict[str, Any]:
         records = self._store.all()
         total = len(records)
         allowed = sum(1 for r in records if r.get("would_allow"))
         days = sorted({str(r.get("business_day")) for r in records})
+        # Legacy events and policy previews are not evidence-bound source samples.
+        source_records = {}
+        for record in records:
+            facts = record.get("provenance") or {}
+            event_id = str(record.get("event_id") or "")
+            if (isinstance(facts, Mapping) and facts.get("eligible") is True
+                    and facts.get("source_kind") == "supplier_original"
+                    and facts.get("supplier_snapshot_id") and facts.get("market_snapshot_id")
+                    and facts.get("import_batch_id") and facts.get("source_reference")
+                    and facts.get("assessed_at") and event_id.startswith("opportunity:")):
+                source_records.setdefault(event_id, record)
+        source_days = sorted({str(r.get("business_day")) for r in source_records.values()})
+        sample_gate_met = len(source_records) >= 100 and len(source_days) >= 7
         by_action: Dict[str, Dict[str, int]] = {}
         for record in records:
             summary = str(record.get("action_summary") or "unknown")[:60]
@@ -260,9 +282,16 @@ class ShadowAuthorizationLog:
             "allow_rate": round(allowed / total, 4) if total else None,
             "distinct_days": len(days),
             "days": days,
+            "real_source_samples": len(source_records),
+            "real_source_days": len(source_days),
+            "excluded_source_samples": total - len(source_records),
+            "trial_sample_gate_met": sample_gate_met,
+            "autonomy_authorized": False,
             "readiness_note": (
-                f"n={total} over {len(days)} day(s); the >=7 days / >=100 samples gate "
-                "is NOT met unless both numbers say so"
+                f"Source-declared samples: n={len(source_records)} over {len(source_days)} day(s); "
+                f"the >=7 days / >=100 samples gate is {'met' if sample_gate_met else 'NOT met'}. "
+                "Point-in-time declarations only, not supplier authentication or commercial approval; "
+                "no automatic action is authorized."
             ),
             "by_action_summary": by_action,
         }

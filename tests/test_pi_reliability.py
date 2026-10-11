@@ -215,6 +215,14 @@ class DecisionCommitProtocolTests(unittest.TestCase):
         submit = client.post("/commerce/pi-tasks/quote-review", json={})
         job_id = submit.json()["record_id"]
         runner = server.pi_task_runner
+        from unittest.mock import patch
+        from xianyu_agent.pi_jobs import ModelUsageLedger
+
+        isolated_usage = tempfile.TemporaryDirectory()
+        self.addCleanup(isolated_usage.cleanup)
+        usage_patch = patch.object(runner, "model_usage", ModelUsageLedger(Path(isolated_usage.name)))
+        usage_patch.start()
+        self.addCleanup(usage_patch.stop)
         original_complete = runner._jobs.complete
 
         def complete_then_cancel(job_id, **kwargs):

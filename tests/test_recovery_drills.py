@@ -11,6 +11,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
+from quote_fixtures import declared_quote_csv
 
 from xianyu_agent.agent_jobs import (
     JOB_QUEUED,
@@ -68,7 +69,7 @@ class DrillBase(unittest.TestCase):
     def seed_live_pipeline(self):
         """Import a committed quote, register stock, create a market side,
         match EXACT and build a qualified opportunity."""
-        preview = self.importer.preview_bytes(QUOTE_CSV, kind="csv")
+        preview = self.importer.preview_bytes(declared_quote_csv(QUOTE_CSV), kind="csv")
         confirm = self.importer.confirm(
             preview["preview_id"],
             content_sha256=preview["content_sha256"],
@@ -308,7 +309,7 @@ class FullFlowCombinationDrill(DrillBase):
         # 7. branch: cancelling a live procurement returns its stock
         order_b = None  # batch revoked -> cannot create another; use cancel of the received flow's sibling instead
         # (create a fresh committed batch to enable one more procurement)
-        preview = self.importer.preview_bytes(QUOTE_CSV.replace(b"150", b"165"), kind="csv")
+        preview = self.importer.preview_bytes(declared_quote_csv(QUOTE_CSV.replace(b"150", b"165")), kind="csv")
         confirm2 = self.importer.confirm(
             preview["preview_id"],
             content_sha256=preview["content_sha256"],

@@ -3559,3 +3559,42 @@ button {
 .commerce-table th {
   background: rgba(101, 114, 124, 0.12);
 }
+
+.commerce-panel { grid-column: 1 / -1; }
+
+.pi-usage-panel {
+  margin-top: 16px;
+  gap: 12px;
+  border-left: 3px solid var(--accent);
+}
+
+.pi-usage-panel p { margin: 0; }
+.pi-usage-note { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.pi-usage-panel label { display: grid; gap: 6px; font-size: 12px; }
+.pi-usage-panel fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+.pi-usage-panel legend { font-size: 13px; font-weight: 600; }
+.pi-usage-panel input,
+.pi-usage-panel select,
+.pi-usage-panel textarea { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); }
+.pi-usage-panel button:disabled { opacity: 0.5; cursor: not-allowed; }
+.pi-usage-panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pi-usage-auth { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
+.pi-usage-auth label { flex: 1 1 260px; }
+.pi-usage-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+.pi-usage-wide { grid-column: 1 / -1; }
+.pi-usage-status { padding: 10px; background: #edf6f3; border-radius: 6px; font-size: 12px; overflow-wrap: anywhere; }
+.pi-usage-status[data-tone="error"] { color: var(--danger); background: #fff1ef; }
+.pi-usage-status[data-tone="warning"] { color: var(--warn); background: #fff7e8; }
+.pi-usage-diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.pi-usage-diff > div { padding: 10px; background: #f5f8f7; border: 1px solid var(--line); border-radius: 6px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pi-usage-json { padding: 10px; border: 1px solid var(--line); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; max-height: 280px; overflow-y: auto; }
+.pi-usage-panel .pi-usage-confirm { display: flex; align-items: start; gap: 8px; line-height: 1.6; }
+.pi-usage-panel .pi-usage-confirm input { width: auto; margin-top: 3px; flex: 0 0 auto; }
+#pi-usage-selected { overflow-wrap: anywhere; font-size: 12px; }
+#pi-usage-preview-btn { margin-top: 8px; }
+#pi-usage-entries td { overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+  .pi-usage-grid, .pi-usage-diff { grid-template-columns: 1fr; }
+  .pi-usage-auth button { flex: 1; }
+}

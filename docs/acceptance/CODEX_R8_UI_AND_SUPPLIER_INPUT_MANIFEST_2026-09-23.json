@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-23",
+  "scope": "supplier input precision and independent reconciliation UI acceptance",
+  "uncommitted": true,
+  "tests": {
+    "full": {
+      "tests": 1445,
+      "seconds": 50.573,
+      "exit_code": 0,
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run_tests_isolated.ps1"
+    },
+    "supplier": {
+      "tests": 39,
+      "new_tests": 19,
+      "seconds": 0.119,
+      "exit_code": 0
+    },
+    "ui": {
+      "tests": 14,
+      "seconds": 21.969,
+      "exit_code": 0
+    }
+  },
+  "monitored_files": {
+    "count": 24,
+    "unchanged": true,
+    "files": [
+      {
+        "path": ".env.example",
+        "sha256": "ded66aa9befe01cccf9b7ce709d800318be56fb185ed5207497cfa87ef6621d2"
+      },
+      {
+        "path": "requirements.txt",
+        "sha256": "4558a95e51623fbc7b2422189565dfa9e7bf1aa56a38fcc05c41b99f46caa540"
+      },
+      {
+        "path": "scripts/run_pi_quote_review_real.py",
+        "sha256": "b6f9c0639bfdfd8a23cad6fab5692d78d3ad2fbcb87908ba398044de04182a47"
+      },
+      {
+        "path": "tests/pi_usage_ui_fixture.py",
+        "sha256": "bb597394463a9c03c2826b1c01954cff9c1e244a8a53d457151a4e7b9160a102"
+      },
+      {
+        "path": "tests/test_pi_jobs.py",
+        "sha256": "d9a5045149cb0e0d3efd73f641beeef0d890bcecc05aa4f0702c433bd6173356"
+      },
+      {
+        "path": "tests/test_pi_recovery_completion.py",
+        "sha256": "b3cf6476d068504399756678a322f7889f252782b1cee6858c54a5092eb992f8"
+      },
+      {
+        "path": "tests/test_pi_recovery_round6.py",
+        "sha256": "17c7958f037b32578d2b45477a34f01cb1c080bb94c9241872d4f91c30755491"
+      },
+      {
+        "path": "tests/test_pi_reliability.py",
+        "sha256": "2d9976d782c51f5f21192b59a5623ebc2a76f7f84b81d822b55fce6b4521c0b4"
+      },
+      {
+        "path": "tests/test_pi_runtime.py",
+        "sha256": "a0c88ab517b96c812b355a7c0c641c5d21a835585093032c3ce33280730edf5c"
+      },
+      {
+        "path": "tests/test_pi_usage_reconciliation.py",
+        "sha256": "9f043a8106b99b24deaa7057e0e795719e73816a7dc022faf9d6563ef7778a54"
+      },
+      {
+        "path": "tests/test_pi_usage_ui.py",
+        "sha256": "005b003df2ed94f63f6f179f700d7e356afc5c7c4d171d34309d0b29bc32c6da"
+      },
+      {
+        "path": "tests/test_pi_validation.py",
+        "sha256": "510a88faf32a3a73b566b81e336583838a3c7b07237ffa44a8fda21b7d8ea6ef"
+      },
+      {
+        "path": "tests/test_supplier_import_precision.py",
+        "sha256": "db3d9fe1cb8d5606d43163e7f6e4b6dc877e2bf3298e34f38c1e5e23eb667c4e"
+      },
+      {
+        "path": "web/console.html",
+        "sha256": "4e4954f6b69986ea2b3ffa300d7fbeaa8e29fce610565b2b11bc8911a8fc8984"
+      },
+      {
+        "path": "web/pi-usage.js",
+        "sha256": "8f511815da48e9357ffe4f176af09eb187e737a2a0bee81534c65a8cd03d4586"
+      },
+      {
+        "path": "web/style.css",
+        "sha256": "519a194f9910be6dd66ea6c174dcc2fabf06cee786972142ed94a756c2400ca8"
+      },
+      {
+        "path": "xianyu_agent/budget_reservations.py",
+        "sha256": "bf331f3e3b034af52bc79361476257b69125063a408ae44ad8587a03759cf0b1"
+      },
+      {
+        "path": "xianyu_agent/pi_jobs.py",
+        "sha256": "fc2fabeb0db1e1b844de89770f041284a55e12e9632dd9b519657c66dc79e890"
+      },
+      {
+        "path": "xianyu_agent/pi_runtime.py",
+        "sha256": "c1e650a9402250c0ecb1fa38907e204f7a6e0823e99f071e39925086ae1f5db2"
+      },
+      {
+        "path": "xianyu_agent/pi_usage_reconciliation.py",
+        "sha256": "6c479ad68a2725360cea3f182b6796aa8270e76f09d2e375d60213279932999f"
+      },
+      {
+        "path": "xianyu_agent/pi_validation.py",
+        "sha256": "7b0ce5c9000c4897bbafad030aae9fa0d3ae0f3e8124ed7648e83d540dd5f0ad"
+      },
+      {
+        "path": "xianyu_agent/server.py",
+        "sha256": "f54f8b7f7ba414b988db3062ab5af71ff28e34b7e13ef3855e150a3ef32cad9b"
+      },
+      {
+        "path": "xianyu_agent/shadow_observer.py",
+        "sha256": "2699631a066081323ca7b8d1dd824d98336c2796cd1f2e94f68a1e248eb8c156"
+      },
+      {
+        "path": "xianyu_agent/supplier_import.py",
+        "sha256": "3e7089588ab74139519313e987a08728386dc69b5104d3bc45c19e7d84888c78"
+      }
+    ]
+  },
+  "live": {
+    "file_count": 20,
+    "unchanged": true,
+    "contents_copied": false
+  },
+  "ui": {
+    "mode": "temporary ledger fixture; actual router and panel assets; unrelated legacy script disabled",
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 1000,
+        "panel_client_width": 1088,
+        "panel_scroll_width": 1088
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "panel_client_width": 306,
+        "panel_scroll_width": 306
+      }
+    ],
+    "states": [
+      "locked",
+      "preview",
+      "receipt"
+    ],
+    "screenshots": [
+      {
+        "path": "output/playwright/r8-pi-usage-20260923/desktop-locked.png",
+        "sha256": "a4ace1359e7611b227b336c0a2da75f08a4fcd9194dff6c516c1aaa254d08ef3"
+      },
+      {
+        "path": "output/playwright/r8-pi-usage-20260923/desktop-preview.png",
+        "sha256": "964c6a10f94c542065cf2605de6e2db72b0bb286aedb50f4846be38d999d214c"
+      },
+      {
+        "path": "output/playwright/r8-pi-usage-20260923/desktop-receipt.png",
+        "sha256": "4865fd234d90a21e097fdf1a9dc1185d521ef6f7563cbe1ba298c7abde5a5728"
+      },
+      {
+        "path": "output/playwright/r8-pi-usage-20260923/mobile-locked.png",
+        "sha256": "6123b8bf184c7db156907aebe1f88f2b4a835da4cdc0212aeb746c0eb3711f14"
+      },
+      {
+        "path": "output/playwright/r8-pi-usage-20260923/mobile-preview.png",
+        "sha256": "1b1ea85f68ece3983ccab686664f607a3cfd9d0739c10f280ecd68bc13b68764"
+      },
+      {
+        "path": "output/playwright/r8-pi-usage-20260923/mobile-receipt.png",
+        "sha256": "6071bf7ab6ef301ce16c3e6baeccda3f8107802022aacbde2dfed95b6eedc83a"
+      }
+    ],
+    "normal_fixture_cleanup": true
+  },
+  "real_model_calls": 0,
+  "real_supplier_quotes_ingested": 0,
+  "real_reconciliations": 0,
+  "platform_writes": 0,
+  "next_prerequisites": [
+    "bind source observation time independently of import time",
+    "quote expiry and missing/future timestamp eligibility gates",
+    "real/demo/unknown provenance through Pi and shadow samples",
+    "actual supplier evidence and authorized bounded read-only trial"
+  ],
+  "limitations": [
+    "no full-console business e2e claim",
+    "no historical snapshot migration",
+    "single-process persistence scope",
+    "currency absent from a legacy file still assumes CNY with an explicit import-basis flag"
+  ]
+}

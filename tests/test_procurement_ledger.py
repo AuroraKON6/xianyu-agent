@@ -11,6 +11,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
+from quote_fixtures import declared_quote_csv, with_declared_quote_provenance
 
 from xianyu_agent.commerce import JsonCommerceRepositories
 from xianyu_agent.commerce.contracts import build_offer_snapshot
@@ -35,7 +36,7 @@ class ScenarioBase(unittest.TestCase):
         self.procurement = ProcurementService(root, self.repos, self.inventory)
         self.ledger = LedgerService(root)
         # import a fresh supplier quote with stock 10
-        snapshot = build_offer_snapshot(
+        snapshot = with_declared_quote_provenance(build_offer_snapshot(
             provider_id="supplier_file:S供应商",
             source_item_id="GZ-1200",
             source_sku_id="GZ-1200",
@@ -51,7 +52,7 @@ class ScenarioBase(unittest.TestCase):
             payload_hash="wp13-base",
             account_id="",
             source_ref="test",
-        )
+        ))
         self.repos.offers.add(snapshot)
         self.inventory.register_supplier_snapshot(account_id="acc-1", sku="GZ-1200", snapshot=snapshot)
 
@@ -249,7 +250,7 @@ class RevokedBatchIsolationTests(unittest.TestCase):
             "货号,品名,单价,单位,起订量,库存,运费,规格,品牌,成色\n"
             "GZ-1200,商用不锈钢工作台,150,件,2,10,15,120x60x85cm,众商,全新\n"
         ).encode("utf-8")
-        preview = self.importer.preview_bytes(quote, kind="csv")
+        preview = self.importer.preview_bytes(declared_quote_csv(quote), kind="csv")
         self.confirm = self.importer.confirm(
             preview["preview_id"],
             content_sha256=preview["content_sha256"],
@@ -300,7 +301,7 @@ class StockExpiryRevalidationTests(ScenarioBase):
                 account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-late", now=later
             )
         # a fresh snapshot unblocks selling again
-        fresh = build_offer_snapshot(
+        fresh = with_declared_quote_provenance(build_offer_snapshot(
             provider_id="supplier_file:S供应商",
             source_item_id="GZ-1200",
             source_sku_id="GZ-1200",
@@ -316,7 +317,7 @@ class StockExpiryRevalidationTests(ScenarioBase):
             payload_hash="fresh-again",
             account_id="",
             source_ref="test",
-        )
+        ))
         self.repos.offers.add(fresh)
         self.inventory.register_supplier_snapshot(account_id="acc-1", sku="GZ-1200", snapshot=fresh)
         self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 10)

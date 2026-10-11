@@ -1,0 +1,34 @@
+{
+  "batch": "R8 operator usage reconciliation UI",
+  "workspace": "E:\\闲鱼\\xianyu",
+  "acceptance_date": "2026-09-22",
+  "status": "isolated software validation passed; not production acceptance",
+  "full_regression": {
+    "tests": 1426,
+    "seconds": 78.197,
+    "exit_code": 0,
+    "live_file_count": 20,
+    "live_file_set_and_sha256_unchanged": true,
+    "source_file_count": 247,
+    "source_file_set_and_sha256_unchanged": true,
+    "source_roots": ["xianyu_agent", "tests", "scripts", "web"],
+    "source_extensions": [".py", ".ps1", ".html", ".js", ".css"],
+    "log": "C:\\Users\\轻音\\AppData\\Local\\Temp\\xianyu-r8-final-078af3dfa1de40548da388888bb235a1.log"
+  },
+  "reconciliation_api_tests": 17,
+  "browser_tests": 14,
+  "browser_test_data": "temporary fixture ledger only",
+  "real_model_calls_by_this_batch": 0,
+  "real_reconciliations_by_this_batch": 0,
+  "platform_writes_by_this_batch": 0,
+  "staged_or_committed_by_this_batch": false,
+  "sha256": {
+    "web/console.html": "4e4954f6b69986ea2b3ffa300d7fbeaa8e29fce610565b2b11bc8911a8fc8984",
+    "web/pi-usage.js": "8f511815da48e9357ffe4f176af09eb187e737a2a0bee81534c65a8cd03d4586",
+    "web/style.css": "519a194f9910be6dd66ea6c174dcc2fabf06cee786972142ed94a756c2400ca8",
+    "xianyu_agent/server.py": "f54f8b7f7ba414b988db3062ab5af71ff28e34b7e13ef3855e150a3ef32cad9b",
+    "tests/pi_usage_ui_fixture.py": "bb597394463a9c03c2826b1c01954cff9c1e244a8a53d457151a4e7b9160a102",
+    "tests/test_pi_usage_ui.py": "005b003df2ed94f63f6f179f700d7e356afc5c7c4d171d34309d0b29bc32c6da",
+    "tests/test_pi_usage_reconciliation.py": "9f043a8106b99b24deaa7057e0e795719e73816a7dc022faf9d6563ef7778a54"
+  }
+}

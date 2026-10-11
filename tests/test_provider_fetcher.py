@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from quote_fixtures import declared_quote_csv, with_declared_quote_provenance
 
 from xianyu_agent.commerce import JsonCommerceRepositories
 from xianyu_agent.providers import (
@@ -228,11 +229,13 @@ class FetchPolicyTests(unittest.TestCase):
 
 class FreshnessTests(unittest.TestCase):
     def test_supplier_quote_24h(self):
-        fresh = {"provider_id": "supplier_file:x", "observed_at": datetime.now(UTC).isoformat()}
-        stale = {
+        moment = datetime.now(UTC).isoformat()
+        fresh = with_declared_quote_provenance({"provider_id": "supplier_file:x", "observed_at": moment, "fetched_at": moment})
+        stale = with_declared_quote_provenance({
             "provider_id": "supplier_file:x",
             "observed_at": (datetime.now(UTC) - timedelta(hours=25)).isoformat(),
-        }
+            "fetched_at": moment,
+        })
         self.assertEqual(classify_snapshot(fresh)["freshness"], "current")
         self.assertEqual(classify_snapshot(stale)["freshness"], "expired")
 
@@ -247,10 +250,10 @@ class FreshnessTests(unittest.TestCase):
 
 
 def quote_csv(price="150", observed=None):
-    return (
+    return declared_quote_csv((
         "货号,品名,单价,单位,起订量,库存,运费,规格,品牌,成色\n"
         f"GZ-1200,商用不锈钢工作台,{price},件,2,10,15,120x60x85cm,众商,全新\n"
-    ).encode("utf-8")
+    ).encode("utf-8"), observed=observed)
 
 
 class SupplierFileProviderTests(unittest.TestCase):
@@ -263,7 +266,8 @@ class SupplierFileProviderTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def _import(self, text=quote_csv()):
+    def _import(self, text=None):
+        text = text if text is not None else quote_csv()
         preview = self.service.preview_bytes(text, kind="csv")
         return self.service.confirm(
             preview["preview_id"],
@@ -299,7 +303,7 @@ class SupplierFileProviderTests(unittest.TestCase):
 
     def test_expired_snapshots_excluded_reported_and_includable(self):
         # import a quote observed 30h ago: committed batch, but stale
-        preview = self.service.preview_bytes(quote_csv(), kind="csv")
+        preview = self.service.preview_bytes(quote_csv(observed=datetime.now(UTC) - timedelta(hours=30)), kind="csv")
         self.service.confirm(
             preview["preview_id"],
             content_sha256=preview["content_sha256"],

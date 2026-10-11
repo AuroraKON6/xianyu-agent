@@ -5517,7 +5517,8 @@ async function piRefreshStatus() {
       .map(([status, count]) => `${escapeHtml(status)}: ${count}`)
       .join(" ｜ ");
     $("#pi-task-result").innerHTML =
-      `<p>任务：${rows || "无"} ｜ 影子线程：${shadow.background_thread ? "运行中" : "关闭"} ｜ 影子样本：${shadow.metrics?.total ?? 0} 条（${shadow.metrics?.allowed ?? 0} 允许）</p>` +
+      `<p>任务：${rows || "无"} ｜ 影子线程：${shadow.background_thread ? "运行中" : "关闭"} ｜ 影子记录：${shadow.metrics?.total ?? 0} 条（策略模拟允许 ${shadow.metrics?.allowed ?? 0} 条）</p>` +
+      `<p>来源声明合格：${shadow.metrics?.real_source_samples ?? 0} 条 / ${shadow.metrics?.real_source_days ?? 0} 天 ｜ 未计入：${shadow.metrics?.excluded_source_samples ?? shadow.metrics?.total ?? 0} 条 ｜ 自动执行未授权</p>` +
       `<p>${escapeHtml(shadow.metrics?.readiness_note || "")}</p>`;
   } catch (e) {
     $("#pi-task-result").textContent = `状态读取失败：${e.message}`;

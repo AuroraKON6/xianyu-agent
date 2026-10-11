@@ -52,6 +52,7 @@ from .commerce.contracts import (
     utc_now,
 )
 from .commerce.repositories import JsonCommerceRepositories, LockedJsonList
+from .quote_provenance import source_time
 
 IMPORT_KIND_CSV = "csv"
 IMPORT_KIND_XLSX = "xlsx"
@@ -73,7 +74,9 @@ COLUMN_ALIASES: Dict[str, Sequence[str]] = {
     "sku": ("sku", "编码", "商品编码", "货号", "型号", "编号", "item no", "itemno"),
     "name": ("name", "品名", "商品名称", "名称", "product"),
     "price": ("price", "单价", "采购价", "供货价", "价格", "报价", "unit price"),
+    "currency": ("currency", "币种", "货币", "报价币种"),
     "unit": ("unit", "单位", "销售单位", "计量单位"),
+    "quantity_unit": ("quantity_unit", "数量单位", "库存起订单位"),
     "pieces_per_case": ("装箱量", "每箱数量", "箱规", "装箱数", "pieces per case"),
     "moq": ("moq", "起订量", "起订", "最小起订量"),
     "stock": ("stock", "库存", "库存量", "现货量", "可发货数量"),
@@ -84,6 +87,10 @@ COLUMN_ALIASES: Dict[str, Sequence[str]] = {
     "condition": ("condition", "成色"),
     "delivery": ("delivery", "发货时效", "出库时效", "发货时间"),
     "notes": ("notes", "备注", "remark"),
+    "source_kind": ("source_kind", "来源类型"),
+    "source_reference": ("source_reference", "origin_ref", "来源引用", "原始报价引用"),
+    "source_observed_at": ("source_observed_at", "quoted_at", "实际观察时间", "报价确认时间"),
+    "valid_until": ("valid_until", "expires_at", "报价有效期", "有效截止时间"),
 }
 
 CANONICAL_COLUMNS = tuple(COLUMN_ALIASES)
@@ -145,8 +152,17 @@ def map_headers(headers: Sequence[str]) -> Tuple[Dict[int, Tuple[str, float]], L
     return mapping, unmapped
 
 
-_NUMBER_RE = re.compile(r"(-?\d+(?:\.\d+)?)")
+_NUMBER_TEXT = r"[+-]?(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
+_NUMBER_RE = re.compile(_NUMBER_TEXT)
+_MONEY_RE = re.compile(
+    r"(?:(?:每箱|整箱|一箱)\s*)?(?:(?:CNY|RMB|人民币|￥|¥)\s*)?"
+    r"(?P<amount>" + _NUMBER_TEXT + r")\s*(?:CNY|RMB|元)?\s*(?:/箱|每箱)?",
+    re.IGNORECASE,
+)
 _PER_CASE_HINTS = ("每箱", "/箱", "整箱", "一箱")
+_CASE_UNITS = ("箱", "整箱", "case")
+_PIECE_UNITS = ("件", "个", "pc", "piece")
+_CNY_LABELS = ("CNY", "RMB", "人民币", "元")
 
 
 def _parse_number(raw: Any) -> Optional[Decimal]:
@@ -155,18 +171,18 @@ def _parse_number(raw: Any) -> Optional[Decimal]:
     text = str(raw).strip()
     if not text:
         return None
-    match = _NUMBER_RE.search(text.replace(",", "").replace("￥", "").replace("¥", ""))
+    match = _NUMBER_RE.fullmatch(text)
     if not match:
         return None
     try:
-        return Decimal(match.group(1))
+        return Decimal(match.group(0).replace(",", ""))
     except InvalidOperation:
         return None
 
 
 def _parse_integer(raw: Any) -> Optional[int]:
     number = _parse_number(raw)
-    if number is None:
+    if number is None or number != number.to_integral_value():
         return None
     try:
         return int(number)
@@ -181,9 +197,10 @@ def _parse_money_cell(raw: Any) -> Money:
     text = str(raw).strip()
     if not text:
         return Money.unknown("cell empty")
-    number = _parse_number(text)
-    if number is None:
+    match = _MONEY_RE.fullmatch(text)
+    if match is None:
         return Money.unknown(f"unparseable value: {text!r}")
+    number = _parse_number(match.group("amount"))
     if number < 0:
         raise ImportPreviewError(f"negative amount not allowed: {text!r}")
     return Money.known(number)
@@ -214,12 +231,10 @@ def _parse_stock(raw: Any) -> Tuple[str, Optional[int]]:
     if number is not None:
         state = "out_of_stock" if number <= 0 else "in_stock"
         return (state, number)
-    for word in _STOCK_IN_WORDS:
-        if word in text:
-            return ("in_stock", None)
-    for word in _STOCK_OUT_WORDS:
-        if word in text:
-            return ("out_of_stock", None)
+    if text in _STOCK_IN_WORDS:
+        return ("in_stock", None)
+    if text in _STOCK_OUT_WORDS:
+        return ("out_of_stock", None)
     return ("unknown", None)
 
 
@@ -229,9 +244,9 @@ def _parse_tier_prices(raw: Any) -> List[Dict[str, Any]]:
         return []
     tiers: List[Dict[str, Any]] = []
     for chunk in re.split(r"[;；,，]", text):
-        match = re.match(r"\s*(\d+)\s*[:：]\s*(\d+(?:\.\d+)?)\s*", chunk)
-        if not match:
-            continue
+        match = re.fullmatch(r"\s*([0-9]+)\s*[:：]\s*([0-9]+(?:\.[0-9]+)?)\s*", chunk)
+        if not match or int(match.group(1)) <= 0 or any(t["min_quantity"] == int(match.group(1)) for t in tiers):
+            raise ImportPreviewError("ambiguous tier prices; provide unique positive quantity:price pairs")
         tiers.append(
             {
                 "min_quantity": int(match.group(1)),
@@ -362,6 +377,16 @@ class SupplierImportService:
         if not text.strip():
             raise ImportPreviewError("pasted text is empty")
         payload = text.encode("utf-8")
+        if len(payload) > MAX_IMPORT_BYTES:
+            raise ImportPreviewError(f"import exceeds {MAX_IMPORT_BYTES} bytes")
+        first_line = next(line for line in text.splitlines() if line.strip())
+        # A delimited header wins over ':' inside ISO timestamps in data rows.
+        for delimiter in (",", ";", "\t"):
+            cells = next(csv.reader([first_line], delimiter=delimiter))
+            mapping, _ = map_headers(cells)
+            if len(cells) > 1 and any(field == "sku" for field, _ in mapping.values()):
+                headers, raw_rows = self._read_csv(payload)
+                return self._build_preview(IMPORT_KIND_PASTED, "", _sha256_bytes(payload), headers, raw_rows)
         try:
             headers, raw_rows = _parse_pasted(text)
         except ImportPreviewError:
@@ -382,7 +407,9 @@ class SupplierImportService:
             raise ImportPreviewError("csv has no non-empty rows")
         headers = [cell.strip() for cell in rows[0]]
         raw_rows = []
-        for values in rows[1:]:
+        for row_number, values in enumerate(rows[1:], start=1):
+            if len(values) > len(headers):
+                raise ImportPreviewError(f"row {row_number} has extra cells; quote values containing delimiters")
             values += [""] * (len(headers) - len(values))
             raw_rows.append({header: value.strip() for header, value in zip(headers, values)})
         return headers, raw_rows
@@ -409,6 +436,9 @@ class SupplierImportService:
         headers: List[str],
         raw_rows: List[Dict[str, str]],
     ) -> Dict[str, Any]:
+        normalized_headers = [_norm_header(header) for header in headers]
+        if len(set(normalized_headers)) != len(normalized_headers):
+            raise ImportPreviewError("duplicate columns are not allowed, including unmapped headers")
         mapping, unmapped = map_headers(headers)
         mapped_fields = [field for field, _ in mapping.values()]
         duplicates = {field for field in mapped_fields if mapped_fields.count(field) > 1}
@@ -474,27 +504,31 @@ class SupplierImportService:
         price_raw = ordered_raw.get("price", "")
         per_case_price = any(hint in price_raw for hint in _PER_CASE_HINTS)
 
-        negative_price = False
+        rejected = False
+        needs_confirmation = False
         price_money = Money.unknown("price column missing or empty")
         if price_raw:
-            number = _parse_number(price_raw)
-            if number is not None and number < 0:
-                negative_price = True
-                issues.append(f"negative price not allowed: {price_raw!r}")
-                price_money = Money.unknown("negative price")
-            else:
-                try:
-                    price_money = _parse_money_cell(price_raw)
-                except ImportPreviewError as exc:
-                    issues.append(str(exc))
-                    price_money = Money.unknown(str(exc))
+            try:
+                price_money = _parse_money_cell(price_raw)
+            except ImportPreviewError as exc:
+                rejected = True
+                issues.append(str(exc))
+                price_money = Money.unknown(str(exc))
         unit = ordered_raw.get("unit", "").strip()
+        source_unit = unit
+        quantity_unit = ordered_raw.get("quantity_unit", "").strip().lower()
         pieces_raw = ordered_raw.get("pieces_per_case", "")
         pieces_per_case = _parse_integer(pieces_raw) if pieces_raw else None
-        if per_case_price or unit in ("箱", "整箱", "case"):
+        case_priced = per_case_price or unit.lower() in _CASE_UNITS
+        if pieces_raw and (pieces_per_case is None or pieces_per_case <= 0):
+            pieces_per_case = None
+            needs_confirmation = True
+            issues.append("pieces_per_case must be an explicit positive integer")
+        if case_priced:
+            if pieces_per_case:
+                unit = "pc" if source_unit.lower() == "case" else "件"
             if pieces_per_case and price_money.state == PRICE_STATE_KNOWN:
-                converted = Money.known(price_money.amount / Decimal(pieces_per_case))  # type: ignore[union-attr]
-                price_money = converted
+                price_money = Money.known(price_money.amount / Decimal(pieces_per_case))  # type: ignore[union-attr]
                 issues.append(
                     f"case price converted to per-piece using pieces_per_case={pieces_per_case}"
                 )
@@ -503,31 +537,93 @@ class SupplierImportService:
                 issues.append("case price given but no 装箱量 column; cannot compute per-piece price")
 
         stock_state, stock_quantity = _parse_stock(ordered_raw.get("stock", ""))
-        freight_money = _parse_freight(ordered_raw.get("freight", ""))
+        moq_raw = ordered_raw.get("moq", "")
+        moq = _parse_integer(moq_raw) if moq_raw else None
+        for field_name, raw, value in (("stock", ordered_raw.get("stock", ""), stock_quantity), ("moq", moq_raw, moq)):
+            parsed_number = _parse_number(raw)
+            if parsed_number is not None and parsed_number < 0:
+                rejected = True
+                issues.append(f"negative {field_name}: {raw}")
+            elif raw and ((field_name == "moq" and (value is None or value <= 0))
+                          or (field_name == "stock" and stock_state == "unknown")):
+                needs_confirmation = True
+                issues.append(f"ambiguous {field_name}; provide an explicit integer quantity")
+        if moq is not None and moq <= 0:
+            moq = None
+        try:
+            freight_money = _parse_freight(ordered_raw.get("freight", ""))
+        except ImportPreviewError as exc:
+            rejected = True
+            issues.append(str(exc))
+            freight_money = Money.unknown(str(exc))
+        try:
+            tiers = _parse_tier_prices(ordered_raw.get("tier", ""))
+        except ImportPreviewError as exc:
+            needs_confirmation = True
+            issues.append(str(exc))
+            tiers = []
+
+        if case_priced:
+            if pieces_per_case and quantity_unit in _CASE_UNITS + _PIECE_UNITS:
+                factor = pieces_per_case if quantity_unit in _CASE_UNITS else 1
+                moq = moq * factor if moq is not None else None
+                stock_quantity = stock_quantity * factor if stock_quantity is not None else None
+                for tier in tiers:
+                    tier["min_quantity"] *= factor
+                    tier["price"] = Money.known(Decimal(tier["price"]["amount"]) / pieces_per_case).to_dict()
+            else:
+                # A case price does not establish whether inventory/MOQ count
+                # pieces or cases. Never carry ambiguous counts into allocation.
+                stock_state, stock_quantity, moq, tiers = "unknown", None, None, []
+                needs_confirmation = True
+                issues.append("case pricing requires explicit quantity_unit and positive pieces_per_case")
+        elif quantity_unit and quantity_unit != unit.lower() and not (quantity_unit in _PIECE_UNITS and unit.lower() in _PIECE_UNITS):
+            stock_state, stock_quantity, moq, tiers = "unknown", None, None, []
+            needs_confirmation = True
+            issues.append("quantity_unit differs from price unit; confirm units before use")
+
+        currency = ordered_raw.get("currency", "").strip().upper()
+        if currency and currency not in _CNY_LABELS:
+            reason = f"unsupported currency: {currency}; no exchange rate is assumed"
+            price_money = Money.unknown(reason)
+            freight_money = Money.unknown(reason)
+            tiers = []
+            needs_confirmation = True
+            issues.append(reason)
 
         parsed_fields = {
             "sku": ordered_raw.get("sku", "").strip(),
             "name": ordered_raw.get("name", "").strip(),
             "price": price_money.to_dict(),
             "unit": unit,
+            "source_unit": source_unit,
+            "quantity_unit": quantity_unit,
+            "currency": currency or "CNY",
             "pieces_per_case": pieces_per_case,
-            "moq": _parse_integer(ordered_raw["moq"]) if ordered_raw.get("moq") else None,
+            "moq": moq,
             "stock_state": stock_state,
             "stock_quantity": stock_quantity,
             "freight": freight_money.to_dict(),
             "spec": ordered_raw.get("spec", "").strip(),
             "brand": ordered_raw.get("brand", "").strip(),
-            "tier_prices": _parse_tier_prices(ordered_raw.get("tier", "")),
+            "tier_prices": tiers,
             "condition": ordered_raw.get("condition", "").strip(),
             "delivery": ordered_raw.get("delivery", "").strip(),
             "notes": ordered_raw.get("notes", "").strip(),
+            "quote_provenance": {
+                "schema_version": 1,
+                "source_kind": ordered_raw.get("source_kind", "unknown").strip().lower() or "unknown",
+                "source_reference": ordered_raw.get("source_reference", "").strip(),
+                "source_observed_at": ordered_raw.get("source_observed_at", "").strip(),
+                "valid_until": ordered_raw.get("valid_until", "").strip(),
+            },
         }
 
-        status = ROW_OK
+        status = ROW_NEEDS_CONFIRMATION if needs_confirmation else ROW_OK
         if not parsed_fields["sku"]:
             status = ROW_REJECTED
             issues.append("missing sku")
-        if negative_price:
+        if rejected:
             status = ROW_REJECTED
         if parsed_fields["price"]["state"] != PRICE_STATE_KNOWN and status != ROW_REJECTED:
             status = ROW_NEEDS_CONFIRMATION
@@ -599,12 +695,20 @@ class SupplierImportService:
         if not wanted:
             raise ImportPreviewError("no confirmable rows (all rejected or unconfirmed)")
 
-        observed = observed_at or utc_now()
+        imported_at = utc_now()
         batch_id = f"impb_{uuid4().hex[:16]}"
         snapshots: List[Dict[str, Any]] = []
         try:
             for row in wanted:
                 fields = row["fields"]
+                provenance = dict(fields["quote_provenance"])
+                if not provenance["source_observed_at"] and observed_at is not None:
+                    provenance["source_observed_at"] = observed_at.isoformat()
+                observed = source_time(provenance["source_observed_at"])
+                # The required legacy timestamp may fall back to import time,
+                # but eligibility always checks the separately retained source time.
+                observed = observed or imported_at
+                expiry = source_time(provenance["valid_until"])
                 price = Money.from_dict(fields["price"])
                 freight = Money.from_dict(fields["freight"])
                 payload_hash = _sha256_bytes(
@@ -615,6 +719,7 @@ class SupplierImportService:
                             row["raw"],
                             price.to_dict(),
                             freight.to_dict(),
+                            provenance,
                         ]
                     ).encode("utf-8")
                 )
@@ -623,6 +728,8 @@ class SupplierImportService:
                     source_item_id=fields["sku"],
                     source_sku_id=fields["sku"],
                     observed_at=observed,
+                    fetched_at=imported_at,
+                    expires_at=expiry,
                     unit=fields["unit"] or "件",
                     quantity=None,
                     condition=fields["condition"],
@@ -634,6 +741,14 @@ class SupplierImportService:
                             ("brand", fields["brand"]),
                             ("delivery", fields["delivery"]),
                             ("notes", fields["notes"]),
+                            ("quote_provenance", provenance),
+                            ("import_basis", {
+                                "source_unit": fields["source_unit"],
+                                "quantity_unit": fields["quantity_unit"],
+                                "pieces_per_case": fields["pieces_per_case"],
+                                "currency": fields["currency"],
+                                "currency_assumed": not bool(row["raw"].get("currency")),
+                            }),
                         )
                         if value
                     },

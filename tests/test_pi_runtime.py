@@ -4,6 +4,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from xianyu_agent.pi_runtime import PI_TOOL_ALLOWLIST, PiRpcClient, PiRuntimeConfig, PiRuntimeError
 
@@ -215,6 +216,44 @@ class PiRpcClientTests(unittest.TestCase):
             client.prompt("不会完成")
 
         self.assertFalse(client.status()["running"])
+
+    def test_multiturn_usage_accumulates_every_assistant_response(self):
+        client = self.make_client()
+        events = [
+            {"type": "message_end", "message": {"role": "assistant", "content": [],
+             "usage": {"input": 10, "output": 5, "totalTokens": 15}}},
+            {"type": "message_end", "message": {"role": "toolResult", "usage": {"totalTokens": 999}}},
+            {"type": "message_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}],
+             "usage": {"input": 20, "output": 7, "totalTokens": 27}}},
+            {"type": "agent_settled"},
+        ]
+        with patch.object(client, "_start_locked"), patch.object(client, "_request_locked", return_value=({}, events)):
+            result = client.prompt("test")
+        self.assertEqual(result["result"]["usage"], {"input": 30, "output": 12, "totalTokens": 42})
+
+    def test_missing_usage_in_one_turn_keeps_total_unknown(self):
+        client = self.make_client()
+        events = [
+            {"type": "message_end", "message": {"role": "assistant", "content": []}},
+            {"type": "message_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "done"}],
+             "usage": {"totalTokens": 27}}},
+            {"type": "agent_settled"},
+        ]
+        with patch.object(client, "_start_locked"), patch.object(client, "_request_locked", return_value=({}, events)):
+            result = client.prompt("test")
+        self.assertNotIn("totalTokens", result["result"]["usage"])
+
+    def test_later_model_error_cannot_be_hidden_by_earlier_text(self):
+        client = self.make_client()
+        events = [
+            {"type": "message_end", "message": {"role": "assistant", "content": [{"type": "text", "text": "working"}],
+             "usage": {"totalTokens": 15}}},
+            {"type": "message_end", "message": {"role": "assistant", "content": [], "errorMessage": "provider failed"}},
+            {"type": "agent_settled"},
+        ]
+        with patch.object(client, "_start_locked"), patch.object(client, "_request_locked", return_value=({}, events)):
+            with self.assertRaisesRegex(PiRuntimeError, "provider failed"):
+                client.prompt("test")
 
 
 if __name__ == "__main__":

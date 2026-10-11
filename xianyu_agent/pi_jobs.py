@@ -26,6 +26,7 @@ Program-enforced boundaries (constraints live in code, not prompts):
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import threading
@@ -68,15 +69,16 @@ DEFAULT_DAILY_TOKEN_BUDGET = 200_000
 class ModelUsageLedger:
     """Persistent per-day model token accounting (program-enforced budget).
 
-    Every successful job run records its reported total tokens; before a
-    job runs, today's total is checked against the daily budget. Missing
-    usage stays missing -- budgets never treat unknown as zero.
+    Each call first persists an intent, then records its reported usage.
+    Known totals enforce the daily threshold; unresolved intents or unknown
+    usage block further calls, including after restart or a date change.
     """
 
     def __init__(self, data_dir) -> None:
         self._store = LockedJsonList(Path(data_dir) / "commerce" / "model_usage.json")
 
     def used_today(self, *, day: str) -> int:
+        """Known usage only; begin_attempt separately gates unknown usage."""
         return sum(
             int(e.get("total_tokens") or 0)
             for e in self._store.find(lambda r: str(r.get("business_day")) == day)
@@ -86,15 +88,61 @@ class ModelUsageLedger:
         """Every attempt entry for the day, including unknown-usage ones."""
         return self._store.find(lambda r: str(r.get("business_day")) == day)
 
-    def record(self, *, day: str, job_id: str, total_tokens: Optional[int], model: str = "") -> Dict[str, Any]:
-        entry = {
-            "business_day": day,
-            "job_id": job_id,
-            "total_tokens": int(total_tokens) if total_tokens is not None else None,
-            "model": model,
-            "recorded_at": utc_now().isoformat(),
-        }
-        return self._store.append(entry)
+    def begin_attempt(self, *, day: str, job_id: str, attempt: int) -> bool:
+        if not job_id or type(attempt) is not int or attempt < 1:
+            raise ValueError("job_id and a positive attempt are required")
+        with self._store as store:
+            if any(entry.get("total_tokens") is None for entry in store._items):
+                return False
+            if any(entry.get("job_id") == job_id and entry.get("attempt") == attempt
+                   for entry in store._items):
+                return False
+            store._items.append({
+                "business_day": day, "job_id": job_id, "attempt": attempt,
+                "total_tokens": None, "status": "pending",
+                "recorded_at": utc_now().isoformat(),
+            })
+        return True
+
+    def record(self, *, day: str, job_id: str, total_tokens: Optional[int],
+               model: str = "", attempt: Optional[int] = None) -> Dict[str, Any]:
+        """Settle one durable intent; identical replays return the stored fact.
+
+        Legacy callers may omit attempt only when exactly one keyed intent
+        exists for the job. Unknown outcomes require explicit reconciliation,
+        not a subsequent unverified usage value through this automatic API.
+        """
+        if total_tokens is not None and (type(total_tokens) is not int or total_tokens < 0):
+            raise ValueError("total_tokens must be a nonnegative integer or None")
+        if attempt is not None and (type(attempt) is not int or attempt < 1):
+            raise ValueError("attempt must be a positive integer")
+        with self._store as store:
+            candidates = [entry for entry in store._items
+                          if entry.get("job_id") == job_id
+                          and (attempt is None or entry.get("attempt") == attempt)]
+            if not candidates:
+                raise ValueError("attempt not found; settlement requires a durable intent")
+            if len(candidates) != 1 or candidates[0].get("attempt") is None:
+                raise ValueError("settlement requires one existing, unambiguous attempt")
+            existing = candidates[0]
+            if existing.get("business_day") == day:
+                if (existing.get("status") in ("settled", "unknown")
+                        and existing.get("total_tokens") == total_tokens
+                        and existing.get("model", "") == model):
+                    return copy.deepcopy(existing)
+                if existing.get("status") == "pending":
+                    existing.update({
+                        "total_tokens": total_tokens,
+                        "model": model,
+                        "status": "unknown" if total_tokens is None else "settled",
+                        "settled_at": utc_now().isoformat(),
+                    })
+                    return copy.deepcopy(existing)
+            conflict = {"business_day": day, "total_tokens": total_tokens, "model": model}
+            conflicts = existing.setdefault("settlement_conflicts", [])
+            if not any(all(saved.get(key) == value for key, value in conflict.items()) for saved in conflicts):
+                conflicts.append({**conflict, "observed_at": utc_now().isoformat()})
+        raise ValueError("conflicting settlement; original facts retained; explicit reconciliation required")
 
 
 class JobPolicyError(RuntimeError):
@@ -309,6 +357,8 @@ class PiTaskRunner:
         """Read-only input assembly: only committed-batch supplier offers
         count as committed; revoked/failed-batch leftovers are listed
         separately and never presented as usable quotes."""
+        from .providers.freshness import classify_snapshot
+
         records = self._repos.offers.list()
         committed = []
         excluded = 0
@@ -330,6 +380,9 @@ class PiTaskRunner:
                     "record_id": r.get("record_id"),
                     "sku": r.get("source_item_id"),
                     "observed_at": r.get("observed_at"),
+                    "imported_at": r.get("fetched_at"),
+                    "valid_until": r.get("expires_at"),
+                    "freshness_meta": classify_snapshot(r),
                     "price": r.get("eligible_price"),
                     "freight": r.get("shipping_quote"),
                     "stock_state": r.get("stock_state"),
@@ -342,6 +395,8 @@ class PiTaskRunner:
             )
         return {
             "committed_offer_count": len(committed),
+            "business_eligible_offer_count": sum(bool(r["freshness_meta"].get("business_eligible")) for r in committed),
+            "eligibility_scope": "Quote time and source declaration only; not supplier authentication or trading approval.",
             "excluded_non_committed": excluded,
             "offers": committed,
         }
@@ -414,6 +469,8 @@ class PiTaskRunner:
                 "明显不一致），输出严格 JSON：{\"findings\": [{\"sku\":..., \"field\":..., \"severity\": \"info|warn|block\", "
                 "\"note\":...}], \"summary\": \"一句话总览\"}。只输出 JSON。没有缺口时 findings 为空数组。"
                 "你可以调用只读工具核对，但总数受程序限制。"
+                "区分实际观察时间、导入时间与有效期；freshness_meta 不合格必须列出缺口。"
+                "来源标签只是声明，demo/unknown 或已过期报价不得描述为真实可交易证据。"
             ),
             "validator": "validate_review_output",
             "recommendation_if_findings": "close the listed gaps with the supplier before any listing/procurement action",
@@ -488,7 +545,7 @@ class PiTaskRunner:
         self.per_job_token_budget = int(per_job_token_budget)
         self.daily_token_budget = int(daily_token_budget)
         self.min_execution_seconds = float(min_execution_seconds)
-        self.model_usage = ModelUsageLedger(self._data_dir or Path("data"))
+        self.model_usage = ModelUsageLedger(self._data_dir or job_store._store.path.parent.parent)
         self._boundary_lock = threading.Lock()
         self._execute_lock = threading.Lock()  # single-worker serialization
         self._started = False
@@ -625,6 +682,12 @@ class PiTaskRunner:
 
         inputs = self._collect_inputs(job)
         validator = self._resolve_validator(job)
+        attempt = int(job.get("attempt") or 0)
+        if not self.model_usage.begin_attempt(
+            day=day, job_id=job["record_id"], attempt=attempt
+        ):
+            return fail_job("unresolved model consumption; reconcile before another call",
+                            False, "budget_unresolved_usage")
         token = self.gate.issue(job["record_id"], max_tool_calls=self._max_tool_calls)
         try:
             client = pi_factory({"XIANYU_PI_JOB_TOKEN": token})
@@ -647,13 +710,15 @@ class PiTaskRunner:
             self.gate.release(token)
             # the model call ATTEMPTED and failed: consumption is unknown,
             # not zero -- record the attempt before failing the job
-            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=None)
+            self.model_usage.record(day=day, job_id=job["record_id"], attempt=attempt, total_tokens=None)
             return fail_job(f"pi execution failed: {exc}", True, "failed")
         self.gate.release(token)
 
         payload = result.get("result") or {}
         usage = payload.get("usage") or {}
         total_tokens = usage.get("totalTokens")
+        self.model_usage.record(day=day, job_id=job["record_id"], attempt=attempt,
+                                total_tokens=total_tokens, model=str(payload.get("model") or ""))
 
         # program-enforced deadline, result side: a result landing after
         # the deadline is rejected even if the call succeeded -- but the
@@ -663,9 +728,6 @@ class PiTaskRunner:
             if post_moment.tzinfo is None:
                 post_moment = post_moment.replace(tzinfo=moment.tzinfo)
             if post_moment > deadline:
-                self.model_usage.record(
-                    day=day, job_id=job["record_id"], total_tokens=total_tokens
-                )
                 return fail_job("result arrived after deadline; rejected", False, "rejected_deadline_result")
 
         # lease re-check BEFORE accepting the result: if the lease was
@@ -678,7 +740,6 @@ class PiTaskRunner:
                 lease_seconds=self._lease_padding + 300.0,
             )
         except Exception:  # noqa: BLE001 - lost lease or terminal state -> discard
-            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens)
             return {"job_id": job["record_id"], "outcome": "discarded_stale"}
 
         message_text = str(payload.get("message") or "")
@@ -686,7 +747,6 @@ class PiTaskRunner:
         # program-enforced per-job token budget: overspend consumes the
         # daily ledger even though the result is rejected
         if total_tokens is not None and int(total_tokens) > self.per_job_token_budget:
-            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens)
             return fail_job(
                 f"model usage {total_tokens} exceeded per-job budget {self.per_job_token_budget}",
                 False, "budget_exceeded",
@@ -695,7 +755,6 @@ class PiTaskRunner:
         try:
             review = validator(message_text)
         except ValueError as exc:
-            self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens)
             return fail_job(f"invalid structured output: {exc}", True, "invalid_output")
 
         cost = {
@@ -707,9 +766,6 @@ class PiTaskRunner:
             "note": None if usage else "usage not reported by this run; unknown, not zero",
         }
         evidence_path = self._write_evidence_file(job, inputs=inputs, payload=payload, message=message_text)
-        # consumption is recorded BEFORE completion: a crash after this
-        # point still leaves the attempt accounted in the daily ledger
-        self.model_usage.record(day=day, job_id=job["record_id"], total_tokens=total_tokens, model=str(payload.get("model") or ""))
         decision = self._decision_for_attempt(
             job, review=review, payload=payload, cost=cost, inputs=inputs, evidence_path=evidence_path
         )
@@ -761,6 +817,7 @@ class PiTaskRunner:
             "inputs": inputs,
             "tool_calls": list(payload.get("tool_calls") or []),
             "usage": payload.get("usage") or {},
+            "turns": payload.get("turns"),
             "model": payload.get("model"),
             "session_id": payload.get("session_id"),
             "model_message": message[:4000],

@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 from .budget_reservations import ShadowAuthorizationLog
 from .commerce.repositories import LockedJsonList
 from .operating_mandates import ActionRequest, OperatingMandateStore, evaluate_action, today_key
+from .providers.freshness import FRESH_CURRENT, classify_snapshot
 from .reply_drafts import DRAFT_COUNTER_OFFER, DRAFT_DECLINE, DRAFT_FACT_ANSWER
 
 OPPORTUNITY_READY_FOR_TEST = "ready_for_test"
@@ -36,6 +37,8 @@ class ShadowObserver:
         mandates: OperatingMandateStore,
         shadow_log: ShadowAuthorizationLog,
         budget_store=None,
+        offers=None,
+        import_service=None,
     ) -> None:
         self._cursor = LockedJsonList(data_dir / "commerce" / "shadow_cursor.json")
         # counterfactual accumulation: shadow allowances only, never real money
@@ -45,6 +48,8 @@ class ShadowObserver:
         self._mandates = mandates
         self._log = shadow_log
         self._budgets = budget_store
+        self._offers = offers
+        self._imports = import_service
         self._tick_lock = threading.Lock()
 
     def _load_processed(self) -> Dict[str, List[str]]:
@@ -114,12 +119,14 @@ class ShadowObserver:
         summary: str,
         amount=None,
         listing_price=None,
+        provenance=None,
     ) -> None:
         # REPLAY uses the saved verdict: if this event was already judged
         # (e.g. the cursor write failed after the log write), the stored
         # record is authoritative -- no re-evaluation, no re-accrual
         existing = self._log.find_by_event(event_id)
         if existing is not None:
+            self._restore_allowance(existing)
             return
         active = self._mandates.list_active()
         projection = self._usage_projection(active)
@@ -141,16 +148,66 @@ class ShadowObserver:
             decision = {"allowed": False, "reasons": [f"policy evaluation error: {exc}"], "matched_mandate": None}
         # the LOG write happens FIRST and is idempotent by event id; the
         # cursor only advances after the record is durably stored
-        self._log.record(decision=decision, action_summary=summary[:60], event_id=event_id)
-        if decision.get("allowed") and decision.get("matched_mandate"):
-            mandate_id = str(decision["matched_mandate"].get("mandate_id"))
-            self._record_shadow_allowance(
-                mandate_id, amount=amount, day=today_key(), event_id=event_id
-            )
+        saved = self._log.record(decision=decision, action_summary=summary[:60],
+                                 event_id=event_id, allowance_amount=amount, provenance=provenance)
+        self._restore_allowance(saved)
+
+    def _opportunity_provenance(self, opportunity: Dict[str, Any]) -> Dict[str, Any]:
+        moment = datetime.now(timezone.utc)
+        supplier_ids = opportunity.get("offer_snapshot_ids") or []
+        supplier_id = str(supplier_ids[-1]) if supplier_ids else ""
+        market_id = str(opportunity.get("market_snapshot_id") or "")
+        supplier = self._offers.get(supplier_id) if self._offers is not None else None
+        market = self._offers.get(market_id) if self._offers is not None else None
+        supplier_facts = classify_snapshot(supplier or {}, now=moment)
+        market_facts = classify_snapshot(market or {}, now=moment)
+        reasons = list(supplier_facts.get("reasons") or [])
+        if supplier_facts["freshness"] != FRESH_CURRENT:
+            reasons.append("supplier_source_not_current")
+        if market_facts["freshness"] != FRESH_CURRENT:
+            reasons.append("market_source_not_current")
+        source_ref = str((supplier or {}).get("source_ref") or "")
+        batch_id = source_ref.split(":", 1)[1] if source_ref.startswith("import_batch:") else ""
+        batch = next((b for b in self._imports.list_batches()
+                      if b.get("record_id") == batch_id), None) if self._imports is not None else None
+        if not batch or batch.get("status") != "committed" or supplier_id not in batch.get("snapshot_ids", []):
+            reasons.append("supplier_import_not_committed_or_bound")
+        return {
+            "eligible": not reasons,
+            "source_kind": supplier_facts.get("source_kind", "unknown"),
+            "supplier_snapshot_id": supplier_id, "market_snapshot_id": market_id,
+            "import_batch_id": batch_id, "source_reference": supplier_facts.get("source_reference"),
+            "assessed_at": moment.isoformat(), "reasons": reasons, "provider_verified": False,
+        }
+
+    def _restore_allowance(self, saved: Dict[str, Any]) -> None:
+        if not saved.get("would_allow"):
+            return
+        event_id = str(saved.get("event_id") or "")
+        mandate_id = str((saved.get("matched_mandate") or {}).get("mandate_id") or "")
+        day = str(saved.get("business_day") or "")
+        if not event_id or not mandate_id or not day:
+            raise RuntimeError("shadow allowance evidence incomplete; manual reconciliation required")
+        existing = self._shadow_usage.find(lambda r: str(r.get("event_id")) == event_id)
+        if existing:
+            expected = {"mandate_id": mandate_id, "business_day": day}
+            if "allowance_amount" in saved:
+                expected["amount"] = saved["allowance_amount"]
+            if len(existing) != 1 or "amount" not in existing[0] or any(existing[0].get(k) != v for k, v in expected.items()):
+                raise RuntimeError("shadow allowance projection conflicts with log; manual reconciliation required")
+            return
+        if "allowance_amount" not in saved:
+            raise RuntimeError("shadow allowance evidence incomplete; manual reconciliation required")
+        self._record_shadow_allowance(mandate_id, amount=saved["allowance_amount"],
+                                      day=day, event_id=event_id)
 
     def run_tick(self) -> Dict[str, Any]:
         """Observe new events once; returns what was evaluated."""
         with self._tick_lock:
+            # Recover from durable verdicts before new policy evaluations, even
+            # if a source draft disappeared or an older cursor already advanced.
+            for saved in self._log.list_events():
+                self._restore_allowance(saved)
             processed = self._load_processed()
             seen_drafts = set(processed["draft_ids"])
             seen_opportunities = set(processed["opportunity_ids"])
@@ -195,6 +252,7 @@ class ShadowObserver:
                     account_id=str(opportunity.get("account_id") or ""),
                     sku=str(opportunity.get("canonical_sku") or ""),
                     summary=f"qualified:{opportunity.get('canonical_sku')}",
+                    provenance=self._opportunity_provenance(opportunity),
                 )
                 self._mark_processed("opportunity", opportunity_id)
                 evaluated["qualified_opportunities"] += 1

@@ -193,7 +193,7 @@ class ExecutionLifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             runner, jobs, repos = make_runner(tmp)
             job = runner.submit_quote_review_job()
-            runner.run_once(pi_factory=lambda env: FakePi(error=RuntimeError("boom")))
+            runner.run_once(pi_factory=lambda env: FakePi(message="not json", usage={"totalTokens": 15}))
             outcome = runner.run_once(pi_factory=lambda env: FakePi())
             self.assertEqual(outcome["outcome"], "succeeded")
             decisions = repos.decisions.list()

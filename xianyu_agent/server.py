@@ -133,6 +133,8 @@ from .pi_jobs import (  # noqa: E402
     ReadOnlyJobGate,
 )
 from .shadow_observer import ShadowObserver, start_background_observer  # noqa: E402
+from .pi_usage_reconciliation import build_usage_reconciliation_router
+from .supplier_intake import build_supplier_intake_router
 from .operating_mandates import (  # noqa: E402
     ActionRequest,
     MandateError,
@@ -160,6 +162,12 @@ pi_task_runner = PiTaskRunner(
     daily_token_budget=int(os.environ.get("PI_DAILY_TOKEN_BUDGET", "200000")),
 )
 pi_task_runner.start()
+app.include_router(build_usage_reconciliation_router(
+    pi_task_runner,
+    token_sha256=os.environ.get("PI_USAGE_RECONCILE_TOKEN_SHA256", ""),
+    operator=os.environ.get("PI_USAGE_RECONCILE_OPERATOR", ""),
+))
+app.include_router(build_supplier_intake_router(commerce_repositories, supplier_import_service))
 shadow_observer = ShadowObserver(
     settings.data_dir,
     draft_service=reply_draft_service,
@@ -167,6 +175,8 @@ shadow_observer = ShadowObserver(
     mandates=operating_mandate_store,
     shadow_log=shadow_authorization_log,
     budget_store=budget_reservation_store,
+    offers=commerce_repositories.offers,
+    import_service=supplier_import_service,
 )
 shadow_observer_thread = start_background_observer(
     shadow_observer,
@@ -285,6 +295,11 @@ def console_css() -> FileResponse:
 @app.get("/console/app.js")
 def console_js() -> FileResponse:
     return FileResponse(WEB_DIR / "app.js")
+
+
+@app.get("/console/pi-usage.js")
+def console_pi_usage_js() -> FileResponse:
+    return FileResponse(WEB_DIR / "pi-usage.js")
 
 
 @app.get("/memory")

@@ -345,6 +345,71 @@
               </div>
               <div id="pi-task-result" class="commerce-result">提交后点「执行一个任务」；执行经过真实 Pi，耗时约 1-2 分钟</div>
             </div>
+            <section id="pi-usage-panel" class="commerce-step pi-usage-panel" aria-labelledby="pi-usage-title">
+              <h4 id="pi-usage-title">Pi 未知消费 · 人工对账</h4>
+              <p class="pi-usage-note">仅核对已有调用的 token 消耗，不执行模型、不重启任务、不授权交易。其他未知记录仍会阻断调用。</p>
+              <form id="pi-usage-auth" class="pi-usage-auth" autocomplete="off">
+                <label for="pi-usage-token">独立操作者凭证（仅本页内存）
+                  <input id="pi-usage-token" type="password" minlength="32" maxlength="512" autocomplete="off" spellcheck="false" autocapitalize="off" required />
+                </label>
+                <button id="pi-usage-unlock" class="primary" type="submit">解锁并读取</button>
+                <button id="pi-usage-lock" class="text-btn" type="button" disabled>锁定 / 清除凭证</button>
+              </form>
+              <p id="pi-usage-status" class="pi-usage-status" role="status" aria-live="polite" aria-atomic="true">默认锁定。未配置服务端对账身份时不可使用；请勿输入模型 API Key。</p>
+              <div class="commerce-actions">
+                <button id="pi-usage-refresh" class="text-btn" type="button" disabled>刷新未知记录</button>
+                <span id="pi-usage-count">尚未读取</span>
+              </div>
+              <div class="commerce-result">
+                <table class="commerce-table" aria-label="未知模型消费记录">
+                  <thead><tr><th>原业务日</th><th>任务 / 尝试</th><th>状态</th><th>处理</th></tr></thead>
+                  <tbody id="pi-usage-entries"></tbody>
+                </table>
+              </div>
+              <form id="pi-usage-proposal" autocomplete="off">
+                <fieldset id="pi-usage-fields" disabled>
+                  <legend>1. 选择记录并填写独立证据</legend>
+                  <p id="pi-usage-selected">尚未选择记录</p>
+                  <div class="pi-usage-grid">
+                    <label for="pi-usage-resolution">处理方式
+                      <select id="pi-usage-resolution">
+                        <option value="settle">按供应商用量证据结算</option>
+                        <option value="release">凭未发送证据释放（仅零消耗）</option>
+                      </select>
+                    </label>
+                    <label for="pi-usage-tokens">本次实际 total_tokens（非金额）
+                      <input id="pi-usage-tokens" type="number" min="0" max="9007199254740991" step="1" required />
+                    </label>
+                    <label for="pi-usage-reference" class="pi-usage-wide">证据编号 / 引用（不要填写密钥或个人信息）
+                      <input id="pi-usage-reference" minlength="3" maxlength="256" required />
+                    </label>
+                    <label for="pi-usage-reason" class="pi-usage-wide">对账理由（至少 10 字符）
+                      <textarea id="pi-usage-reason" rows="2" minlength="10" maxlength="1000" required></textarea>
+                    </label>
+                    <label for="pi-usage-statement" class="pi-usage-wide">证据说明：核验方式、原任务与尝试、消耗依据（至少 10 字符）
+                      <textarea id="pi-usage-statement" rows="3" minlength="10" maxlength="2000" required></textarea>
+                    </label>
+                  </div>
+                  <p class="pi-usage-note">释放不是免单：必须证明未发送。已有模型输出的记录不能释放。服务不会自动验证供应商证据，真实性由操作者确认。</p>
+                  <button id="pi-usage-preview-btn" class="text-btn" type="submit">2. 只读预览差异</button>
+                </fieldset>
+              </form>
+              <section id="pi-usage-preview" hidden aria-label="确认前后的对账差异">
+                <h4>2. 核对变化（修改任意字段需重新预览）</h4>
+                <div id="pi-usage-diff" class="pi-usage-diff"></div>
+                <pre id="pi-usage-proof" class="pi-usage-json"></pre>
+                <p class="pi-usage-note">人工作证 ≠ 供应商自动核验。这里只改变原业务日消费账本，不改变任务、决策和其他授权。</p>
+              </section>
+              <label class="pi-usage-confirm" for="pi-usage-confirm">
+                <input id="pi-usage-confirm" type="checkbox" disabled />
+                <span>我已独立核验上述证据、任务尝试、原业务日与消耗差异，确认本次对账。</span>
+              </label>
+              <button id="pi-usage-commit" class="primary" type="button" disabled>3. 确认并保存回执</button>
+              <section id="pi-usage-receipt-panel" hidden aria-label="最近一次对账回执">
+                <h4>对账回执（不含凭证）</h4>
+                <pre id="pi-usage-receipt" class="pi-usage-json"></pre>
+              </section>
+            </section>
             <div class="panel-head"><h4>商机漏斗（记录事实，非经营结果）</h4></div>
             <div id="commerce-funnel" class="commerce-result">点击刷新查看</div>
           </article>
@@ -885,5 +950,6 @@
       </div>
     </div>
     <script src="/console/app.js"></script>
+    <script src="/console/pi-usage.js"></script>
   </body>
 </html>
