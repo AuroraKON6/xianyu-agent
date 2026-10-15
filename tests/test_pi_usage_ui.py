@@ -120,7 +120,10 @@ class UsageReconciliationBrowserTests(unittest.TestCase):
 
     def test_settle_preview_is_read_only_then_audited_commit(self):
         expect(self.node("tokens")).to_be_disabled()
-        self.assertEqual(len(self.requests), 4)
+        # page assets only: document + style + pi-usage.js + empty app.js +
+        # empty intake-confirmation.js (G1C added the script tag; the fixture
+        # serves it empty so this suite still measures zero side calls)
+        self.assertEqual(len(self.requests), 5)
         self.prepare()
         original = self.runner.model_usage._store.path.read_bytes()
         self.preview()

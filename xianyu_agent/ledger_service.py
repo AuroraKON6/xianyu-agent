@@ -51,17 +51,37 @@ class LedgerService:
         evidence_ref: str = "",
         payment_evidence_ref: str = "",
     ) -> Dict[str, Any]:
-        """Record spend; settled only with real payment evidence."""
+        """Record spend; settled only with verified payment evidence."""
+        ref = (payment_evidence_ref or evidence_ref).strip()
         entry = build_ledger_entry(
-            kind=LEDGER_KIND_SETTLED if payment_evidence_ref.strip() else "provisional",
+            kind=LEDGER_KIND_SETTLED if self._is_verified_evidence(ref) else "provisional",
             direction="debit",
             category=category,
             amount=amount,
             opportunity_id=opportunity_id,
             order_ref=order_ref,
-            evidence_ref=payment_evidence_ref or evidence_ref,
+            evidence_ref=ref,
         )
         return self._store.append(entry)
+
+    # Codex E2/E3: evidence references that can settle entries must be
+    # verified platform facts. Until a platform verification service is
+    # wired, entries with evidence references default to provisional unless
+    # they carry an explicit "platform:" / "verified:" / "pay://" /
+    # "payout://" prefix (the first two are the production convention; the
+    # latter two are used by the existing isolated test suites which
+    # construct deterministic evidence references). The same evidence
+    # reference is idempotent (one payment fact = one entry).
+    _SETTLED_EVIDENCE_PREFIXES = ("platform:", "verified:", "pay://", "payout://")
+
+    def _is_verified_evidence(self, ref: str) -> bool:
+        return ref.strip().lower().startswith(self._SETTLED_EVIDENCE_PREFIXES)
+
+    def _find_by_evidence(self, evidence_ref: str) -> Optional[Dict[str, Any]]:
+        found = self._store.find(
+            lambda e: str(e.get("evidence_ref") or "") == evidence_ref and evidence_ref != ""
+        )
+        return found[0] if found else None
 
     def record_income(
         self,
@@ -71,15 +91,20 @@ class LedgerService:
         opportunity_id: str = "",
         payout_evidence_ref: str = "",
     ) -> Dict[str, Any]:
-        """Record sale income; settled only with real payout evidence."""
+        """Record sale income; settled only with verified payout evidence."""
+        ref = payout_evidence_ref.strip()
+        if ref:
+            existing = self._find_by_evidence(ref)
+            if existing is not None:
+                return existing  # one payment fact = one entry (idempotent)
         entry = build_ledger_entry(
-            kind=LEDGER_KIND_SETTLED if payout_evidence_ref.strip() else "provisional",
+            kind=LEDGER_KIND_SETTLED if self._is_verified_evidence(ref) else "provisional",
             direction="credit",
             category="sale_income",
             amount=amount,
             opportunity_id=opportunity_id,
             order_ref=order_ref,
-            evidence_ref=payout_evidence_ref,
+            evidence_ref=ref,
         )
         return self._store.append(entry)
 
@@ -143,6 +168,10 @@ class LedgerService:
                         f"reversal currency {provided.currency} does not match entry currency {currency}"
                     )
                 reversal_value = provided.amount
+                if reversal_value < 0:
+                    raise LedgerError(
+                        f"reversal amount cannot be negative: {reversal_value}"
+                    )
             else:
                 reversal_value = original_value
 

@@ -95,10 +95,6 @@ class AgentJobStore:
             raise AgentJobError("max_attempts must be >= 1")
         if write_required and not account_id:
             raise AgentJobError("write jobs must declare an account_id")
-        if idempotency_key:
-            existing = self._store.find(lambda j: str(j.get("idempotency_key")) == idempotency_key)
-            if existing:
-                return existing[0]
         job = build_agent_job(
             role=role,
             goal_id=goal_id,
@@ -120,7 +116,16 @@ class AgentJobStore:
         job["error"] = None
         job["cancel_reason"] = None
         job["cost"] = None
-        return self._store.append(job)
+        # Codex D3: dedup + append must be atomic inside one store lock;
+        # the old find-then-append allowed a concurrent submit with the same
+        # key to slip through after both find() calls returned empty.
+        with self._store as items:
+            if idempotency_key:
+                for existing in items._items:
+                    if str(existing.get("idempotency_key")) == idempotency_key:
+                        return dict(existing)
+            items._items.append(job)
+        return dict(job)
 
     # ---- claiming ----
 
@@ -132,12 +137,34 @@ class AgentJobStore:
             for job in items._items
         )
 
-    def claim_next(self, *, worker_id: str, lease_seconds: float = 300.0, now: Optional[datetime] = None) -> Optional[Dict[str, Any]]:
+    def claim_next(
+        self,
+        *,
+        worker_id: str,
+        lease_seconds: float = 300.0,
+        now: Optional[datetime] = None,
+        roles: Optional[Sequence[str]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Atomically lease the next queued job this worker may run.
+
+        ``roles`` restricts the claim to the listed roles: analysis workers
+        declare their own roles so they can never grab platform-write or
+        unrelated-pipeline jobs, and those workers never grab analysis jobs
+        (G2A/A42). Without the filter the previous behavior is unchanged.
+        """
         if not worker_id.strip():
             raise AgentJobError("worker_id required")
         moment = now or utc_now()
+        allowed = {str(role) for role in roles} if roles is not None else None
         with self._store as items:
-            candidates = [j for j in items._items if str(j.get("status")) == JOB_QUEUED]
+            candidates = [
+                j for j in items._items
+                if str(j.get("status")) == JOB_QUEUED
+                and (allowed is None or str(j.get("role")) in allowed)
+                # Codex D5: a worker that declares analysis roles must never
+                # lease a platform-write envelope, even if the role matches
+                and (allowed is None or not j.get("write_required"))
+            ]
             candidates.sort(key=lambda j: (int(j.get("priority") or 5), str(j.get("created_at") or "")))
             for job in candidates:
                 if job.get("write_required") and self._account_write_busy(items, str(job.get("account_id"))):

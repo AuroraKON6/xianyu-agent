@@ -73,7 +73,11 @@ _CANONICAL_MIME_TYPE = {
     extension: mime_types[0]
     for extension, mime_types in _EXTENSION_MIME_TYPES.items()
 }
-_TEXT_EXTENSIONS = {".html", ".htm", ".txt", ".md", ".json", ".csv"}
+# .csv stays out of _TEXT_EXTENSIONS on purpose: archived supplier originals
+# must keep their exact bytes (GBK is a legal encoding for them), so the
+# UTF-8-only decode/sensitive-scan path cannot be mandatory here; callers that
+# stage originals run a best-effort scan when the bytes decode as UTF-8.
+_TEXT_EXTENSIONS = {".html", ".htm", ".txt", ".md", ".json"}
 _ARTIFACT_ID_PATTERN = re.compile(r"^cea_[a-f0-9]{24}$")
 _CANDIDATE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{2,119}$")
 _BLOB_KEY_PATTERN = re.compile(r"^blobs/[a-f0-9]{2}/[a-f0-9]{64}\.bin$")
@@ -137,10 +141,10 @@ class CandidateEvidenceStore:
         source_url: str = "",
         now: Optional[datetime] = None,
     ) -> Dict[str, Any]:
-        """Validate and persist an immutable pending artifact.
+        """Validate and persist an immutable pending candidate artifact.
 
         A pending artifact does not satisfy any launch gate until the caller has
-        updated the candidate reference and explicitly activates it.
+        updated the candidate reference and explicitly activated it.
         """
         clean_candidate_id = _candidate_id(candidate_id)
         validated = validate_candidate_evidence_bytes(
@@ -153,15 +157,77 @@ class CandidateEvidenceStore:
             source_url=source_url,
             now=now,
         )
+        artifact = self._stage_record(
+            owner_type="candidate",
+            owner_id=clean_candidate_id,
+            artifact_owner_field="candidate_id",
+            validated=validated,
+            content=content,
+        )
+        return artifact
+
+    def stage_owner_bytes(
+        self,
+        *,
+        owner_type: str,
+        owner_id: str,
+        kind: str,
+        content: bytes,
+        original_filename: str,
+        mime_type: str = "",
+        observed_at: str = "",
+        note: str = "",
+        source_url: str = "",
+        now: Optional[datetime] = None,
+    ) -> Dict[str, Any]:
+        """Archive an immutable artifact scoped to a non-candidate owner.
+
+        Used by the intake confirmation flow (G1A) to keep supplier import
+        originals, identity material and use-permission material in the same
+        content-addressed archive without inventing placeholder candidates.
+        These artifacts never appear in candidate queries and never satisfy
+        candidate launch gates.
+        """
+        clean_owner_type = str(owner_type or "").strip()
+        if clean_owner_type not in OWNER_TYPES or clean_owner_type == "candidate":
+            raise CandidateEvidenceError("owner_type must be a non-candidate archive owner")
+        clean_owner_id = _candidate_id(owner_id)
+        validated = validate_candidate_evidence_bytes(
+            kind=kind,
+            content=content,
+            original_filename=original_filename,
+            mime_type=mime_type,
+            observed_at=observed_at,
+            note=note,
+            source_url=source_url,
+            now=now,
+            allowed_kinds=SUPPLIER_INTAKE_KINDS,
+        )
+        return self._stage_record(
+            owner_type=clean_owner_type,
+            owner_id=clean_owner_id,
+            artifact_owner_field="owner_id",
+            validated=validated,
+            content=content,
+        )
+
+    def _stage_record(
+        self,
+        *,
+        owner_type: str,
+        owner_id: str,
+        artifact_owner_field: str,
+        validated: Mapping[str, Any],
+        content: bytes,
+    ) -> Dict[str, Any]:
         clean_kind = validated["kind"]
         filename = validated["original_filename"]
-        clean_mime_type = validated["mime_type"]
-        clean_note = validated["note"]
-        clean_source_url = validated["source_url"]
         digest = validated["sha256"]
-        artifact_id = "cea_" + hashlib.sha256(
-            f"{clean_candidate_id}\0{clean_kind}\0{digest}".encode("utf-8")
-        ).hexdigest()[:24]
+        if owner_type == "candidate":
+            artifact_seed = f"{owner_id}\0{clean_kind}\0{digest}"
+        else:
+            artifact_seed = f"{owner_type}\0{owner_id}\0{clean_kind}\0{digest}"
+        artifact_id = "cea_" + hashlib.sha256(artifact_seed.encode("utf-8")).hexdigest()[:24]
         blob_key = f"blobs/{digest[:2]}/{digest}.bin"
 
         with self._lock:
@@ -193,20 +259,22 @@ class CandidateEvidenceStore:
                 tmp_path.write_bytes(content)
                 tmp_path.replace(blob_path)
 
-            active = self._active_for_kind(clean_candidate_id, clean_kind)
+            active = self._active_for_owner(owner_type, owner_id, clean_kind)
             artifact = {
                 "artifact_id": artifact_id,
-                "candidate_id": clean_candidate_id,
+                "candidate_id": owner_id if artifact_owner_field == "candidate_id" else "",
+                "owner_type": owner_type,
+                "owner_id": owner_id if artifact_owner_field == "owner_id" else "",
                 "kind": clean_kind,
                 "original_filename": filename,
-                "mime_type": clean_mime_type,
+                "mime_type": validated["mime_type"],
                 "byte_size": validated["byte_size"],
                 "sha256": digest,
                 "blob_key": blob_key,
                 "created_at": validated["validated_at"],
                 "observed_at": validated["observed_at"],
-                "note": clean_note,
-                "source_url": clean_source_url,
+                "note": validated["note"],
+                "source_url": validated["source_url"],
                 "status": "pending",
                 "activated_at": "",
                 "supersedes_artifact_id": str((active or {}).get("artifact_id") or ""),
@@ -230,10 +298,11 @@ class CandidateEvidenceStore:
             if not integrity["ok"]:
                 raise CandidateEvidenceIntegrityError("evidence blob failed integrity verification")
             now = _as_utc_z(datetime.now(timezone.utc))
+            owner = _owner_key(artifact)
             for other in self._artifacts.values():
                 if (
                     other.get("artifact_id") != clean_id
-                    and other.get("candidate_id") == artifact.get("candidate_id")
+                    and _owner_key(other) == owner
                     and other.get("kind") == artifact.get("kind")
                     and other.get("status") == "active"
                 ):
@@ -322,17 +391,86 @@ class CandidateEvidenceStore:
                 verify_integrity=True,
             )
 
-    def _active_for_kind(self, candidate_id: str, kind: str) -> Optional[Dict[str, Any]]:
+    def list_owner_artifacts(
+        self,
+        owner_type: str,
+        owner_id: str,
+        *,
+        include_orphaned: bool = False,
+        verify_integrity: bool = True,
+    ) -> List[Dict[str, Any]]:
+        clean_owner_type = str(owner_type or "").strip()
+        if clean_owner_type not in OWNER_TYPES or clean_owner_type == "candidate":
+            raise CandidateEvidenceError("owner_type must be a non-candidate archive owner")
+        clean_owner_id = _candidate_id(owner_id)
+        with self._lock:
+            items = [
+                artifact
+                for artifact in self._artifacts.values()
+                if _owner_key(artifact) == (clean_owner_type, clean_owner_id)
+                and (include_orphaned or artifact.get("status") != "orphaned")
+            ]
+            items.sort(
+                key=lambda item: (
+                    str(item.get("observed_at") or ""),
+                    str(item.get("created_at") or ""),
+                ),
+                reverse=True,
+            )
+            return [
+                self._public_metadata(item, verify_integrity=verify_integrity)
+                for item in items
+            ]
+
+    def get_owner_artifact(
+        self,
+        owner_type: str,
+        owner_id: str,
+        artifact_id: str,
+        *,
+        verify_integrity: bool = True,
+    ) -> Optional[Dict[str, Any]]:
+        clean_owner_type = str(owner_type or "").strip()
+        if clean_owner_type not in OWNER_TYPES or clean_owner_type == "candidate":
+            raise CandidateEvidenceError("owner_type must be a non-candidate archive owner")
+        clean_owner_id = _candidate_id(owner_id)
+        clean_id = _artifact_id(artifact_id)
+        with self._lock:
+            artifact = self._artifacts.get(clean_id)
+            if not artifact or _owner_key(artifact) != (clean_owner_type, clean_owner_id):
+                return None
+            return self._public_metadata(artifact, verify_integrity=verify_integrity)
+
+    def resolve_owner_file(self, owner_type: str, owner_id: str, artifact_id: str) -> Tuple[Path, Dict[str, Any]]:
+        artifact = self.get_owner_artifact(owner_type, owner_id, artifact_id, verify_integrity=False)
+        if artifact is None:
+            raise KeyError("owner evidence artifact not found")
+        with self._lock:
+            stored = self._artifacts.get(artifact["artifact_id"])
+            if stored is None:
+                raise KeyError("owner evidence artifact not found")
+            integrity = self._integrity(stored)
+            if not integrity["ok"]:
+                raise CandidateEvidenceIntegrityError("evidence blob failed integrity verification")
+            return self._blob_path(str(stored.get("blob_key") or "")), self._public_metadata(
+                stored,
+                verify_integrity=True,
+            )
+
+    def _active_for_owner(self, owner_type: str, owner_id: str, kind: str) -> Optional[Dict[str, Any]]:
         return next(
             (
                 artifact
                 for artifact in self._artifacts.values()
-                if artifact.get("candidate_id") == candidate_id
+                if _owner_key(artifact) == (owner_type, owner_id)
                 and artifact.get("kind") == kind
                 and artifact.get("status") == "active"
             ),
             None,
         )
+
+    def _active_for_kind(self, candidate_id: str, kind: str) -> Optional[Dict[str, Any]]:
+        return self._active_for_owner("candidate", candidate_id, kind)
 
     def _load(self) -> None:
         if not self.index_path.exists():
@@ -351,13 +489,20 @@ class CandidateEvidenceStore:
             candidate_id = str(raw.get("candidate_id") or "")
             kind = str(raw.get("kind") or "")
             blob_key = str(raw.get("blob_key") or "")
-            if (
-                not _ARTIFACT_ID_PATTERN.fullmatch(artifact_id)
-                or not _CANDIDATE_ID_PATTERN.fullmatch(candidate_id)
-                or kind not in EVIDENCE_KINDS
-                or not _BLOB_KEY_PATTERN.fullmatch(blob_key)
-            ):
+            owner_type = str(raw.get("owner_type") or "candidate")
+            if not _ARTIFACT_ID_PATTERN.fullmatch(artifact_id) or not _BLOB_KEY_PATTERN.fullmatch(blob_key):
                 continue
+            if owner_type == "supplier_batch":
+                owner_id = str(raw.get("owner_id") or "")
+                if (
+                    candidate_id != ""
+                    or not _CANDIDATE_ID_PATTERN.fullmatch(owner_id)
+                    or kind not in SUPPLIER_INTAKE_KINDS
+                ):
+                    continue
+            else:
+                if not _CANDIDATE_ID_PATTERN.fullmatch(candidate_id) or kind not in EVIDENCE_KINDS:
+                    continue
             artifact = dict(raw)
             artifact["status"] = (
                 str(raw.get("status") or "orphaned")
@@ -388,6 +533,8 @@ class CandidateEvidenceStore:
         public_keys = (
             "artifact_id",
             "candidate_id",
+            "owner_type",
+            "owner_id",
             "kind",
             "original_filename",
             "mime_type",
@@ -468,10 +615,11 @@ def validate_candidate_evidence_bytes(
     note: str = "",
     source_url: str = "",
     now: Optional[datetime] = None,
+    allowed_kinds: Tuple[str, ...] = EVIDENCE_KINDS,
 ) -> Dict[str, Any]:
     """Apply the archive's file and metadata rules without persisting data."""
     clean_kind = str(kind or "").strip()
-    if clean_kind not in EVIDENCE_KINDS:
+    if clean_kind not in allowed_kinds:
         raise CandidateEvidenceError("unsupported evidence kind")
     if not isinstance(content, bytes):
         raise CandidateEvidenceError("evidence content must be bytes")
@@ -523,6 +671,12 @@ def validate_evidence_source_url(value: Any) -> str:
     return _clean_source_url(value)
 
 
+def _owner_key(artifact: Mapping[str, Any]) -> Tuple[str, str]:
+    if str(artifact.get("owner_type") or "candidate") == "supplier_batch":
+        return ("supplier_batch", str(artifact.get("owner_id") or ""))
+    return ("candidate", str(artifact.get("candidate_id") or ""))
+
+
 def _candidate_id(value: Any) -> str:
     text = str(value or "").strip()
     if not _CANDIDATE_ID_PATTERN.fullmatch(text):
@@ -566,6 +720,8 @@ def _validate_file_content(content: bytes, extension: str, mime_type: str) -> st
         raise CandidateEvidenceError("invalid WebP evidence content")
     if extension == ".pdf" and not content.startswith(b"%PDF-"):
         raise CandidateEvidenceError("invalid PDF evidence content")
+    if extension == ".xlsx" and not content.startswith(b"PK\x03\x04"):
+        raise CandidateEvidenceError("invalid XLSX evidence content")
     if extension in _TEXT_EXTENSIONS:
         text = _decode_text(content)
         if "\x00" in text:

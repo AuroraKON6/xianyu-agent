@@ -90,10 +90,14 @@ class ProcurementService:
             raise ProcurementError("quantity must be positive")
 
         with self._mutation_lock:
-            # business idempotency: one live procurement per sales order
+            # Codex E5: business idempotency is (account, sales_order) scoped;
+            # different accounts may independently procure the same platform order
             duplicates = [
                 order
-                for order in self._store.find(lambda o: str(o.get("sales_order_ref")) == sales_order_ref)
+                for order in self._store.find(
+                    lambda o: str(o.get("sales_order_ref")) == sales_order_ref
+                    and str(o.get("account_id") or "") == account_id
+                )
                 if str(order.get("status")) != "cancelled"
             ]
             if duplicates:
@@ -121,6 +125,17 @@ class ProcurementService:
             freight = latest.get("shipping_quote") or {}
             if price.get("state") != PRICE_STATE_KNOWN:
                 raise ProcurementError(f"supplier price unknown for {sku}; procurement refused")
+            # Codex E5: unknown freight must block, not pass as zero
+            if freight.get("state") != PRICE_STATE_KNOWN:
+                raise ProcurementError(
+                    f"supplier freight unknown for {sku}; procurement refused (unknown is not free)"
+                )
+            # Codex E4: quantity below MOQ must block
+            moq = latest.get("moq")
+            if isinstance(moq, int) and moq > 0 and quantity < moq:
+                raise ProcurementError(
+                    f"quantity {quantity} is below MOQ {moq} for {sku}; procurement refused"
+                )
             allocation = self._inventory.allocation(account_id=account_id, sku=sku, now=now)
             if allocation["available"] < quantity:
                 raise ProcurementError(
@@ -184,6 +199,16 @@ class ProcurementService:
         if not receipt_ref.strip():
             raise ProcurementError("receipt evidence reference required")
         with self._mutation_lock:
+            # Codex E10: identical receipt replay is idempotent; return the
+            # existing record instead of raising a transition error
+            existing = self._store.find(lambda o: str(o.get("record_id")) == procurement_id)
+            if existing and str(existing[0].get("status")) == "received":
+                if str(existing[0].get("receipt_ref") or "") == receipt_ref:
+                    return dict(existing[0])  # same receipt: idempotent replay
+                raise ProcurementError(
+                    f"procurement {procurement_id} already has receipt {existing[0].get('receipt_ref')!r}; "
+                    "different receipt requires after-sales flow"
+                )
             return self._transition(
                 procurement_id, "received", require_status="ordered", actor=operator,
                 extra={
@@ -218,6 +243,48 @@ class ProcurementService:
                     pass  # no lock held (e.g. created before the reservation fix)
             return cancelled
 
+    def reconcile_orphan_locks(self) -> Dict[str, Any]:
+        """Startup recovery: release inventory locks whose procurement is gone.
+
+        A lock keyed ``proc:<record_id>`` is only meaningful while that
+        procurement exists. If the procurement record was never written (or
+        was removed), the lock would hold sellable stock hostage forever, so
+        startup reconciles the two authorities. Locks outside the ``proc:``
+        namespace belong to other owners and are never touched here.
+        """
+        released: List[Dict[str, Any]] = []
+        kept = 0
+        foreign = 0
+        with self.mutation_guard():
+            known = {
+                str(row.get("record_id"))
+                for row in self._store.find(lambda _row: True)
+            }
+            for lock in self._inventory.list_locks():
+                order_id = str(lock.get("order_id") or "")
+                if not order_id.startswith("proc:"):
+                    foreign += 1
+                    continue
+                if order_id[len("proc:"):] in known:
+                    kept += 1
+                    continue
+                try:
+                    self._inventory.release_order(
+                        account_id=str(lock.get("account_id") or ""),
+                        sku=str(lock.get("sku") or ""),
+                        order_id=order_id,
+                        reason="startup recovery: lock references a procurement that does not exist",
+                    )
+                except InventoryError:
+                    continue  # concurrently released; nothing to do
+                released.append(lock)
+        return {
+            "known_procurements": len(known),
+            "kept_locks": kept,
+            "foreign_locks_untouched": foreign,
+            "released_locks": released,
+        }
+
     def _transition(
         self,
         procurement_id: str,
@@ -251,8 +318,9 @@ class ProcurementService:
             raise ProcurementError(f"procurement not found: {procurement_id}")
         return found[0]
 
-    def get(self, procurement_id: str) -> Dict[str, Any]:
-        return self._get(procurement_id)
+    def get(self, procurement_id: str) -> Optional[Dict[str, Any]]:
+        found = self._store.find(lambda o: str(o.get("record_id")) == procurement_id)
+        return found[0] if found else None
 
     def list(self, *, opportunity_id: str = "", status: str = "") -> List[Dict[str, Any]]:
         def predicate(order: Mapping[str, Any]) -> bool:

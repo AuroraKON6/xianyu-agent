@@ -274,8 +274,8 @@ class RevokedBatchIsolationTests(unittest.TestCase):
 
     def test_committed_batch_quote_still_procures(self):
         order = self.procurement.create_from_sales_order(
-            account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-r2"
-        )
+            account_id="acc-1", sku="GZ-1200", quantity=2, sales_order_ref="sale-r2"
+        )  # quantity >= MOQ(2) per the Codex E4 MOQ gate
         self.assertEqual(order["status"], "awaiting_approval")
 
 

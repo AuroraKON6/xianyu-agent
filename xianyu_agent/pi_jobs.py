@@ -353,14 +353,37 @@ class PiTaskRunner:
     # role registry: read-only analysis roles, each with its input
     # collector, prompt and structured-output validator. Adding a role
     # here is the only supported way to extend the worker.
+    def _outbound_state(self, record: Mapping[str, Any]) -> Dict[str, Any]:
+        """Decide whether one supplier offer may leave for the model."""
+        if self._outbound_gate is None:
+            return {"permitted": True, "reasons": [], "basis": "gate_disabled"}
+        from .quote_provenance import source_kind
+        if source_kind(record) == "demo":
+            return {"permitted": True, "reasons": [], "basis": "demo_source"}
+        try:
+            outcome = self._outbound_gate(record)
+        except Exception as exc:  # a broken gate must fail closed
+            return {"permitted": False, "reasons": [f"gate_error: {exc}"], "basis": "gate_error"}
+        if outcome.get("eligible"):
+            return {"permitted": True, "reasons": [], "basis": "confirmed_external_model"}
+        return {
+            "permitted": False,
+            "reasons": list(outcome.get("reasons") or ["not confirmed for external_model use"]),
+            "basis": "intake_confirmation",
+        }
+
     def _collect_quote_inputs(self) -> Dict[str, Any]:
         """Read-only input assembly: only committed-batch supplier offers
         count as committed; revoked/failed-batch leftovers are listed
-        separately and never presented as usable quotes."""
+        separately and never presented as usable quotes. When an outbound
+        gate is configured, real material without external-model
+        confirmation is withheld: only its id/sku and the reasons leave,
+        never its prices or attributes."""
         from .providers.freshness import classify_snapshot
 
         records = self._repos.offers.list()
         committed = []
+        withheld = []
         excluded = 0
         for r in records:
             if not str(r.get("provider_id", "")).startswith("supplier_file"):
@@ -374,6 +397,17 @@ class PiTaskRunner:
                     usable = self._import_service.batch_status(source_ref.split(":", 1)[1]) == "committed"
             if not usable:
                 excluded += 1
+                continue
+            outbound = self._outbound_state(r)
+            if not outbound["permitted"]:
+                withheld.append(
+                    {
+                        "record_id": r.get("record_id"),
+                        "sku": r.get("source_item_id"),
+                        "withheld_reasons": outbound["reasons"],
+                        "note": "material not confirmed for external-model use; fields withheld",
+                    }
+                )
                 continue
             committed.append(
                 {
@@ -391,6 +425,7 @@ class PiTaskRunner:
                     "condition": r.get("condition"),
                     "attributes": r.get("attributes"),
                     "source_ref": r.get("source_ref"),
+                    "outbound_basis": outbound["basis"],
                 }
             )
         return {
@@ -398,6 +433,8 @@ class PiTaskRunner:
             "business_eligible_offer_count": sum(bool(r["freshness_meta"].get("business_eligible")) for r in committed),
             "eligibility_scope": "Quote time and source declaration only; not supplier authentication or trading approval.",
             "excluded_non_committed": excluded,
+            "withheld_external_model_count": len(withheld),
+            "withheld_offers": withheld,
             "offers": committed,
         }
 
@@ -423,37 +460,73 @@ class PiTaskRunner:
 
     def _collect_pricing_inputs(self) -> Dict[str, Any]:
         reviewed = []
+        withheld_count = 0
         for o in self._repos.opportunities.list():
             economics = o.get("economics") or {}
             scenarios = economics.get("scenarios") or {}
             conservative = scenarios.get("conservative") or {}
             base = scenarios.get("base") or {}
+            material_withheld = False
+            supplier_ids = list(o.get("offer_snapshot_ids") or [])
+            if self._outbound_gate is not None:
+                # Codex C4: fail closed -- missing/unresolvable supplier ref
+                # withholds the amounts just like an unapproved snapshot.
+                if not supplier_ids:
+                    material_withheld = True
+                    withheld_count += 1
+                else:
+                    snapshot = self._repos.offers.get(str(supplier_ids[-1]))
+                    if snapshot is None or not self._outbound_state(snapshot)["permitted"]:
+                        material_withheld = True
+                        withheld_count += 1
             reviewed.append(
                 {
                     "opportunity_id": o.get("record_id"),
                     "sku": o.get("canonical_sku"),
                     "status": o.get("status"),
                     "match_id": o.get("match_id"),
-                    "conservative_profit": conservative.get("contribution_profit"),
-                    "base_profit": base.get("contribution_profit"),
+                    "conservative_profit": (
+                        {"state": "unknown", "reason": "material not confirmed for external-model use"}
+                        if material_withheld else conservative.get("contribution_profit")
+                    ),
+                    "base_profit": (
+                        {"state": "unknown", "reason": "material not confirmed for external-model use"}
+                        if material_withheld else base.get("contribution_profit")
+                    ),
                     "missing_costs": conservative.get("missing"),
-                    "cash_occupied": economics.get("cash_occupied"),
+                    "cash_occupied": (
+                        {"state": "unknown", "reason": "material not confirmed for external-model use"}
+                        if material_withheld else economics.get("cash_occupied")
+                    ),
                     "evidence_gaps": economics.get("evidence_gaps"),
+                    "material_withheld": material_withheld,
                 }
             )
-        return {"opportunity_count": len(reviewed), "opportunities": reviewed}
+        return {
+            "opportunity_count": len(reviewed),
+            "withheld_material_count": withheld_count,
+            "opportunities": reviewed,
+        }
 
     def _collect_screening_inputs(self) -> Dict[str, Any]:
-        opportunities = [
-            {
+        opportunities = []
+        for o in self._repos.opportunities.list():
+            row = {
                 "opportunity_id": o.get("record_id"),
                 "sku": o.get("canonical_sku"),
                 "status": o.get("status"),
                 "status_reason": o.get("status_reason"),
                 "revision": o.get("revision"),
             }
-            for o in self._repos.opportunities.list()
-        ]
+            # Codex C5: status_reason may carry derived money ("conservative
+            # profit 120.00 CNY"); redact it for unapproved material when
+            # the outbound gate is active.
+            if self._outbound_gate is not None and row["status_reason"]:
+                supplier_ids = list(o.get("offer_snapshot_ids") or [])
+                snapshot = self._repos.offers.get(str(supplier_ids[-1])) if supplier_ids else None
+                if snapshot is None or not self._outbound_state(snapshot)["permitted"]:
+                    row["status_reason"] = "material not confirmed for external-model use"
+            opportunities.append(row)
         status_counts: Dict[str, int] = {}
         for o in opportunities:
             status_counts[str(o["status"])] = status_counts.get(str(o["status"]), 0) + 1
@@ -532,12 +605,19 @@ class PiTaskRunner:
         per_job_token_budget: int = DEFAULT_PER_JOB_TOKEN_BUDGET,
         daily_token_budget: int = DEFAULT_DAILY_TOKEN_BUDGET,
         min_execution_seconds: float = 5.0,
+        outbound_gate=None,
     ) -> None:
         self._jobs = job_store
         self._repos = repos
         self._decisions = repos.decisions
         self._data_dir = Path(data_dir) if data_dir else None
         self._import_service = import_service
+        # outbound_gate(snapshot) -> {"eligible": bool, "reasons": [...]}:
+        # when configured, real (non-demo) supplier material that is not
+        # confirmed for external-model use is WITHHELD from the collected
+        # inputs before anything leaves for the model (G1B-6/A45). Demo
+        # fixtures stay visible -- they are explicitly synthetic.
+        self._outbound_gate = outbound_gate
         self._deadline_seconds = float(deadline_seconds)
         self._max_tool_calls = int(max_tool_calls)
         self._lease_padding = float(lease_padding_seconds)
@@ -628,11 +708,18 @@ class PiTaskRunner:
             self._execute_lock.release()
 
     def _run_claimed_once(self, *, pi_factory, now, now_post) -> Optional[Dict[str, Any]]:
-        # stop vs claim is decided atomically under the boundary lock
+        # stop vs claim is decided atomically under the boundary lock; the
+        # claim is restricted to this runner's analysis roles so a radar or
+        # write job queued in the same store is never grabbed (and then
+        # killed as an unsupported role) by the Pi worker (G2A/A42)
         with self._boundary_lock:
             if self._stopped:
                 return None
-            job = self._jobs.claim_next(worker_id=JOB_WORKER_ID, lease_seconds=self._lease_padding + 300.0)
+            job = self._jobs.claim_next(
+                worker_id=JOB_WORKER_ID,
+                lease_seconds=self._lease_padding + 300.0,
+                roles=tuple(self.ROLE_SPECS),
+            )
         if job is None:
             return None
         spec = self.ROLE_SPECS.get(str(job.get("role")))

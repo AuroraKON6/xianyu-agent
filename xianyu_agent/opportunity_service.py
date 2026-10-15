@@ -14,11 +14,14 @@ Honesty rules:
   cannot reach ``ready_for_test`` (plan 8.2: comparable never shares
   procurement pricing).
 - Qualification (``ready_for_test``) requires an EXACT match, a KNOWN
-  conservative-scenario profit above zero and fresh snapshots
-  (supplier quote <= 24h, market baseline <= 72h, matching the existing
-  candidate-activation thresholds).
+  conservative-scenario profit above zero, fresh snapshots (supplier
+  quote <= 24h, market baseline <= 72h), non-demo cost inputs and an
+  applicable procurement price for the evaluated quantity.
 - Expired inputs never silently qualify; the evaluation result carries
-  the staleness and the status does not advance.
+  the staleness and the status does not advance. ``validate_current``
+  re-runs the gates before any downstream use so a stale ``ready``
+  cannot survive a price change, a match correction or a terms
+  revision.
 - The decision card records what is unknown; the recommendation is a
   suggestion, never an authorization.
 """
@@ -115,6 +118,12 @@ class OpportunityService:
         expected_return_loss: Optional[Mapping[str, Any]] = None,
         scenario_overrides: Optional[Mapping[str, Mapping[str, Any]]] = None,
         target_margin: Optional[str] = None,
+        quantity: int = 1,
+        freight_basis: str = "per_unit",
+        commercial_terms: Optional[Mapping[str, Any]] = None,
+        cost_metadata: Optional[Mapping[str, Mapping[str, Any]]] = None,
+        installation: Optional[Mapping[str, Any]] = None,
+        demo_costs: bool = False,
     ) -> Dict[str, Any]:
         opportunity = self._repos.opportunities.get(opportunity_id)
         if opportunity is None:
@@ -141,20 +150,54 @@ class OpportunityService:
         now = utc_now()
         freshness = self._freshness(market, supplier, now)
 
+        if quantity <= 0:
+            raise OpportunityError("quantity must be positive")
+        if freight_basis not in ("per_unit", "per_order"):
+            raise OpportunityError("freight_basis must be per_unit or per_order")
+
         sale_price = market.get("eligible_price") or market.get("list_price")
+        procurement_price = supplier.get("eligible_price")
+        # tier applicability: a quoted tier price applies only from its
+        # min_quantity; a one-piece trial may never borrow a ten-piece
+        # wholesale price, and the base per-piece price always remains
+        # valid below every tier threshold (plan 4.2)
+        applied_tier = None
+        tier_note = None
+        tiers = list(supplier.get("tier_prices") or [])
+        if tiers:
+            applicable = [t for t in tiers if int(t.get("min_quantity") or 0) <= quantity]
+            if applicable:
+                chosen = max(applicable, key=lambda t: int(t.get("min_quantity") or 0))
+                if int(chosen.get("min_quantity") or 0) > 1:
+                    applied_tier = dict(chosen)
+                    procurement_price = chosen.get("price")
+            else:
+                lowest = min(int(t.get("min_quantity") or 0) for t in tiers)
+                tier_note = f"tier prices start at quantity {lowest}; base per-piece price used for quantity {quantity}"
+
+        supplier_freight = supplier.get("shipping_quote")
+        if freight_basis == "per_order" and supplier_freight is not None:
+            base_freight = Money.from_dict(supplier_freight)
+            if base_freight.state == PRICE_STATE_KNOWN:
+                supplier_freight = Money.known(
+                    base_freight.amount / Decimal(quantity), base_freight.currency
+                ).to_dict()
+
         economics = compute_unit_economics(
             sale_price=sale_price,
-            procurement_cost=supplier.get("eligible_price"),
-            supplier_freight=supplier.get("shipping_quote"),
+            procurement_cost=procurement_price,
+            supplier_freight=supplier_freight,
             packaging=packaging,
             platform_fee_rate=platform_fee_rate,
             platform_fee_fixed=platform_fee_fixed,
             return_probability=return_probability,
             return_loss_amount=return_loss_amount,
             expected_return_loss=expected_return_loss,
+            installation=installation,
             after_sales_reserve=after_sales_reserve,
             attributable_costs=attributable_costs,
             moq=supplier.get("moq"),
+            quantity=quantity,
             scenario_overrides=scenario_overrides,
             target_margin=target_margin,
         )
@@ -165,9 +208,21 @@ class OpportunityService:
             "supplier_observed_at": supplier.get("observed_at"),
             "match_id": match["record_id"] if match else None,
             "match_grade": match.get("grade") if match else None,
-            "platform_fee_source": "caller-provided current terms"
-            if platform_fee_rate is not None or platform_fee_fixed is not None
-            else "missing",
+            "platform_fee_source": "account_commercial_terms"
+            if commercial_terms
+            else (
+                "caller-provided current terms"
+                if platform_fee_rate is not None or platform_fee_fixed is not None
+                else "missing"
+            ),
+            "commercial_terms": dict(commercial_terms) if commercial_terms else None,
+            "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+            "quantity": quantity,
+            "freight_basis": freight_basis,
+            "applied_tier": applied_tier,
+            "tier_note": tier_note,
+            "cost_metadata": {name: dict(meta) for name, meta in (cost_metadata or {}).items()} or None,
+            "demo_costs": bool(demo_costs),
         }
         economics["freshness"] = freshness
 
@@ -256,10 +311,15 @@ class OpportunityService:
         profit_state = str(profit.get("state"))
         grade = str(match.get("grade")) if match else "none"
         profit_ok = profit_state == PRICE_STATE_KNOWN and Decimal(str(profit.get("amount"))) > 0
+        inputs = economics.get("inputs") or {}
+        demo_costs = bool(inputs.get("demo_costs"))
+        terms_bound = bool(inputs.get("commercial_terms"))
         checks = {
             "exact_match": grade == MATCH_EXACT,
             "profit_known_positive": profit_ok,
             "inputs_fresh": bool(freshness.get("all_fresh")),
+            "costs_not_demo": not demo_costs,
+            "platform_fee_terms_current": (not terms_bound) or bool(inputs.get("commercial_terms")),
         }
         reasons: List[str] = []
         if not checks["exact_match"]:
@@ -275,6 +335,8 @@ class OpportunityService:
                     market=freshness.get("market_fresh"), supplier=freshness.get("supplier_fresh")
                 )
             )
+        if not checks["costs_not_demo"]:
+            reasons.append("demo cost inputs cannot produce real qualification (demo_costs=true)")
         return {"qualified": not reasons, "reasons": reasons, "checks": checks}
 
     def _write_decision(
@@ -330,6 +392,101 @@ class OpportunityService:
             result=None,
         )
         return self._repos.decisions.append(decision)
+
+    # ---- revalidation ----
+
+    def validate_current(
+        self,
+        opportunity_id: str,
+        *,
+        terms_lookup: Optional[Any] = None,
+        now: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Synchronously re-run the ready gates before downstream use.
+
+        A stored ``ready_for_test`` is a projection of the moment it was
+        computed. Price changes (a newer supplier snapshot for the same
+        provider+SKU), a human match correction, quote expiry or a
+        commercial-terms revision invalidate it; this method re-checks the
+        CURRENT facts and pauses the opportunity when any gate fails.
+        History is preserved in the transition log; nothing is rewritten.
+        """
+        opportunity = self._repos.opportunities.get(opportunity_id)
+        if opportunity is None:
+            raise OpportunityError(f"opportunity not found: {opportunity_id}")
+        status = str(opportunity.get("status"))
+
+        supplier_ids = list(opportunity.get("offer_snapshot_ids") or [])
+        bound_supplier_id = supplier_ids[-1] if supplier_ids else ""
+        supplier = self._repos.offers.get(bound_supplier_id)
+        # a newer committed snapshot for the same provider+SKU supersedes the
+        # bound one: the evaluation must be redone against it
+        newer_supplier = None
+        if supplier is not None:
+            provider_id = str(supplier.get("provider_id") or "")
+            item_id = str(supplier.get("source_item_id") or "")
+            latest = self._repos.offers.latest(provider_id=provider_id, source_item_id=item_id)
+            if latest is not None and str(latest.get("record_id")) != bound_supplier_id:
+                newer_supplier = latest
+
+        stored_match = self._repos.matches.get(str(opportunity.get("match_id") or ""))
+        match = stored_match
+        if stored_match is not None:
+            latest_match = self._repos.matches.latest_for_pair(
+                str(stored_match.get("left_snapshot_id") or ""),
+                str(stored_match.get("right_snapshot_id") or ""),
+            )
+            if latest_match is not None:
+                match = latest_match
+
+        moment = now or utc_now()
+        reasons: List[str] = []
+        if supplier is None:
+            reasons.append("bound supplier snapshot missing")
+        else:
+            freshness = self._freshness(
+                self._repos.offers.get(str(opportunity.get("market_snapshot_id") or "")) or {},
+                supplier,
+                moment,
+            )
+            if not freshness.get("all_fresh"):
+                reasons.append("inputs stale or source-ineligible at validation time")
+        if newer_supplier is not None:
+            reasons.append(
+                "a newer supplier snapshot exists for this provider+SKU; re-evaluate against it"
+            )
+        grade = str(match.get("grade")) if match else "none"
+        if grade != MATCH_EXACT:
+            reasons.append(f"latest match grade {grade} is below EXACT")
+
+        economics = opportunity.get("economics") or {}
+        inputs = economics.get("inputs") or {}
+        terms = inputs.get("commercial_terms") or None
+        if terms and terms_lookup is not None:
+            current = terms_lookup(str(terms.get("cookie_id") or ""), str(terms.get("category") or ""))
+            if current is None:
+                reasons.append("bound account commercial terms no longer exist; re-record terms")
+            elif str(current.get("snapshot_version")) != str(terms.get("snapshot_version")):
+                reasons.append(
+                    "account commercial terms revised since evaluation; re-evaluate with the current version"
+                )
+
+        report = {
+            "opportunity_id": opportunity_id,
+            "validated_at": moment.isoformat(),
+            "status_before": status,
+            "valid": not reasons,
+            "reasons": reasons,
+        }
+        if reasons and status == OPPORTUNITY_READY_FOR_TEST:
+            paused = self._repos.opportunities.transition(
+                opportunity_id,
+                to_status=OPPORTUNITY_PAUSED,
+                reason="ready invalidated before use: " + "; ".join(reasons),
+                actor="system-revalidate",
+            )
+            report["status_after"] = str(paused.get("status"))
+        return report
 
     # ---- projections ----
 

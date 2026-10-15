@@ -46,6 +46,7 @@ def build_fixture(root):
         return FileResponse(WEB_ROOT / "pi-usage.js")
 
     @app.get("/console/app.js")
+    @app.get("/console/intake-confirmation.js")
     def unrelated_entrypoint():
         return Response(content="", media_type="application/javascript")
 

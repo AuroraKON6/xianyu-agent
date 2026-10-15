@@ -254,10 +254,10 @@ class FullFlowCombinationDrill(DrillBase):
 
         # 2. procurement: verify -> reserve -> human approval -> supplier order -> receipt
         order = self.procurement.create_from_sales_order(
-            account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-full-1",
+            account_id="acc-1", sku="GZ-1200", quantity=2, sales_order_ref="sale-full-1",  # >= MOQ(2)
             opportunity_id=self.opportunity["record_id"],
         )
-        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 9)
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 8)  # 10 - qty 2 (Codex E4 MOQ fix)
         self.procurement.approve(order["record_id"], operator="操作者")
         self.procurement.record_supplier_order(order["record_id"], supplier_order_id="SO-DRILL-1", operator="操作者")
         received = self.procurement.record_receipt(order["record_id"], receipt_ref="receipt://drill/1", operator="操作者")
@@ -288,7 +288,7 @@ class FullFlowCombinationDrill(DrillBase):
         self.importer.revoke_batch(self.batch_id, operator="操作者", reason="停售")
         with self.assertRaises(ProcurementError):
             self.procurement.create_from_sales_order(
-                account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-full-2"
+                account_id="acc-1", sku="GZ-1200", quantity=1, sales_order_ref="sale-full-2"  # < MOQ(2), expected to fail
             )
 
         # 6. branch: human match correction invalidates the qualification
@@ -323,12 +323,12 @@ class FullFlowCombinationDrill(DrillBase):
         order_b = self.procurement.create_from_sales_order(
             account_id="acc-1", sku="GZ-1200", quantity=2, sales_order_ref="sale-full-3"
         )
-        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 7)
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 6)  # 10 - 2 - 2
         self.procurement.cancel(order_b["record_id"], reason="测试取消", operator="操作者")
-        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 9)
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 8)  # 10 - 2 (first still locked)
         # stale double-cancel of order_b cannot release anything else
         self.procurement.cancel(order_b["record_id"], reason="重放取消", operator="操作者")
-        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 9)
+        self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 8)  # unchanged: 10 - 2 (first still locked)
 
         # 8. final restart: every fact still consistent
         self.restart()

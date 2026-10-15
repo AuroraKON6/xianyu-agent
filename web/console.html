@@ -288,6 +288,49 @@
                 </div>
                 <div id="commerce-preview-result" class="commerce-result">粘贴报价文件内容后点击预览；确认前不会写入任何快照</div>
               </section>
+              <section class="commerce-step" id="intake-panel">
+                <h4>1b. 资料闭环：导入 → 原值对照 → 缺口 → 用途确认 → 资格</h4>
+                <div class="commerce-actions">
+                  <textarea id="intake-quote-text" rows="4" placeholder="粘贴供应商报价原件（CSV/粘贴文本；或用下方文件选择原件）"></textarea>
+                  <input id="intake-original-file" type="file" accept=".csv,.xlsx,.txt,.json" />
+                  <input id="intake-supplier" placeholder="供应商名称（必填）" />
+                </div>
+                <div class="commerce-actions">
+                  <button id="intake-import-preview-btn" class="text-btn" type="button">预览导入</button>
+                  <button id="intake-import-confirm-btn" class="primary" type="button" disabled>确认导入批次</button>
+                </div>
+                <div id="intake-import-result" class="commerce-result">预览显示每行原值与标准化值的对照及缺口；确认前不写入快照</div>
+                <div class="commerce-grid">
+                  <select id="intake-batch-select">
+                    <option value="">选择导入批次（供应商 · 时间 · 状态）</option>
+                  </select>
+                  <input id="intake-operator-token" type="password" placeholder="操作者凭证（仅本页内存，确认后可清除）" autocomplete="off" />
+                </div>
+                <div class="commerce-actions">
+                  <button id="intake-load-btn" class="text-btn" type="button">查看批次资料状态</button>
+                  <button id="intake-template-btn" class="text-btn" type="button">生成声明模板</button>
+                </div>
+                <div id="intake-batch-status" class="commerce-result">批次资料状态：每个 SKU 的报价资格、到期与既有确认</div>
+                <textarea id="intake-declaration" rows="8" placeholder="声明 JSON：点「生成声明模板」后按核对结果填写；草稿保存在本标签页，刷新不丢"></textarea>
+                <div class="commerce-actions">
+                  <button id="intake-preview-btn" class="text-btn" type="button">生成确认预览</button>
+                  <button id="intake-confirm-btn" class="primary" type="button" disabled>确认用途</button>
+                </div>
+                <div class="commerce-grid">
+                  <label class="commerce-check"><input type="checkbox" id="intake-use-local" checked /> 本地分析</label>
+                  <label class="commerce-check"><input type="checkbox" id="intake-use-model" /> 外部模型</label>
+                  <label class="commerce-check"><input type="checkbox" id="intake-use-business" /> 经营使用</label>
+                  <input id="intake-valid-until" placeholder="确认有效期（ISO；留空=原报价截止，不延长）" />
+                  <input id="intake-idempotency-key" placeholder="幂等键（自动生成；重试请原样重用）" readonly />
+                </div>
+                <div id="intake-preview-result" class="commerce-result">预览绑定原件哈希、声明与快照集合；任何变化需重新预览</div>
+                <div id="intake-confirm-result" class="commerce-result"></div>
+                <div class="commerce-actions">
+                  <button id="intake-eligibility-btn" class="text-btn" type="button">查询当前资格</button>
+                  <button id="intake-lock-btn" class="text-btn" type="button">清除凭证</button>
+                </div>
+                <div id="intake-eligibility-result" class="commerce-result"></div>
+              </section>
               <section class="commerce-step">
                 <h4>2. 市场观察登记（人工观察，非成交事实）</h4>
                 <div class="commerce-grid">
@@ -315,19 +358,48 @@
                 <h4>4. 商机与贡献利润（缺成本不填零）</h4>
                 <button id="opp-create-btn" class="text-btn" type="button">创建商机</button>
                 <div class="commerce-grid">
-                  <input id="fee-rate" placeholder="平台费率（当期条款）" value="0.03" />
-                  <input id="fee-fixed" placeholder="固定费用" value="0" />
-                  <input id="cost-packaging" placeholder="包装/单件" value="5" />
-                  <input id="cost-return" placeholder="预期退货损失/单" value="12" />
-                  <input id="cost-attributable" placeholder="获客+模型/单" value="4" />
-                  <input id="cost-market-low" placeholder="保守售价（观察区间低）" placeholder2="可选" />
+                  <input id="fee-rate" placeholder="平台费率（当期账号+类目条款，如 0.03）" />
+                  <input id="fee-fixed" placeholder="固定费用（当期条款）" />
+                  <input id="cost-packaging" placeholder="包装/单件（依据）" />
+                  <input id="cost-return" placeholder="预期退货损失/单（依据）" />
+                  <input id="cost-attributable" placeholder="获客+模型/单（依据）" />
+                  <input id="cost-market-low" placeholder="保守售价（观察区间低，可选）" />
                 </div>
+                <label class="commerce-demo-toggle">
+                  <input type="checkbox" id="demo-costs-toggle" />
+                  演示成本模式（仅界面演示，不能进入真实资格）
+                </label>
                 <button id="opp-evaluate-btn" class="primary" type="button">核算利润</button>
                 <div id="opp-result" class="commerce-result"></div>
               </section>
               <section class="commerce-step">
                 <h4>5. 决策卡</h4>
                 <div id="decision-card" class="commerce-result">核算后自动展示</div>
+                <div class="commerce-grid">
+                  <select id="adopt-candidate-select">
+                    <option value="">选择候选（倒卖机会验证中创建）</option>
+                  </select>
+                  <input id="adopt-account" placeholder="目标账号 ID（采纳按账号隔离）" />
+                </div>
+                <input id="adopt-reason" placeholder="采纳理由（为何采纳当前版本，≥10 字）" />
+                <div class="commerce-actions">
+                  <button id="adopt-btn" class="primary" type="button">采纳当前商机到候选</button>
+                  <button id="adopt-recheck-btn" class="text-btn" type="button">复验最近采纳</button>
+                </div>
+                <div id="adopt-result" class="commerce-result">采纳是显式人工决定：不自动通过候选证据，不启动试卖</div>
+              </section>
+              <section class="commerce-step">
+                <h4>6. 通道与订单投影</h4>
+                <div class="commerce-actions">
+                  <button id="market-channel-status-btn" class="text-btn" type="button">市场通道状态</button>
+                  <button id="radar-status-btn" class="text-btn" type="button">Radar 状态</button>
+                </div>
+                <div id="channel-status-result" class="commerce-result">通道探针为只读；未配置时如实显示</div>
+                <div class="commerce-actions">
+                  <input id="order-detail-ref" placeholder="销售单号（如 xy-order-9001）" />
+                  <button id="order-detail-btn" class="text-btn" type="button">查询订单投影</button>
+                </div>
+                <div id="order-detail-result" class="commerce-result">采购事实与账本分录同视图，逐笔可追</div>
               </section>
             </div>
             <div class="panel-head"><h4>Pi 任务台（只读分析角色 · 影子观察）</h4></div>
@@ -951,5 +1023,6 @@
     </div>
     <script src="/console/app.js"></script>
     <script src="/console/pi-usage.js"></script>
+    <script src="/console/intake-confirmation.js"></script>
   </body>
 </html>

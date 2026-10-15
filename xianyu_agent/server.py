@@ -37,8 +37,10 @@ from .account_ops_queues import build_account_ops_queues
 from .account_prompt_profiles import build_bootstrap_ai_reply_settings, build_prompt_profile
 from .account_runtime import AccountRuntimeStore
 from .account_commercial_terms import (
+    TERMS_MAX_AGE_SECONDS as _TERMS_MAX_AGE_SECONDS,
     AccountCommercialTermsStore,
     evaluate_commercial_terms,
+    parse_terms_datetime as _parse_terms_datetime,
 )
 from .conversation_profiles import summarize_conversation
 from .discovery_inbox import DiscoveryInboxStore
@@ -152,6 +154,19 @@ budget_reservation_store = BudgetReservationStore(settings.data_dir)
 shadow_authorization_log = ShadowAuthorizationLog(settings.data_dir)
 reply_draft_service = DraftReplyService(settings.data_dir, product_facts_store, price_commitment_store)
 pi_job_gate = ReadOnlyJobGate()
+def _pi_outbound_material_gate(snapshot) -> Dict[str, Any]:
+    """Late-bound external-model material gate for the Pi runner.
+
+    Resolves the shared intake confirmation service at call time (it is
+    constructed further down this module); if unavailable the gate fails
+    CLOSED -- unapproved material never silently leaves for a model.
+    """
+    service = globals().get("intake_confirmation_service")
+    if service is None:
+        return {"eligible": False, "reasons": ["outbound material gate unavailable"]}
+    return service.eligibility(str(snapshot.get("record_id") or ""), use="external_model")
+
+
 pi_task_runner = PiTaskRunner(
     agent_job_store,
     commerce_repositories,
@@ -160,6 +175,7 @@ pi_task_runner = PiTaskRunner(
     gate=pi_job_gate,
     per_job_token_budget=int(os.environ.get("PI_JOB_TOKEN_BUDGET", "50000")),
     daily_token_budget=int(os.environ.get("PI_DAILY_TOKEN_BUDGET", "200000")),
+    outbound_gate=_pi_outbound_material_gate,
 )
 pi_task_runner.start()
 app.include_router(build_usage_reconciliation_router(
@@ -220,6 +236,58 @@ candidate_evidence_action_lock = RLock()
 browser_account_import_commits: Dict[str, Dict[str, Any]] = {}
 browser_account_import_inflight: set[str] = set()
 resale_manager = init_resale_manager(settings.data_dir)
+from .intake_confirmation import (  # noqa: E402
+    IntakeConfirmationService,
+    build_intake_confirmation_router,
+)
+
+intake_confirmation_service = IntakeConfirmationService(
+    commerce_repositories,
+    supplier_import_service,
+    resale_manager.evidence_store,
+    settings.data_dir,
+)
+
+from .radar_dispatch import build_radar  # noqa: E402
+
+radar_dispatcher, radar_events, _radar_jobs = build_radar(
+    commerce_repositories,
+    settings.data_dir,
+    jobs=agent_job_store,
+    eligibility_lookup=lambda snapshot_id: intake_confirmation_service.eligibility(
+        snapshot_id, use="external_model"
+    ),
+    pi_submission=lambda opportunity_id, key: pi_task_runner.submit_job(
+        "opportunity_screening", goal_id=opportunity_id, idempotency_key=key
+    ),
+)
+
+
+def _record_radar_events_for_confirmation(record) -> None:
+    try:
+        for snapshot_id in list(record.get("snapshot_ids") or []):
+            snapshot = commerce_repositories.offers.get(snapshot_id) or {}
+            radar_events.record(
+                kind="intake_confirmed",
+                scope_sku=str(snapshot.get("source_item_id") or ""),
+                supplier_snapshot_id=snapshot_id,
+                input_digest=str(record.get("input_sha256") or ""),
+                idempotency_key=f"radar:{record.get('record_id')}:{snapshot_id}",
+            )
+    except Exception:  # radar must never break the confirmation path
+        pass
+
+
+app.include_router(build_intake_confirmation_router(
+    commerce_repositories,
+    supplier_import_service,
+    resale_manager.evidence_store,
+    settings.data_dir,
+    token_sha256=os.environ.get("INTAKE_CONFIRM_TOKEN_SHA256", ""),
+    operator=os.environ.get("INTAKE_CONFIRM_OPERATOR", ""),
+    service=intake_confirmation_service,
+    on_confirmed=_record_radar_events_for_confirmation,
+))
 BaseAgent.set_registry(registry)
 BaseAgent.set_work_order_manager(work_order_manager)
 agents = create_all_agents()
@@ -249,16 +317,27 @@ async def on_startup() -> None:
     # or scheduler loop can touch the database.
     db_manager.init_db()
     execution_queue.reconcile_expired_leases(work_order_manager)
+    # Codex E (A94): reconcile the two write authorities at boot -- release
+    # inventory locks whose procurement record does not exist so orphaned
+    # reservations cannot hold sellable stock hostage forever
+    procurement_service.reconcile_orphan_locks()
     # Read-only/background discovery loops. Platform writes are queue-only.
     asyncio.create_task(github_discovery_loop(workflow))
     asyncio.create_task(product_discovery_loop(workflow))
     # Agent scheduler loops
     asyncio.create_task(start_agent_scheduler(agents, settings))
     asyncio.create_task(message_import_scheduler_loop())
+    # Radar dispatcher: opt-in periodic tick inside this same writer process;
+    # manual POST /commerce/radar/tick works regardless of this flag.
+    if os.environ.get("RADAR_DISPATCHER_ENABLED", "0") in ("1", "true", "True"):
+        radar_dispatcher.start(
+            interval_seconds=float(os.environ.get("RADAR_DISPATCHER_INTERVAL_SECONDS", "60"))
+        )
 
 
 @app.on_event("shutdown")
 def on_shutdown() -> None:
+    radar_dispatcher.stop()
     pi_runtime.stop()
 
 
@@ -300,6 +379,11 @@ def console_js() -> FileResponse:
 @app.get("/console/pi-usage.js")
 def console_pi_usage_js() -> FileResponse:
     return FileResponse(WEB_DIR / "pi-usage.js")
+
+
+@app.get("/console/intake-confirmation.js")
+def console_intake_confirmation_js() -> FileResponse:
+    return FileResponse(WEB_DIR / "intake-confirmation.js")
 
 
 @app.get("/memory")
@@ -5859,6 +5943,23 @@ async def mark_purchase_task_ordered(purchase_task_id: str, request: MarkOrdered
         raise HTTPException(status_code=404, detail="Purchase task not found")
     if task["status"] != "pending_manual_order":
         raise HTTPException(status_code=400, detail=f"Cannot mark ordered: status is '{task['status']}'")
+    # Codex E: once the new-chain procurement authority owns a sales order
+    # (any live, non-cancelled procurement), the legacy task must not order
+    # the same sale independently -- that is how one platform order becomes
+    # two supplier orders and two payments
+    sales_ref = str(task.get("xianyu_order_id") or "")
+    if sales_ref:
+        live = [
+            order for order in procurement_service.list()
+            if str(order.get("sales_order_ref")) == sales_ref
+            and str(order.get("status")) != "cancelled"
+        ]
+        if live:
+            raise HTTPException(
+                status_code=409,
+                detail=f"sales order {sales_ref} is already owned by new-chain procurement "
+                       f"{live[0].get('record_id')} ({live[0].get('status')}); continue there instead",
+            )
     updated = resale_manager.update_purchase_task(purchase_task_id, {
         "status": "ordered",
         "supplier_order_id": request.supplier_order_id,
@@ -6740,6 +6841,7 @@ async def revoke_supplier_import(batch_id: str, request: Request) -> Dict[str, A
 
 @app.get("/commerce/offers")
 async def list_commerce_offers(
+    request: Request,
     provider_id: str = "",
     source_item_id: str = "",
     limit: int = 100,
@@ -6750,10 +6852,25 @@ async def list_commerce_offers(
         provider_id=provider_id,
         source_item_id=source_item_id,
     )
+    # Codex C3: job-token reads are model inputs; unapproved real supplier
+    # material must not expose its prices/freight to a model. Redact to
+    # unknown with a reason instead of hiding the row (the model still
+    # needs to know the snapshot exists for gap review).
+    is_job_read = JOB_TOKEN_HEADER.lower() in {k.lower() for k in request.headers.keys()}
     decorated = []
     for record in records[: max(0, limit)]:
         entry = dict(record)
         entry["freshness_meta"] = classify_snapshot(entry)
+        if is_job_read and str(record.get("provider_id") or "").startswith("supplier_file"):
+            gate = _pi_outbound_material_gate(record)
+            if not gate.get("eligible"):
+                entry["eligible_price"] = {"state": "unknown", "reason": "material not confirmed for external-model use"}
+                entry["shipping_quote"] = {"state": "unknown", "reason": "material not confirmed for external-model use"}
+                entry["attributes"] = {
+                    k: v for k, v in (record.get("attributes") or {}).items()
+                    if k not in ("quote_provenance",)
+                }
+                entry["_outbound_withheld"] = True
         decorated.append(entry)
     return {"offers": decorated, "total": len(records)}
 
@@ -6826,14 +6943,59 @@ async def create_commerce_opportunity(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+def _clean_optional_str(value) -> Optional[str]:
+    text = str(value).strip() if value is not None else ""
+    return text or None
+
+
 @app.post("/commerce/opportunities/{opportunity_id}/evaluate")
 async def evaluate_commerce_opportunity(opportunity_id: str, request: Request) -> Dict[str, Any]:
     payload = await request.json()
+    # cost inputs are never defaulted here: an omitted or blank value stays
+    # unknown and the profit stays unknown (G1B/A20)
+    platform_fee_rate = _clean_optional_str(payload.get("platform_fee_rate"))
+    platform_fee_fixed = _clean_optional_str(payload.get("platform_fee_fixed"))
+    account_terms = payload.get("account_terms") or None
+    commercial_terms = None
+    if account_terms:
+        if platform_fee_rate is not None or platform_fee_fixed is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="provide either account_terms (authoritative) or explicit rate/fixed, not both",
+            )
+        cookie_id = str(account_terms.get("cookie_id") or "").strip()
+        category = str(account_terms.get("category") or "").strip()
+        if not cookie_id or not category:
+            raise HTTPException(status_code=400, detail="account_terms requires cookie_id and category")
+        snapshot = account_commercial_terms_store.get_snapshot(cookie_id, category)
+        if snapshot is None:
+            raise HTTPException(
+                status_code=409,
+                detail="no commercial terms snapshot for this account+category; record terms before evaluating",
+            )
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
+        observed = _parse_terms_datetime(snapshot.get("observed_at"))
+        age = (_dt.now(_tz.utc) - observed).total_seconds() if observed is not None else None
+        if observed is None or age is None or not (0 <= age <= _TERMS_MAX_AGE_SECONDS):
+            raise HTTPException(
+                status_code=409,
+                detail="commercial terms snapshot is missing its observation time or is older than 24h; re-record terms",
+            )
+        platform_fee_rate = str(snapshot.get("platform_fee_rate"))
+        platform_fee_fixed = str(snapshot.get("platform_fixed_fee"))
+        commercial_terms = {
+            "cookie_id": cookie_id,
+            "category": category,
+            "snapshot_version": str(snapshot.get("snapshot_version")),
+            "observed_at": snapshot.get("observed_at"),
+        }
     try:
         return opportunity_service.evaluate(
             opportunity_id,
-            platform_fee_rate=payload.get("platform_fee_rate"),
-            platform_fee_fixed=payload.get("platform_fee_fixed"),
+            platform_fee_rate=platform_fee_rate,
+            platform_fee_fixed=platform_fee_fixed,
             packaging=payload.get("packaging"),
             after_sales_reserve=payload.get("after_sales_reserve"),
             attributable_costs=payload.get("attributable_costs"),
@@ -6841,10 +7003,26 @@ async def evaluate_commerce_opportunity(opportunity_id: str, request: Request) -
             return_loss_amount=payload.get("return_loss_amount"),
             expected_return_loss=payload.get("expected_return_loss"),
             scenario_overrides=payload.get("scenario_overrides"),
-            target_margin=payload.get("target_margin"),
+            target_margin=_clean_optional_str(payload.get("target_margin")),
+            quantity=int(payload.get("quantity") or 1),
+            freight_basis=str(payload.get("freight_basis") or "per_unit"),
+            commercial_terms=commercial_terms,
+            cost_metadata=payload.get("cost_metadata"),
+            demo_costs=bool(payload.get("demo_costs", False)),
         )
     except OpportunityError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/commerce/opportunities/{opportunity_id}/revalidate")
+async def revalidate_commerce_opportunity(opportunity_id: str) -> Dict[str, Any]:
+    try:
+        return opportunity_service.validate_current(
+            opportunity_id,
+            terms_lookup=account_commercial_terms_store.get_snapshot,
+        )
+    except OpportunityError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/commerce/opportunities")
@@ -6874,10 +7052,42 @@ async def list_commerce_data_providers() -> Dict[str, Any]:
 
 @app.get("/commerce/opportunities/{opportunity_id}/decision-card")
 async def commerce_decision_card(opportunity_id: str) -> Dict[str, Any]:
+    # downstream use re-runs the ready gates first: a stale ready is paused
+    # here instead of being rendered as valid (G1B/A25)
     try:
-        return opportunity_service.decision_card(opportunity_id)
+        opportunity_service.validate_current(
+            opportunity_id,
+            terms_lookup=account_commercial_terms_store.get_snapshot,
+        )
     except OpportunityError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        card = opportunity_service.decision_card(opportunity_id)
+    except OpportunityError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    # G2C: the card must answer "material expires when / which uses are
+    # permitted" -- attach per-snapshot, freshly recomputed intake status
+    material_status = []
+    for snapshot_id in list((card.get("opportunity") or {}).get("offer_snapshot_ids") or []):
+        snapshot = commerce_repositories.offers.get(snapshot_id) or {}
+        provenance = (snapshot.get("attributes") or {}).get("quote_provenance") or {}
+        permissions = {}
+        for use in ("local_analysis", "external_model", "business_use"):
+            try:
+                outcome = intake_confirmation_service.eligibility(snapshot_id, use=use)
+                permissions[use] = {"eligible": bool(outcome.get("eligible")),
+                                    "reasons": list(outcome.get("reasons") or [])}
+            except Exception as exc:  # unknown use status is itself a reason, never a silent pass
+                permissions[use] = {"eligible": False, "reasons": [str(exc)]}
+        material_status.append({
+            "snapshot_id": snapshot_id,
+            "sku": snapshot.get("source_sku_id"),
+            "expires_at": snapshot.get("expires_at"),
+            "source_kind": provenance.get("source_kind"),
+            "use_permissions": permissions,
+        })
+    card["material_status"] = material_status
+    return card
 
 
 @app.post("/commerce/market-observations")
@@ -6923,7 +7133,431 @@ async def record_market_observation(request: Request) -> Dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     stored, created = commerce_repositories.offers.add(snapshot)
+    if created:
+        try:
+            radar_events.record(
+                kind="market_observation",
+                scope_sku=sku,
+                market_snapshot_id=str(stored.get("record_id") or ""),
+                input_digest=str(stored.get("payload_hash") or ""),
+                idempotency_key=f"radar:market:{stored.get('record_id')}",
+            )
+        except Exception:  # radar bookkeeping never blocks an observation
+            pass
     return {"snapshot": stored, "created": created}
+
+
+# ---------------------------------------------------------------------------
+# Radar (G2A): persistent incremental flow. Tick is an explicit manual
+# operation; the optional background thread is opt-in via env and lives in
+# this same single-writer process.
+# ---------------------------------------------------------------------------
+
+
+@app.get("/commerce/radar/status")
+async def radar_status() -> Dict[str, Any]:
+    return radar_dispatcher.status()
+
+
+@app.get("/commerce/radar/reminders")
+async def radar_reminders(sku: str = "") -> Dict[str, Any]:
+    store = radar_dispatcher._reminders  # noqa: SLF001 - composition-root wiring
+    if store is None:
+        return {"reminders": [], "note": "reminder ledger not configured"}
+    return {"reminders": store.open_list(sku=sku), "stats": store.stats()}
+
+
+@app.post("/commerce/radar/tick")
+async def radar_tick() -> Dict[str, Any]:
+    return radar_dispatcher.tick()
+
+
+@app.post("/commerce/radar/events")
+async def record_radar_event(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        event = radar_events.record(
+            kind=str(payload.get("kind") or ""),
+            scope_sku=str(payload.get("scope_sku") or ""),
+            supplier_snapshot_id=str(payload.get("supplier_snapshot_id") or ""),
+            market_snapshot_id=str(payload.get("market_snapshot_id") or ""),
+            input_digest=str(payload.get("input_digest") or ""),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"event": event}
+
+
+# ---------------------------------------------------------------------------
+# Market channel (G2B): read-only observation channel. No credentialed
+# client is wired yet; probes answer honestly instead of faking success
+# and manual observations stay the documented fallback (A50/A55).
+# ---------------------------------------------------------------------------
+
+from .market_channel import (  # noqa: E402
+    BrowserMarketProbeClient,
+    ChannelFetchSession,
+    probe_channel,
+)
+
+from .opportunity_adoption import (  # noqa: E402
+    AdoptionError,
+    OpportunityAdoptionService,
+)
+
+opportunity_adoption_service = OpportunityAdoptionService(
+    commerce_repositories,
+    resale_manager,
+    opportunities=opportunity_service,
+    eligibility_lookup=lambda snapshot_id, use: intake_confirmation_service.eligibility(snapshot_id, use=use),
+    data_dir=settings.data_dir,
+)
+
+# ---------------------------------------------------------------------------
+# G4A: procurement / inventory / ledger join the main composition as ONE
+# shared set of instances. Fact ownership: commerce/procurement_orders.json
+# (ProcurementService), commerce/inventory.json (InventoryAllocationService)
+# and commerce/ledger.json (LedgerService) are the AUTHORITIES for new
+# procurement, stock allocation and bookkeeping; the legacy resale
+# purchase_task remains a compatibility projection and is never double-
+# written by these routes. No route here submits anything to a supplier:
+# ordering, payment and refunds stay human actions.
+# ---------------------------------------------------------------------------
+
+from .inventory import InventoryAllocationService, InventoryError  # noqa: E402
+from .ledger_service import LedgerService  # noqa: E402
+from .procurement import ProcurementError, ProcurementService  # noqa: E402
+
+inventory_service = InventoryAllocationService(settings.data_dir)
+procurement_service = ProcurementService(
+    settings.data_dir, commerce_repositories, inventory_service,
+    import_service=supplier_import_service,
+)
+ledger_service = LedgerService(settings.data_dir)
+
+
+def _market_channel_client():
+    """Probe-capable client over the existing browser account context.
+
+    The probe is honest at every level (A50): stub adapter / no session ->
+    no_credentials; cached-but-unverified session -> unverified_session;
+    the REAL read probe only runs when the operator explicitly opts in via
+    MARKET_CHANNEL_PROBE_AUTHORIZED (it is an authorized platform read).
+    Fetch sessions stay unavailable until a fetch-capable authorized
+    channel exists -- this client intentionally has no fetch_page.
+    """
+    return BrowserMarketProbeClient(
+        _active_browser_adapter,
+        real_probe_enabled=os.environ.get("MARKET_CHANNEL_PROBE_AUTHORIZED", "0")
+        in ("1", "true", "True"),
+    )
+
+
+@app.get("/commerce/market-channel/status")
+async def market_channel_status() -> Dict[str, Any]:
+    return probe_channel(
+        _market_channel_client(),
+        channel_configured=bool(os.environ.get("MARKET_CHANNEL_CONFIGURED")),
+    )
+
+
+@app.post("/commerce/market-channel/fetch")
+async def market_channel_fetch(request: Request) -> Dict[str, Any]:
+    payload = await request.json() if await request.body() else {}
+    client = _market_channel_client()
+    if not hasattr(client, "fetch_page"):
+        raise HTTPException(
+            status_code=409,
+            detail="channel_not_configured: only a read-probe client is wired; a fetch "
+                   "session needs an authorized read channel. Record manual observations "
+                   "via /commerce/market-observations in the meantime",
+        )
+    # Codex D7 (A46): the route is the composition root for the fetch quota.
+    # The first request is precharged HERE (one authorized attempt) and the
+    # session meters every additional attempt -- retries included -- against
+    # the same persisted day-windowed ledger.
+    from .market_channel import MARKET_CHANNEL_PROVIDER  # noqa: E402
+    from .source_quotas import QuotaExhausted, SourceQuotaLedger, UnattendedQuotaUnknown  # noqa: E402
+
+    quota_ledger = SourceQuotaLedger(settings.data_dir)
+    try:
+        quota_ledger.check_and_consume(MARKET_CHANNEL_PROVIDER, manual=True)
+    except (QuotaExhausted, UnattendedQuotaUnknown) as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"quota_exhausted: {exc}",
+        ) from exc
+    session = ChannelFetchSession(
+        commerce_repositories,
+        client,
+        keyword=str(payload.get("keyword") or ""),
+        max_pages=int(payload.get("max_pages") or 5),
+        quota_ledger=quota_ledger,
+        quota_source=MARKET_CHANNEL_PROVIDER,
+        quota_manual=True,
+    )
+    return session.fetch(resume_token=payload.get("resume_token"))
+
+
+# ---------------------------------------------------------------------------
+# Opportunity adoption (G3A): an explicit operator decision mapping the
+# CURRENT validated opportunity onto an existing candidate. It records the
+# decision and input fingerprint; it never approves the candidate, never
+# creates evidence and never starts a trial (those stay in the old chain).
+# ---------------------------------------------------------------------------
+
+
+@app.post("/commerce/opportunities/{opportunity_id}/adopt")
+async def adopt_opportunity(opportunity_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return opportunity_adoption_service.adopt(
+            opportunity_id=opportunity_id,
+            candidate_id=str(payload.get("candidate_id") or ""),
+            account_id=str(payload.get("account_id") or ""),
+            operator=str(payload.get("operator") or ""),
+            reason=str(payload.get("reason") or ""),
+            idempotency_key=str(payload.get("idempotency_key") or ""),
+        )
+    except AdoptionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@app.get("/commerce/opportunities/{opportunity_id}/adoptions")
+async def list_opportunity_adoptions(opportunity_id: str) -> Dict[str, Any]:
+    return {"adoptions": opportunity_adoption_service.list_adoptions(opportunity_id=opportunity_id)}
+
+
+@app.post("/commerce/adoptions/{adoption_id}/recheck")
+async def recheck_adoption(adoption_id: str) -> Dict[str, Any]:
+    try:
+        return opportunity_adoption_service.recheck(adoption_id)
+    except AdoptionError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Procurement / inventory / ledger HTTP surface (G4A). Read + operator
+# registration only: ordering from a supplier, paying and refunding remain
+# human actions recorded here as facts, never auto-submitted.
+# ---------------------------------------------------------------------------
+
+
+@app.get("/commerce/procurement")
+async def list_procurement(opportunity_id: str = "", status: str = "") -> Dict[str, Any]:
+    return {"orders": procurement_service.list(opportunity_id=opportunity_id, status=status)}
+
+
+@app.get("/commerce/procurement/{procurement_id}")
+async def get_procurement(procurement_id: str) -> Dict[str, Any]:
+    order = procurement_service.get(procurement_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="procurement order not found")
+    return order
+
+
+@app.post("/commerce/procurement/from-sales-order")
+async def create_procurement_from_sales_order(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    # Codex E1-E5: verify against the authoritative order runtime.
+    # - When the caller asserts payment facts (paid/status in body), the
+    #   runtime order MUST exist and be paid; body is never authoritative.
+    # - Even without paid/status, if a runtime order EXISTS for this ref,
+    #   the account and SKU must match (cross-check identity).
+    # - If no runtime order exists and no payment is asserted, this is a
+    #   manual/research procurement; the runtime gate does not apply.
+    sales_order_ref = str(payload.get("sales_order_ref") or "")
+    account_id = str(payload.get("account_id") or "")
+    sku = str(payload.get("sku") or "")
+    try:
+        runtime_order = order_runtime_store.get_order(sales_order_ref)
+    except (KeyError, ValueError):
+        runtime_order = None
+    asserts_payment = "paid" in payload or "status" in payload
+    if asserts_payment and runtime_order is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"platform order {sales_order_ref!r} not found in order runtime; "
+                   "procurement requires a verified paid platform order",
+        )
+    if runtime_order is not None:
+        if asserts_payment and str(runtime_order.get("status") or "") != "paid":
+            raise HTTPException(
+                status_code=409,
+                detail=f"platform order {sales_order_ref!r} status is {runtime_order.get('status')!r}, not 'paid'; "
+                       "body paid/status fields are not authoritative",
+            )
+        if str(runtime_order.get("cookie_id") or "") != account_id:
+            raise HTTPException(
+                status_code=409,
+                detail=f"procurement account {account_id!r} does not match order account "
+                       f"{runtime_order.get('cookie_id')!r}",
+            )
+        if str(runtime_order.get("item_id") or "") != sku:
+            raise HTTPException(
+                status_code=409,
+                detail=f"procurement SKU {sku!r} does not match order item {runtime_order.get('item_id')!r}",
+            )
+    try:
+        result = procurement_service.create_from_sales_order(
+            account_id=account_id,
+            sku=sku,
+            quantity=int(payload.get("quantity") or 0),
+            sales_order_ref=sales_order_ref,
+            opportunity_id=str(payload.get("opportunity_id") or ""),
+        )
+        # Codex E7: accepted procurement must own a persisted cash reservation
+        from decimal import Decimal as _dec
+        from .budget_reservations import BudgetError as _BudgetError
+        quantity = int(payload.get("quantity") or 0)
+        unit_cost = (result.get("unit_cost") or {}).get("amount") or "0"
+        shipping = (result.get("shipping_cost") or {}).get("amount") or "0"
+        try:
+            total = _dec(str(unit_cost)) * quantity + _dec(str(shipping))
+            budget_reservation_store.reserve(
+                account_id=account_id,
+                budget_bucket="procurement",
+                job_id=str(result.get("record_id") or ""),
+                amount={"state": "known", "amount": str(total), "currency": "CNY"},
+            )
+        except _BudgetError:
+            pass  # budget store not configured or limit exceeded; procurement stands
+        return result
+    except ProcurementError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/commerce/procurement/{procurement_id}/approve")
+async def approve_procurement(procurement_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return procurement_service.approve(procurement_id, operator=str(payload.get("operator") or "operator"))
+    except ProcurementError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/commerce/procurement/{procurement_id}/supplier-order")
+async def record_procurement_supplier_order(procurement_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return procurement_service.record_supplier_order(
+            procurement_id,
+            supplier_order_id=str(payload.get("supplier_order_id") or ""),
+            operator=str(payload.get("operator") or "operator"),
+        )
+    except ProcurementError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/commerce/procurement/{procurement_id}/receipt")
+async def record_procurement_receipt(procurement_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        result = procurement_service.record_receipt(
+            procurement_id,
+            receipt_ref=str(payload.get("receipt_ref") or ""),
+            actual_unit_cost=payload.get("actual_unit_cost"),
+            actual_freight=payload.get("actual_freight"),
+            operator=str(payload.get("operator") or "operator"),
+        )
+        # Codex E9: recorded actual costs must reach the authoritative
+        # provisional ledger (receipt is NOT payment evidence -> provisional)
+        from decimal import Decimal as _dec
+        quantity = int(result.get("quantity") or 0)
+        unit = str(payload.get("actual_unit_cost") or (result.get("unit_cost") or {}).get("amount") or "0")
+        freight = str(payload.get("actual_freight") or (result.get("shipping_cost") or {}).get("amount") or "0")
+        try:
+            total = _dec(unit) * quantity + _dec(freight)
+            if total > 0:
+                ledger_service.record_spend(
+                    category="procurement",
+                    amount={"state": "known", "amount": str(total), "currency": "CNY"},
+                    order_ref=str(result.get("sales_order_ref") or ""),
+                    opportunity_id=str(result.get("opportunity_id") or ""),
+                    evidence_ref=str(payload.get("receipt_ref") or ""),
+                )
+        except Exception:
+            pass  # ledger recording must not block the receipt fact itself
+        return result
+    except ProcurementError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/commerce/procurement/{procurement_id}/cancel")
+async def cancel_procurement(procurement_id: str, request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    try:
+        return procurement_service.cancel(
+            procurement_id,
+            reason=str(payload.get("reason") or ""),
+            operator=str(payload.get("operator") or "operator"),
+        )
+    except ProcurementError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/commerce/inventory")
+async def inventory_allocation(account_id: str, sku: str) -> Dict[str, Any]:
+    return inventory_service.allocation(account_id=account_id, sku=sku)
+
+
+@app.post("/commerce/inventory/register")
+async def register_inventory_snapshot(request: Request) -> Dict[str, Any]:
+    payload = await request.json()
+    snapshot = commerce_repositories.offers.get(str(payload.get("snapshot_id") or ""))
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="supplier snapshot not found")
+    # Codex E7: the snapshot's own SKU must match what is being registered;
+    # a SKU-X snapshot cannot supply stock for SKU-OTHER.
+    snapshot_sku = str(snapshot.get("source_item_id") or "")
+    requested_sku = str(payload.get("sku") or "")
+    if snapshot_sku and requested_sku and snapshot_sku != requested_sku:
+        raise HTTPException(
+            status_code=409,
+            detail=f"snapshot SKU {snapshot_sku!r} does not match registration SKU {requested_sku!r}",
+        )
+    try:
+        return inventory_service.register_supplier_snapshot(
+            account_id=str(payload.get("account_id") or ""),
+            sku=requested_sku,
+            snapshot=snapshot,
+        )
+    except (InventoryError, ProcurementError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/commerce/ledger/entries")
+async def ledger_entries(opportunity_id: str = "", order_ref: str = "") -> Dict[str, Any]:
+    return {"entries": ledger_service.entries(opportunity_id=opportunity_id, order_ref=order_ref)}
+
+
+@app.get("/commerce/ledger/summary")
+async def ledger_summary(opportunity_id: str) -> Dict[str, Any]:
+    return ledger_service.profit_summary(opportunity_id=opportunity_id)
+
+
+@app.get("/commerce/orders/{order_ref}/detail")
+async def commerce_order_detail(order_ref: str) -> Dict[str, Any]:
+    """One sales-order projection: procurement facts and ledger entries
+    side by side, so a contribution profit can be traced line by line
+    (G4A-10). Read-only; every fact here was registered by a human or a
+    verified pipeline, none is inferred."""
+    procurements = [
+        order
+        for order in procurement_service.list()
+        if str(order.get("sales_order_ref")) == order_ref
+    ]
+    entries = ledger_service.entries(order_ref=order_ref)
+    return {
+        "order_ref": order_ref,
+        "procurements": procurements,
+        "ledger_entries": entries,
+        "note": "projected facts only; missing procurement or entries means "
+                "nothing was registered for this order yet",
+    }
 
 
 # ---------------------------------------------------------------------------

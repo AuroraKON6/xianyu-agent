@@ -5242,6 +5242,7 @@ const commerceState = {
   preview: null,
   lastMatch: null,
   opportunityId: null,
+  adoptionId: null,
 };
 
 function commerceMoney(m) {
@@ -5392,12 +5393,14 @@ async function commerceEvaluate() {
     return;
   }
   const low = $("#cost-market-low")?.value?.trim();
+  const demo = $("#demo-costs-toggle")?.checked || false;
   const body = {
     platform_fee_rate: $("#fee-rate")?.value?.trim() || null,
     platform_fee_fixed: $("#fee-fixed")?.value?.trim() || null,
     packaging: $("#cost-packaging")?.value ? { state: "known", amount: $("#cost-packaging").value, currency: "CNY" } : null,
     expected_return_loss: $("#cost-return")?.value ? { state: "known", amount: $("#cost-return").value, currency: "CNY" } : null,
     attributable_costs: $("#cost-attributable")?.value ? { state: "known", amount: $("#cost-attributable").value, currency: "CNY" } : null,
+    demo_costs: demo,
   };
   if (low) {
     body.scenario_overrides = { conservative: { sale_price: { state: "known", amount: low, currency: "CNY" } } };
@@ -5439,15 +5442,142 @@ async function commerceRenderDecisionCard(opportunityId) {
     const checks = (latest.constraint_checks || [])
       .map((c) => `${c.check}:${c.state}`)
       .join(" ｜ ");
+    // G2C: 材料到期与用途许可是逐快照实时重算的事实，不缓存
+    const material = (card.material_status || []).map((row) => {
+      const uses = Object.entries(row.use_permissions || {})
+        .map(([use, perm]) => `${use}:${perm.eligible ? "✔" : "✘ " + (perm.reasons || []).join(",")}`)
+        .join("　");
+      return `<tr><td>${escapeHtml(row.sku || row.snapshot_id)}</td>` +
+        `<td>${escapeHtml((row.expires_at || "").replace("T", " ").slice(0, 19))}</td><td>${uses}</td></tr>`;
+    }).join("");
     $("#decision-card").innerHTML =
       `<p><strong>${escapeHtml(latest.actor_role)}</strong> / ${escapeHtml(latest.decision_type)} / ${new Date(latest.created_at).toLocaleString()}</p>` +
       `<p>${escapeHtml(latest.summary)}</p>` +
       `<p>建议：${escapeHtml(latest.recommendation || "-")}</p>` +
       `<p>门禁：${escapeHtml(checks)} ｜ 授权：${escapeHtml(latest.authorization_type)}（人工）</p>` +
       `<p>未知项：${escapeHtml((latest.unknowns || []).join("；"))}</p>` +
-      `<p>依据：${(latest.evidence_refs || []).map((r) => escapeHtml(`${r.ref_type}:${r.ref_id}`)).join(" ｜ ")}</p>`;
+      `<p>依据：${(latest.evidence_refs || []).map((r) => escapeHtml(`${r.ref_type}:${r.ref_id}`)).join(" ｜ ")}</p>` +
+      (material ? `<table class="commerce-table"><thead><tr><th>SKU</th><th>资料到期</th><th>用途许可（实时）</th></tr></thead><tbody>${material}</tbody></table>` : "");
+    await commerceLoadAdoptTargets();
   } catch (e) {
     $("#decision-card").textContent = `决策卡读取失败：${e.message}`;
+  }
+}
+
+// G3A adoption: an explicit operator decision, never auto-approved
+async function commerceLoadAdoptTargets() {
+  const select = $("#adopt-candidate-select");
+  if (!select) return;
+  try {
+    const candidates = await api("/resale/candidates");
+    const previous = select.value;
+    select.innerHTML = `<option value="">选择候选（倒卖机会验证中创建）</option>` +
+      (candidates || []).map((candidate) =>
+        `<option value="${escapeHtml(candidate.candidate_id)}">${escapeHtml(candidate.title || candidate.candidate_id)} · ${escapeHtml(candidate.supplier_sku || "")} · ${escapeHtml(candidate.status)}</option>`
+      ).join("");
+    if (previous && (candidates || []).some((candidate) => candidate.candidate_id === previous)) {
+      select.value = previous;
+    }
+  } catch (e) {
+    select.innerHTML = `<option value="">候选列表读取失败：${escapeHtml(e.message)}</option>`;
+  }
+}
+
+async function commerceAdopt() {
+  const opportunityId = commerceState.opportunityId;
+  if (!opportunityId) {
+    $("#adopt-result").textContent = "请先创建并核算商机";
+    return;
+  }
+  const body = {
+    candidate_id: $("#adopt-candidate-select")?.value || "",
+    account_id: $("#adopt-account")?.value?.trim() || "",
+    reason: $("#adopt-reason")?.value?.trim() || "",
+    operator: "console",
+    idempotency_key: `ui-adopt-${opportunityId}-${$("#adopt-candidate-select")?.value || ""}-${$("#adopt-account")?.value?.trim() || ""}`,
+  };
+  try {
+    const result = await api(`/commerce/opportunities/${opportunityId}/adopt`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    const record = result.adoption || {};
+    $("#adopt-result").innerHTML =
+      `<p>${result.idempotent ? "重复采纳已去重（同一作用域）：" : "采纳已记录："}` +
+      `<code>${escapeHtml(record.record_id || "")}</code> · 状态 ${escapeHtml(record.status || "")}</p>` +
+      `<p>输入指纹 ${escapeHtml((record.input_digest || "").slice(0, 12))}… · 候选证据未被自动通过，试卖/发布仍走旧审批链</p>`;
+    commerceState.adoptionId = record.record_id;
+  } catch (e) {
+    $("#adopt-result").textContent = `采纳被拒绝：${e.message}`;
+  }
+}
+
+async function commerceAdoptRecheck() {
+  const adoptionId = commerceState.adoptionId;
+  if (!adoptionId) {
+    $("#adopt-result").textContent = "先采纳一次，才有可复验的记录";
+    return;
+  }
+  try {
+    const result = await api(`/commerce/adoptions/${adoptionId}/recheck`, { method: "POST" });
+    const reasons = (result.reasons || []).length
+      ? `<p>原因：${escapeHtml((result.reasons || []).join("；"))}</p>`
+      : "";
+    $("#adopt-result").innerHTML =
+      `<p>复验结果：<strong>${result.valid ? "仍然有效" : "已失效（stale）"}</strong></p>${reasons}`;
+  } catch (e) {
+    $("#adopt-result").textContent = `复验失败：${e.message}`;
+  }
+}
+
+// G2B/G2A channel + radar status: read-only probes that never fake success
+async function commerceChannelStatus() {
+  const node = $("#channel-status-result");
+  try {
+    const channel = await api("/commerce/market-channel/status");
+    const radar = await api("/commerce/radar/status");
+    node.innerHTML =
+      `<p>市场通道：<strong>${escapeHtml(channel.status)}</strong>${(channel.reasons || []).length ? `（${escapeHtml(channel.reasons.join("；"))}）` : ""} ｜ 人工观察登记不受影响</p>` +
+      `<p>Radar：事件 ${escapeHtml(JSON.stringify(radar.events || {}))} · 任务 ${escapeHtml(JSON.stringify(radar.jobs || {}))} · 后台线程 ${radar.background_thread_alive ? "运行中" : "未启用（可用手动 tick）"}</p>`;
+  } catch (e) {
+    node.textContent = `通道状态读取失败：${e.message}`;
+  }
+}
+
+async function commerceRadarTick() {
+  const node = $("#channel-status-result");
+  try {
+    const report = await api("/commerce/radar/tick", { method: "POST" });
+    node.innerHTML =
+      `<p>tick 完成：推进 ${report.events_advanced} 个事件 · 执行 ${report.jobs_executed.length} 个任务 · 恢复租约 ${report.leases_recovered}</p>` +
+      `<p>事件 ${escapeHtml(JSON.stringify(report.events || {}))}</p>`;
+  } catch (e) {
+    node.textContent = `tick 失败：${e.message}`;
+  }
+}
+
+// G4A order detail: procurement facts and ledger entries side by side
+async function commerceOrderDetail() {
+  const node = $("#order-detail-result");
+  const orderRef = $("#order-detail-ref")?.value?.trim();
+  if (!orderRef) {
+    node.textContent = "请输入销售单号";
+    return;
+  }
+  try {
+    const detail = await api(`/commerce/orders/${encodeURIComponent(orderRef)}/detail`);
+    const procurements = (detail.procurements || []).map((order) =>
+      `<li>采购 ${escapeHtml(order.record_id)} · ${escapeHtml(order.status)} · 数量 ${escapeHtml(String(order.quantity ?? ""))} · 单价 ${escapeHtml((order.unit_cost || {}).amount ?? "-")} · 销售单 ${escapeHtml(order.sales_order_ref)}</li>`
+    ).join("");
+    const entries = (detail.ledger_entries || []).map((entry) =>
+      `<li>${entry.direction === "credit" ? "收" : "支"} ${escapeHtml((entry.amount || {}).amount ?? "")} ${escapeHtml((entry.amount || {}).currency ?? "")} · ${escapeHtml(entry.kind)} · ${escapeHtml(entry.category || "")}${entry.reversal_of ? ` · 冲正→${escapeHtml(entry.reversal_of)}` : ""}</li>`
+    ).join("");
+    node.innerHTML =
+      `<p>订单 <strong>${escapeHtml(orderRef)}</strong></p>` +
+      `<ul>${procurements || "<li>无采购记录</li>"}</ul>` +
+      `<ul>${entries || "<li>无账本分录</li>"}</ul>`;
+  } catch (e) {
+    node.textContent = `订单投影读取失败：${e.message}`;
   }
 }
 
@@ -5477,6 +5607,30 @@ $("#match-run-btn")?.addEventListener("click", commerceRunMatch);
 $("#opp-create-btn")?.addEventListener("click", commerceCreateOpportunity);
 $("#opp-evaluate-btn")?.addEventListener("click", commerceEvaluate);
 $("#commerce-refresh")?.addEventListener("click", commerceRefreshFunnel);
+$("#adopt-btn")?.addEventListener("click", commerceAdopt);
+$("#adopt-recheck-btn")?.addEventListener("click", commerceAdoptRecheck);
+$("#market-channel-status-btn")?.addEventListener("click", commerceChannelStatus);
+$("#order-detail-btn")?.addEventListener("click", commerceOrderDetail);
+
+// Demo cost fill exists ONLY behind this explicit toggle: the inputs start
+// empty, demo numbers never pre-fill the real form, and a demo evaluation
+// carries demo_costs=true which the backend refuses to qualify.
+const DEMO_COST_FILL = {
+  "fee-rate": "0.03",
+  "fee-fixed": "0",
+  "cost-packaging": "5",
+  "cost-return": "12",
+  "cost-attributable": "4",
+};
+$("#demo-costs-toggle")?.addEventListener("change", (event) => {
+  const demo = event.target?.checked;
+  for (const [id, value] of Object.entries(DEMO_COST_FILL)) {
+    const input = document.getElementById(id);
+    if (!input) continue;
+    if (demo && !input.value.trim()) input.value = value;
+    if (!demo && Object.values(DEMO_COST_FILL).includes(input.value.trim())) input.value = "";
+  }
+});
 
 // Pi task desk: submit read-only analysis roles and execute through real Pi
 async function piSubmitTask() {

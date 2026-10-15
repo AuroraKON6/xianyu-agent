@@ -3530,6 +3530,40 @@ button {
   gap: 8px;
 }
 
+.commerce-demo-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 4px 0;
+}
+
+#intake-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#intake-panel .commerce-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#intake-panel [data-tone="ok"] {
+  color: #0a7d55;
+}
+
+#intake-panel [data-tone="warning"] {
+  color: #9a6700;
+}
+
+#intake-panel [data-tone="error"] {
+  color: #b42318;
+}
+
 .commerce-actions {
   display: flex;
   gap: 8px;

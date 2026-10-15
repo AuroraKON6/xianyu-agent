@@ -442,6 +442,9 @@ class JsonCommerceRepositories:
 
     def __init__(self, data_dir: Path) -> None:
         base = Path(data_dir) / "commerce"
+        # Codex D7: expose the data root so composition (e.g. the per-source
+        # quota ledger) can be wired from the repositories alone
+        self.data_dir = Path(data_dir)
         self.offers: OfferSnapshotRepository = JsonOfferSnapshotRepository(_LockedJsonList(base / "offers.json"))
         self.matches: ProductMatchRepository = JsonProductMatchRepository(_LockedJsonList(base / "matches.json"))
         self.opportunities: OpportunityRepository = JsonOpportunityRepository(_LockedJsonList(base / "opportunities.json"))

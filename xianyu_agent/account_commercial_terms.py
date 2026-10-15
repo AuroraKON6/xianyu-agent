@@ -433,6 +433,11 @@ def _gate(code: str, passed: bool, message: str, evidence: str) -> Dict[str, Any
     }
 
 
+def parse_terms_datetime(value: Any) -> Optional[datetime]:
+    """Public wrapper: parse a terms snapshot timestamp (None when invalid)."""
+    return _parse_datetime(value)
+
+
 def _parse_datetime(value: Any) -> Optional[datetime]:
     if isinstance(value, datetime):
         parsed = value
