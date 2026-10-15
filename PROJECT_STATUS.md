@@ -1,6 +1,103 @@
 # Xianyu Pi Commercial Alpha Status
 
-Updated: 2026-09-23
+Updated: 2026-10-12
+
+## 2026-10-12 GLM Codex 修复第一轮（19/51 已修，全量 1592/1592 PASS）
+
+证据：[修复报告](docs/acceptance/GLM_CODEX_FIX_ROUND1_2026-10-12.md)。Codex 独立检验发现 51 失败断言；本轮修复 C 核心 6/6 + E 财务 7 + D 雷达 3 + S 存储 3 = **19 项**，其余 32 项待后续。全量 **1592/1592，exit 0**；live 20 文件。关键修复见报告。**红线违规如实记录**：修复中一次直接运行测试污染了 live（20→35 文件）；已清理至 20 但 3 个文件内容修改不可恢复。
+
+## 2026-10-12 Codex 独立检验交接更新（不通过，待 GLM 修复）
+
+唯一入口：[CODEX_VERIFICATION_HANDOFF_2026-10-12.md](docs/acceptance/CODEX_VERIFICATION_HANDOFF_2026-10-12.md)。已补 PowerShell 标准运行器、全部85项ID与证据映射、53项可单独执行的隔离对抗检验、内部未实现范围与修复顺序。下方 GLM 全绿及“剩余全部是外部缺口”是原交付声明，不能替代本轮独立结果。
+
+原始全量实跑1592项有7个Windows子进程输出编码错误（exit 1）；明确UTF-8后相关审计5项、备份/导出3项均通过，未拼接为第二次全量PASS。独立检验53项中51个期望不变量失败、2个正向守卫通过（失败断言数不等于独立问题数）：资料撤销/快照绑定、Pi出站、报价/配额、采购预算/付款身份、账本、导出恢复等均有复现。业务实现未修，真实模型/平台写入未执行；真实经营和生产切换未批准。源码/live对照及精确case见入口与manifest。
+
+## 2026-10-12 CODEX 检验交接就绪
+
+入口：[CODEX_VERIFICATION_HANDOFF_2026-10-12.md](docs/acceptance/CODEX_VERIFICATION_HANDOFF_2026-10-12.md)——九报告+两 ADR 索引、分层复现命令（S/H/R/审计/演练/全量 1592/1592）、九条对抗检验点（伪造操作者/字节篡改/阶梯价/冲正并发/出站门禁/claim 隔离/配额/假价差/live 零污染）、状态声明与禁止超读边界。交付前抽查：source_quotas/market_probe_client/pi_outbound_gate 三专项 + 前端语法全绿；工作区 60 项未提交（HEAD a3c2b19 未动），零残留进程。
+
+## 2026-10-12 GLM 第八轮补充：闲鱼 MCP 真实通道接入（A50/A51 R 层 PASS）
+
+证据：[R8 报告](docs/acceptance/GLM_R8_XIANYU_MCP_REAL_CHANNEL_2026-10-12.md)；[ADR-0003](docs/adr/0003-xianyu-mcp-read-channel.md)。用户授权接入闲鱼 MCP：选定 rira2/xianyu-mcp（免账号/无 cookie/无写工具，Node+Playwright 有头匿名读 mtop；goofish-cli 因 Python 3.11 门槛搁置）。
+
+- 真实匿名平台读全通：capabilities 探针（session_state=logged_out 证实匿名）；search_count **291,757 件**；browse_feed/search_items 各 15 条真实商品卡（¥39–66，含 item_id/想要数）；RGV587 限流→60s 退避重试成功（A53 真实形态，与 A46 配额语义一致）。
+- 10 条真实闲鱼观察入流水线（URL 溯原），产出**第一张真实闲鱼市场侧商机卡**：1688 ¥360 → 闲鱼真实 ¥59（二手/清货），系统如实判无差价机会。零写操作、零凭据、零残留进程。
+- 八轮全量 1592/1592 仍有效（本轮零产品代码改动）。剩余缺口清单中"市场读通道"一项已由本输入解锁；其余外部缺口不变。
+
+## 2026-10-12 GLM 第八轮：A46 来源配额机制（隔离软件验收通过，未提交）
+
+证据：全量隔离回归 **1592/1592**（1489 基线 + 103 本计划新增），exit 0；live 前后一致。新增 `xianyu_agent/source_quotas.py`（日窗口持久配额账本）+ 5 专项：重试计入配额（429 后重试一次占两单位）；计数跨进程重启持久；未知限额禁止无人值守扫描（显式 manual 可过并如实记录）；到达限额诚实拒绝；窗口按 UTC 日滚动；来源彼此独立。限额只来自真实合同配置，无默认值——G2A/A46 机制侧完成，接入真实通道时按合同配置 limits 即生效。至此 85 项矩阵中所有可无外部输入完成的工程项全部交付；剩余为 A33 移动端截图与 A115 日志/容量小工具（低优先）+ 外部输入缺口（见 [缺口清单](docs/ops/glm-gap-checklist-2026-10-12.md)）。
+
+## 2026-10-12 GLM 第七轮：真实公开数据全链演示（隔离软件验收通过，未提交）
+
+证据：[第七轮报告](docs/acceptance/GLM_R7_REAL_SOURCE_DEMO_2026-10-12.md)；[来源档案](research/real-source-demo-2026-10-12/sources.md)。全量隔离回归 **1587/1587**，exit 0；live 前后一致（演示用独立目录）。
+
+- 用户授权"自行找例子"后，以**真实公开网页数据**（1688 批发 ¥360/¥473.7、淘宝零售展示 ¥131.88/¥761，逐条原样摘录+URL 溯源）在独立目录跑通全链：导入→观察→radar→匹配→商机→决策卡→审计（0 冲突/0 孤儿）。
+- 每道门诚实生效：匹配判 **COMPARABLE**（市场侧未展示尺寸/材质，拒绝假同款）；保守利润 **unknown** 列明四项缺失成本（无默认值）；材料用途唯一阻断原因=`no_active_confirmation`——**只差操作者确认**；304 SKU 缺市场观察→awaiting+去重提醒。
+- 产品修正：radar 市场查找接受任意 `market:` provider（公开网页观察合法）；9/9 回归。
+- 流程治理：清理我此前调试遗留的 2 个 uvicorn 残留进程（曾致 server 导入 89s 与全量首轮 3 处超时假象），清理后全量通过。
+- 真实层定位如实：真实公开展示价（非闲鱼平台读取）、真实公开报价（未经供应关系确认）——R 层验收仍按 [缺口清单](docs/ops/glm-gap-checklist-2026-10-12.md) 等用户输入。
+
+## 2026-10-12 GLM 第六轮：A50 探针客户端 + live 演练基线 + 集中缺口清单（隔离软件验收通过，未提交）
+
+证据：[第六轮报告](docs/acceptance/GLM_R6_PROBE_CLIENT_AND_GAPS_2026-10-12.md)；[集中缺口清单](docs/ops/glm-gap-checklist-2026-10-12.md)。全量隔离回归 **1587/1587**（1489 基线 + 98 本计划新增），exit 0；live 20 文件前后一致。
+
+- A50 探针客户端完成最后工程缺口：BrowserMarketProbeClient 复用既有账号上下文，诚实五级（无会话→no_credentials；**缓存会话≠证据**→unverified_session；显式授权才真实读探针；无 fetch 能力）。7 专项 + 15 回归。
+- live 只读备份演练实测：备份 0.172s / 恢复 0.812s / 全哈希通过（无 ledger 故分歧行未演示，如实记录）。
+- 集中缺口清单上线：五类外部输入的精确解锁路径 + live 现状（含 1 个 queued Pi 任务处置说明）。
+
+## 2026-10-12 GLM 第五轮：Pi 出站门禁 + Radar 提醒 + G5A 演练（隔离软件验收通过，未提交）
+
+证据：[第五轮报告](docs/acceptance/GLM_R5_GATE_REMINDERS_DRILLS_2026-10-12.md)。全量隔离回归 **1580/1580**（1489 基线 + 91 本计划新增），exit 0；live 20 文件前后哈希一致。
+
+- Pi 出站用途门禁（G1B-6/A45 遗留接驳完成）：未确认 external_model 的真实报价在采集层整体扣留（价格/属性不出站，仅 id+原因），demo 豁免、门禁异常失败关闭；定价采集同步抹除未许可商机金额；fake-Pi 出站载荷断言验证。
+- Radar 提醒去重（A48）：(SKU×原因×输入摘要) 幂等，repeat_count 累加不建新行；事件成功即解决；`GET /commerce/radar/reminders`。
+- G5A JSON 演练：备份/恢复全哈希校验 + 盲回退丢数据演示（实证 ADR-0002 回退边界）；SQL 导出器 dry-run（DDL+唯一键+对账 footer，无需数据库）。
+- 修复测试基建时间炸弹：test_intake_confirmation HTTP 类的 NOW 补丁在 discover 模式下打到第二个模块实例（`tests.` 前缀 vs 无前缀），夹具 NOW+20h 有效期被真实时钟越过导致确定性失败；改经 `type(self).__module__` 解析。
+- 至此计划内全部可隔离工程项交付完毕；剩余均为外部输入/环境/批准缺口。
+
+## 2026-10-12 GLM 前端整合轮（隔离软件验收通过，未提交）
+
+证据：[前端整合轮](docs/acceptance/GLM_INTEGRATION_UI_2026-10-12.md)（含截图 [g-integration-ui-artifacts](docs/acceptance/g-integration-ui-artifacts-2026-10-12/)）。全量隔离回归 **1571/1571**（1489 基线 + 82 本计划新增），exit 0；live 20 文件前后哈希一致。
+
+- 修复真实缺陷：server 缺 `/console/intake-confirmation.js` 静态路由（G1C 面板在真实服务下 404 失效；夹具有该路由故当时未暴露）。
+- 控制台新增：决策卡 material_status（逐 SKU 到期+三用途实时许可）、采纳表单（候选下拉+幂等+旧链提示+复验）、通道/Radar 状态区、销售单号订单投影查询（采购+账本同视图）。
+- 浏览器端到端（真实 server 子进程 + Chromium）：导入→材料确认→观察→匹配→核算→决策卡→采纳→复验→通道→投影全链通过，零控制台错误；匹配 model 约束与材料确认两道门禁在夹具错误时正确拦截。
+
+## 2026-10-12 GLM G4B 黄金样本 + G5A ADR/核对器（隔离软件验收通过，未提交）
+
+证据：[G4B 黄金财务](docs/acceptance/GLM_G4B_GOLDEN_FINANCE_2026-10-12.md)；[G5A ADR 与核对器](docs/acceptance/GLM_G5A_ADR_AND_AUDIT_2026-10-12.md)。全量隔离回归 **1570/1570**（1489 基线 + 81 本计划新增），exit 0；live 20 文件前后哈希一致；live 只读审计基线 0 冲突/0 孤儿。
+
+- G4B：黄金样本全链（预计 90 → 结算 102 → 部分退款 52，准备金不二次扣）；冲正上限/错币种/并发竞争 HTTP+服务层验证；provisional 与 settled 分层，未回款不进在手现金。A103 真实首单 WAITING_INPUT。
+- G5A：ADR-0002 迁移设计（12 清单→PG 表映射、唯一键、两处跨聚合事务点、切换/回退边界）+ 只读核对器 `scripts/audit_commerce_ledgers.py`（行数/金额/唯一/孤儿/未完成/证据哈希，live 基线干净）。A111/A112/A114 真实数据库演练 WAITING_INPUT（本机无 PostgreSQL/Docker）。
+- 至此 G0-G5A 首批全部完成隔离软件验收；剩余工程项为前端整合轮，其余全为真实输入/环境/批准缺口（见各报告"需要用户提供的精确输入"）。
+
+---
+
+## 2026-10-12 GLM G2B/G2C/G3A/G4A（隔离软件验收通过，未提交）
+
+证据：[G2B 市场通道](docs/acceptance/GLM_G2B_MARKET_CHANNEL_2026-10-12.md)；[G2C 决策卡](docs/acceptance/GLM_G2C_DECISION_CARD_2026-10-12.md)；[G3A 采纳桥接](docs/acceptance/GLM_G3A_OPPORTUNITY_ADOPTION_2026-10-12.md)；[G4A 主链接入](docs/acceptance/GLM_G4A_MAIN_CHAIN_WIRING_2026-10-12.md)。全量隔离回归 **1562/1562**，exit 0；live 20 文件前后哈希一致，零真实模型/平台调用，未新增自启动。
+
+- G2B：市场通道只读模块（probe 不假成功；全价/起售/区间/定金/券后/sold 提示六类价格纪律；上游时间=观察时间防缓存刷新；401 即停、429/5xx 有界重试、部分结果 degraded；resume_token 断点）；路由 status/fetch 未配置时结构化诚实应答，人工观察回退保持来源类型区分。
+- G2C：决策卡新增 material_status（逐快照到期时间+三用途实时许可）——确定性卡九问齐备；真实卡/20 组商品对 WAITING_INPUT。
+- G3A：采纳桥接（显式决定+输入指纹+幂等+账号隔离；五类证据不自动通过；recheck 输入变化/材料失效→stale 不重写历史；模型建议永不自动批准）。
+- G4A：ProcurementService/InventoryAllocationService/LedgerService 以共享单实例挂入主 server；三 JSON 为权威、旧 purchase_task 兼容投影不双写；人工流程路由（创建/审批/供应商单/收货/取消/库存登记/账本/订单详情投影）。
+- 真实层缺口不变：真实报价确认、账号授权读通道、真实首单（M1-M4 R/B 层）均 WAITING_INPUT；商业执行 NOT_AUTHORIZED。下一包 G4B 黄金样本贯通与 G5A ADR。
+
+---
+
+## 2026-10-11 GLM G0 基线 + G1 全三包 + G2A radar（隔离软件验收通过，未提交）
+
+证据：[G0 基线](docs/acceptance/GLM_G0_BASELINE_2026-10-11.md)；[G1A 原件与用途确认](docs/acceptance/GLM_G1A_INTAKE_CONFIRMATION_2026-10-11.md)；[G1B 成本与资格失效](docs/acceptance/GLM_G1B_COST_ELIGIBILITY_2026-10-11.md)；[G1C 资料面板](docs/acceptance/GLM_G1C_INTAKE_PANEL_2026-10-11.md)（含浏览器截图 [g1c-ui-artifacts](docs/acceptance/g1c-ui-artifacts-2026-10-11/)）；[G2A radar dispatcher](docs/acceptance/GLM_G2A_RADAR_DISPATCH_2026-10-11.md)。全量隔离回归 **1536/1536**（1489 基线 + 47 新增），345.997s，exit 0；live 20 文件前后哈希一致，零真实模型/平台调用，未新增自启动。
+
+- G0：HEAD `4bd2cf7` + 65 项 R6-R9 未提交成果完整保留；入口矩阵与所有权表落档。
+- G1A：原件 content-addressed 归档（owner_type=supplier_batch）+ 资料用途确认记录（全输入绑定、幂等键+请求指纹、有效期封顶）+ eligibility 实时重算；受信任操作者 Bearer 通道。
+- G1B：清除生产表单演示默认值；平台费绑定账号+类目条款版本（修订→ready 即时 paused）；阶梯价/整单运费/单位适用；validate_current 同步重验。
+- G1C：面板资料闭环（粘贴/上传→原值对照→缺口→用途确认→实时资格）；4 项 Playwright 浏览器验收通过（1440/390 双视口）。
+- G2A：radar dispatcher——事件幂等（输入摘要键）、match→商机卡阶段推进（持久 result_ref、重启续进）、claim 角色过滤（Pi 不再抢非 Pi 任务、radar 不碰写任务）、Pi 复核仅在 external_model 用途许可时提交；确认/市场观察自动记事件；RADAR_DISPATCHER_ENABLED 默认关闭，手动 tick 路由可用。
+- 真实资料验收 WAITING_INPUT（真实原件、身份/许可材料、操作者凭证、真实账号条款、真实观察）；商业执行 NOT_AUTHORIZED。下一包 G2B 单一市场通道（只读探针先行）。
+
+---
 
 ## 2026-09-23 R9 报价时间来源贯通与集成收口（隔离验收通过，未提交）
 
