@@ -1,0 +1,53 @@
+{
+  "cases": 5,
+  "failures": 5,
+  "errors": 0,
+  "observations": [
+    {
+      "case": "test_q1_status_after_restart_without_limits",
+      "error_type": "AttributeError",
+      "error": "'dict' object has no attribute '_items'"
+    },
+    {
+      "case": "test_q2_fresh_sessions_cannot_reuse_a_spent_precharge",
+      "actual_transport_attempts": 3,
+      "state": {
+        "source": "market:xianyu_channel",
+        "window": "2026-10-13",
+        "attempts": 1,
+        "limit": 1,
+        "limit_known": true,
+        "remaining": 0,
+        "exhausted": true,
+        "note": "limit from contract"
+      }
+    },
+    {
+      "case": "test_q3_unknown_contract_cannot_fetch_unattended",
+      "transport_attempts": 1,
+      "status": "complete"
+    },
+    {
+      "case": "test_q4_lowered_limit_survives_restart",
+      "admitted_after_limit_two": {
+        "source": "market:xianyu_channel",
+        "window": "2026-10-13",
+        "attempts": 3,
+        "limit": 5,
+        "limit_known": true,
+        "remaining": 2,
+        "exhausted": false
+      },
+      "was_admitted": true
+    },
+    {
+      "case": "test_q5_rate_limit_retry_has_positive_cooldown",
+      "transport_attempts": 2,
+      "sleeps": [
+        0
+      ],
+      "status": "complete"
+    }
+  ],
+  "network_and_child_processes": "denied_by_audit_hook"
+}

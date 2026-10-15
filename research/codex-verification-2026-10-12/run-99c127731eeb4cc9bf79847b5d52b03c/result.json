@@ -1,0 +1,12 @@
+﻿{
+    "mode":  "adversarial",
+    "suite":  "test_pi_outbound_gate",
+    "probe":  "storage_repros",
+    "case":  "all",
+    "exit_code":  0,
+    "command_exit_code":  0,
+    "source_count":  281,
+    "source_unchanged":  true,
+    "live_file_count":  20,
+    "live_unchanged":  true
+}

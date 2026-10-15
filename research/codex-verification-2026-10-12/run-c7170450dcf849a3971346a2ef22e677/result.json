@@ -1,0 +1,12 @@
+﻿{
+    "mode":  "adversarial",
+    "suite":  "test_pi_outbound_gate",
+    "probe":  "adversarial_repros",
+    "case":  "test_batch_revocation_invalidates_active_confirmation",
+    "exit_code":  1,
+    "command_exit_code":  1,
+    "source_count":  281,
+    "source_unchanged":  true,
+    "live_file_count":  20,
+    "live_unchanged":  true
+}

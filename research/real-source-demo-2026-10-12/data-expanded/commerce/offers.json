@@ -1,0 +1,1942 @@
+[
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_f9daa25002eb4dc1",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_977577c086c34134",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.350872+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "美星双层加厚不锈钢工作台 201不锈钢打荷操作台厨房商用",
+      "spec": "双层加厚 201不锈钢",
+      "brand": "美星",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:https://s.1688.com (search: 美星双层加厚 201)",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "360",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "2af087a55ece76bd5f7dd2b00af220784aab6fe3840bc471bf9d159c079d1a61",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_af8eedb4ca49424a",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_a6e1f6c7276143c9",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.355914+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "CJ-304-DBL",
+    "source_sku_id": "CJ-304-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "304不锈钢工作台 厂家定制双层厨房操作台 201加厚实验室桌子带靠背",
+      "spec": "双层 304不锈钢",
+      "brand": "未具名",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:https://www.1688.com (search: 304 双层)",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "473.7",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "dd511b16fbf1aa52da5677b3fa5bec2598693808a61dfde1a17cca4409a3058e",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_aa62cf9770094bc0",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_be9f8343957e4e60",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.363504+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "HXL-ZSJ",
+    "source_sku_id": "HXL-ZSJ",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "不锈钢展示层架 商用（鸿鑫隆）",
+      "spec": "不锈钢 层架",
+      "brand": "鸿鑫隆",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:https://s.1688.com (search: 不锈钢货架 商用 四层)",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "191.10",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "ac2bfacedd997d5b3298b3d985326dd26167d44a67a9dc322e3e7d6122b14682",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_0a00bf041b3e4be1",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_b5122576a8d842bf",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.373745+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "LSJ-65",
+    "source_sku_id": "LSJ-65",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "沥水碗架 65cm 黑色标准款（区间68-92，取上限）",
+      "spec": "不锈钢 65cm",
+      "brand": "未具名",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:1688 沥水架检索（区间价取保守上限）",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "92",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "be74fb14fa5473932083ba4425fb69e44c40c8ac6a1f34cf6cba79c1a63fb202",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_d820ca6c59c74ce5",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_064ec1438b1e46d7",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.380813+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "CD-304-SX",
+    "source_sku_id": "CD-304-SX",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "304不锈钢水槽 三眼双星水池 厨房洗碗池 商用饭店用（成都）",
+      "spec": "304 双星水池",
+      "brand": "未具名",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:https://s.1688.com/kq/-不锈钢双星水池批发",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "458",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "d25857629d208bd95792a181234723434ad75f12e16858cd8849099fc4f6f513",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_570defa6cc2948c6",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_bc9b12ae63ad467c",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.392006+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "304-SXG",
+    "source_sku_id": "304-SXG",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "304不锈钢水池水槽柜 家/商用厨房双星洗菜洗手盆洗碗池",
+      "spec": "304 双星水槽柜",
+      "brand": "未具名",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:同上检索",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "439.85",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "fc9327e09d1ed44db70d40f70e053a8a83e16ab10dc3894ac19d57c918f09e21",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_8d9bc1022c5646ba",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_20392ff8497e4158",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.406124+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "CMT-TJ",
+    "source_sku_id": "CMT-TJ",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "不锈钢调料台（创美特）",
+      "spec": "不锈钢 调料台",
+      "brand": "创美特",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:https://s.1688.com (search: 不锈钢调料台 批发)",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "295",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "a4cfe2a88a8e136479dafeeed08e8ae692f4ae75976c22bb5c2770d06f75c861",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_3077f36043ff4a74",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "import_batch:impb_85e8d37c74ac4dc4",
+    "trace_id": "trace_28b93da124874ab8",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.416461+00:00",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "source_item_id": "HT-CC",
+    "source_sku_id": "HT-CC",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.255295+00:00",
+    "fetched_at": "2026-10-12T08:17:25.350250+00:00",
+    "expires_at": "2026-10-13T08:17:25.255295+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "name": "不锈钢推车定做 商用餐车（区间611-1499，取海涛具体价）",
+      "spec": "不锈钢 定做推车",
+      "brand": "海涛",
+      "quote_provenance": {
+        "schema_version": 1,
+        "source_kind": "supplier_original",
+        "source_reference": "public-web:https://s.1688.com (search: 不锈钢推车定做)",
+        "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "valid_until": "2026-10-13T08:17:25.255295+00:00"
+      },
+      "import_basis": {
+        "source_unit": "件",
+        "quantity_unit": "",
+        "pieces_per_case": null,
+        "currency": "CNY",
+        "currency_assumed": true
+      }
+    },
+    "price_type": "supplier_confirmed",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "735",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "freight not stated"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "公开网页批发观察-扩充（未经确认）",
+    "evidence_ref": "",
+    "payload_hash": "9110e164247ba93c6df6c2120afb4fa1073f222a9e2c08217098d0c439010d83",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_d4aebc4278734205",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_4961bad548c4453a",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.435184+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.435184+00:00",
+    "fetched_at": "2026-10-12T08:17:25.435184+00:00",
+    "expires_at": "2026-10-15T08:17:25.435184+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "不锈钢工作台 桌厨房加工 台面层架（小规格入门款）",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://my.world.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M1"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "131.88",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:131.88:2026-10-12T08:17:25.435184+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_aa368255c5f345da",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_b08fea3bbc024808",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.444761+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.444761+00:00",
+    "fetched_at": "2026-10-12T08:17:25.444761+00:00",
+    "expires_at": "2026-10-15T08:17:25.444761+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "无品牌不锈钢工作台 商用打包台（加厚壁管款）",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://my.world.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M2"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "761",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:761:2026-10-12T08:17:25.444761+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_207cc80fe4334787",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_18beb7c4fcb244c6",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.458468+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "CJ-304-DBL",
+    "source_sku_id": "CJ-304-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.458468+00:00",
+    "fetched_at": "2026-10-12T08:17:25.458468+00:00",
+    "expires_at": "2026-10-15T08:17:25.458468+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "加厚双层不锈钢工作台 商用操作台餐馆切菜桌多层打包台",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M8：商用加厚，已售100+/500+评价"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "350",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:CJ-304-DBL:350:2026-10-12T08:17:25.458468+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_394b692b31664187",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_8b7b4e8a43e64612",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.471613+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "HXL-ZSJ",
+    "source_sku_id": "HXL-ZSJ",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.471613+00:00",
+    "fetched_at": "2026-10-12T08:17:25.471613+00:00",
+    "expires_at": "2026-10-15T08:17:25.471613+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "不锈钢厨房置物架落地多层（简易/家用款）",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M3：家用款"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "61.25",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:HXL-ZSJ:61.25:2026-10-12T08:17:25.471613+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_32c9464e53034a3d",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_8b915aa491064a4e",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.489880+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "HXL-ZSJ",
+    "source_sku_id": "HXL-ZSJ",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.489163+00:00",
+    "fetched_at": "2026-10-12T08:17:25.489163+00:00",
+    "expires_at": "2026-10-15T08:17:25.489163+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "304不锈钢货架 无尘车间中型四层架子",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M4：304 重型"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "1193.70",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:HXL-ZSJ:1193.70:2026-10-12T08:17:25.489163+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_805e4d0fcdaa467c",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_68cc955f05054746",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.503561+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "LSJ-65",
+    "source_sku_id": "LSJ-65",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.503561+00:00",
+    "fetched_at": "2026-10-12T08:17:25.503561+00:00",
+    "expires_at": "2026-10-15T08:17:25.503561+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "食品级不锈钢盆洗菜盆沥水篮 漏盆（加厚家用）",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M5：家用小规格"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "28.2",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:LSJ-65:28.2:2026-10-12T08:17:25.503561+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_5974cba95d3e487c",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_0259620bb4b94250",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.519467+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "LSJ-65",
+    "source_sku_id": "LSJ-65",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.519467+00:00",
+    "fetched_at": "2026-10-12T08:17:25.519467+00:00",
+    "expires_at": "2026-10-15T08:17:25.519467+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "加厚不锈钢沥水卷帘 可折叠沥水架",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M6：家用小件"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "8.50",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:LSJ-65:8.50:2026-10-12T08:17:25.519467+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_d3e210f28b1b4cfd",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_3d16cd9900aa4bd3",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.539628+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "CD-304-SX",
+    "source_sku_id": "CD-304-SX",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.538631+00:00",
+    "fetched_at": "2026-10-12T08:17:25.538631+00:00",
+    "expires_at": "2026-10-15T08:17:25.538631+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "不锈钢水槽 单双星水池商用厨房定制加厚三星洗碗池",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M7"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "538.75",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:CD-304-SX:538.75:2026-10-12T08:17:25.538631+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_17e6c1e4b04c4a2a",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_44b35f969370493d",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.558352+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "304-SXG",
+    "source_sku_id": "304-SXG",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.557346+00:00",
+    "fetched_at": "2026-10-12T08:17:25.557346+00:00",
+    "expires_at": "2026-10-15T08:17:25.557346+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "304不锈钢水槽 单槽双盆 台面一体式带支架厨房柜",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M9：月销100+"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "310",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:304-SXG:310:2026-10-12T08:17:25.557346+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_8e32c1e0c9b049bc",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_0ac24511935440d3",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.578353+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "CMT-TJ",
+    "source_sku_id": "CMT-TJ",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.578353+00:00",
+    "fetched_at": "2026-10-12T08:17:25.578353+00:00",
+    "expires_at": "2026-10-15T08:17:25.578353+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "304不锈钢工作台 厨房操作台（打荷台、调料台）",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://my.world.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M10：约300起，500+人付款"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "300",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:CMT-TJ:300:2026-10-12T08:17:25.578353+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_3ea0d9b6cb5f4b58",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_68673cba6b204bb3",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.599386+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "CMT-TJ",
+    "source_sku_id": "CMT-TJ",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.599386+00:00",
+    "fetched_at": "2026-10-12T08:17:25.599386+00:00",
+    "expires_at": "2026-10-15T08:17:25.599386+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "304加厚不锈钢工作台 餐饮饭店打包台打荷台可定制",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://my.world.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M11：加厚定制款"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "1150",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:CMT-TJ:1150:2026-10-12T08:17:25.599386+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_706ddd6893b04109",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_fef0b7b15bca47ab",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.620666+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "HT-CC",
+    "source_sku_id": "HT-CC",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.620666+00:00",
+    "fetched_at": "2026-10-12T08:17:25.620666+00:00",
+    "expires_at": "2026-10-15T08:17:25.620666+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "304不锈钢收碗车 餐厅双层送餐车小推车",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://my.world.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M13：已售100+/900+评价"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "208",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:HT-CC:208:2026-10-12T08:17:25.620666+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_db2fab65280f4586",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_428b15eb40a54f64",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.641519+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "HT-CC",
+    "source_sku_id": "HT-CC",
+    "source_url": "",
+    "observed_at": "2026-10-12T08:17:25.640517+00:00",
+    "fetched_at": "2026-10-12T08:17:25.640517+00:00",
+    "expires_at": "2026-10-15T08:17:25.640517+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "加厚三层不锈钢小推车 送餐车收碗车双层",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://my.world.taobao.com",
+        "observed_via": "web_search 2026-10-12",
+        "note": "sources.md M12：三层款"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "161",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:HT-CC:161:2026-10-12T08:17:25.640517+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_7ea81aa5b97543aa",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_95c4055be9c04cad",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.172538+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.171543+00:00",
+    "fetched_at": "2026-10-12T10:13:35.171543+00:00",
+    "expires_at": "2026-10-15T10:13:35.171543+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=1012132228809",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=1012132228809, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "58",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:58:2026-10-12T10:13:35.171543+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_87d2fab3a8cf4337",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_d905d963b9ab41c2",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.190467+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.190467+00:00",
+    "fetched_at": "2026-10-12T10:13:35.190467+00:00",
+    "expires_at": "2026-10-15T10:13:35.190467+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "处理全新工作台包邮 厨房双层饭店操作台三层工作桌不锈钢工作台 材料为大厂优质不锈钢，生锈包赔，适用于饭店后厨酒店厨房家用",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=822993231389",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=822993231389, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "58",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:58:2026-10-12T10:13:35.190467+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_c1abdcc3b3514850",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_9c6efcdfe5a644ba",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.209364+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.208358+00:00",
+    "fetched_at": "2026-10-12T10:13:35.208358+00:00",
+    "expires_at": "2026-10-15T10:13:35.208358+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "【全新包邮】加厚商用双层不锈钢三层工作台双层不锈钢工作台不锈 钢置物架 [钉子]厂家优惠直销一批全新不锈钢工作台，单层双",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=798747604749",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=798747604749, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "60",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:60:2026-10-12T10:13:35.208358+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_f4dfc128f3384868",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_e575fe3f52b04d6c",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.228396+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.228396+00:00",
+    "fetched_at": "2026-10-12T10:13:35.228396+00:00",
+    "expires_at": "2026-10-15T10:13:35.228396+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "处理加厚不锈钢置物架工作台厨房操作台家用全新包邮 适用于后厨，家用，商总，可剁骨！可切菜！可和面！可置物！可打包！ 现有",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=754294186564",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=754294186564, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "65",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:65:2026-10-12T10:13:35.228396+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_3eebbebcc7ba43b9",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_e16358bcaed04788",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.247540+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.247540+00:00",
+    "fetched_at": "2026-10-12T10:13:35.247540+00:00",
+    "expires_at": "2026-10-15T10:13:35.247540+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=1011357337884",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=1011357337884, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "59",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:59:2026-10-12T10:13:35.247540+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_a87656c3ee944c31",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_8d786859412b44a7",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.265693+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.265693+00:00",
+    "fetched_at": "2026-10-12T10:13:35.265693+00:00",
+    "expires_at": "2026-10-15T10:13:35.265693+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "不锈钢工作台全新加厚不锈钢工作台不锈钢桌子案板厨房操作台，打 荷台煤气灶台 适用于后厨，家用，商用，小吃店，大排档不锈钢",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=874005545517",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=874005545517, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "58",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:58:2026-10-12T10:13:35.265693+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_f697838b5a4543f7",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_51ca2dc1366e4217",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.289094+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.289094+00:00",
+    "fetched_at": "2026-10-12T10:13:35.289094+00:00",
+    "expires_at": "2026-10-15T10:13:35.289094+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "二手价包邮不锈钢工作台双层厨房拆装操作台三层操作台打包台切菜 桌子包装台和面揉面案板商用打荷台工作台！不锈钢桌子。不锈钢",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=960316332291",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=960316332291, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "58",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:58:2026-10-12T10:13:35.289094+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_79751a8f85f946ba",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_f170c93c5ce14b76",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.316382+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.315340+00:00",
+    "fetched_at": "2026-10-12T10:13:35.315340+00:00",
+    "expires_at": "2026-10-15T10:13:35.315340+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "加厚不锈钢工作桌打荷台打包装台面全新包邮加厚双层不锈钢工作台 酒店厨房切菜桌不锈钢操作台三层打包装台打 喜欢哪款尺寸拍下",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=768570424419",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=768570424419, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "39",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:39:2026-10-12T10:13:35.315340+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_7f8e164da66c48e2",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_40093ac55c5f4255",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.338597+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.337063+00:00",
+    "fetched_at": "2026-10-12T10:13:35.337063+00:00",
+    "expires_at": "2026-10-15T10:13:35.337063+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "【包邮】304不锈钢商用工作台加厚厨房桌子双层切菜案板长方形 打荷台家用 全新不锈钢操作台、商用厨房切菜桌、打荷台低价处",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=840884252107",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=840884252107, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "66",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:66:2026-10-12T10:13:35.337063+00:00",
+    "business_day": "2026-10-12"
+  },
+  {
+    "record_type": "offer_snapshot",
+    "record_id": "offer_c131b6aa15084e1c",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "market:public_web_observation",
+    "trace_id": "trace_82c4955d81c8479f",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.362469+00:00",
+    "provider_id": "market:public_web_observation",
+    "source_item_id": "MX-201-DBL",
+    "source_sku_id": "MX-201-DBL",
+    "source_url": "",
+    "observed_at": "2026-10-12T10:13:35.362469+00:00",
+    "fetched_at": "2026-10-12T10:13:35.362469+00:00",
+    "expires_at": "2026-10-15T10:13:35.362469+00:00",
+    "unit": "件",
+    "quantity": null,
+    "condition": "全新",
+    "attributes": {
+      "title": "工厂处理二手不锈钢工作台双层三层操作台打荷台，使用范围包括学 校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方",
+      "observation_provenance": {
+        "kind": "public_web_search",
+        "url": "https://www.goofish.com/item?id=1007723432633",
+        "observed_via": "web_search 2026-10-12",
+        "note": "REAL anonymous Xianyu read via xianyu-mcp 2026-10-12T10:12:08Z; item_id=1007723432633, want_count=0"
+      }
+    },
+    "price_type": "display",
+    "list_price": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "list_price not provided"
+    },
+    "eligible_price": {
+      "state": "known",
+      "amount": "59",
+      "currency": "CNY",
+      "reason": null
+    },
+    "eligibility_conditions": [],
+    "shipping_quote": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "not observed"
+    },
+    "destination_region": "",
+    "stock_state": "unknown",
+    "stock_quantity": null,
+    "moq": null,
+    "tier_prices": [],
+    "tax_mode": "unknown",
+    "seller_ref": "",
+    "evidence_ref": "",
+    "payload_hash": "demo:MX-201-DBL:59:2026-10-12T10:13:35.362469+00:00",
+    "business_day": "2026-10-12"
+  }
+]

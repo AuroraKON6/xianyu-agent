@@ -1,0 +1,181 @@
+{
+  "at": "2026-10-12T10:06:15Z",
+  "server": {
+    "name": "xianyu",
+    "version": "0.3.0"
+  },
+  "capabilities": {
+    "schema_version": 2,
+    "build": {
+      "implementation": "typescript",
+      "runtime_fingerprint": "293f3238a4e1f0a6c6646db5d91f85eab495694003a9ce2e4e5b6f03a2be219e",
+      "version": "0.3.0",
+      "commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "describe": "d6bd8d3",
+      "branch": "main",
+      "dirty": true,
+      "provenance": "git",
+      "built_at": "(no dist/)",
+      "compared_against": "origin/main",
+      "base_commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "ahead": 0,
+      "behind": 0,
+      "stale": false,
+      "deployable": false,
+      "reasons": [
+        "the tree had uncommitted changes when this was built",
+        "there is no dist/ here to serve"
+      ]
+    },
+    "ok": true,
+    "status": "success",
+    "count": 0,
+    "data": {
+      "requires_xianyu_account": false,
+      "session_state": "logged_out",
+      "login_probe_ret": "FAIL_SYS_SESSION_EXPIRED::Session过期",
+      "feed_reachable": true,
+      "browser_launches": 1,
+      "build": {
+        "note": "the commit below is what is answering your calls right now; `npm run check:deploy` is the same comparison run deliberately, and it fetches before counting",
+        "implementation": "typescript",
+        "runtime_fingerprint": "293f3238a4e1f0a6c6646db5d91f85eab495694003a9ce2e4e5b6f03a2be219e",
+        "version": "0.3.0",
+        "commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+        "describe": "d6bd8d3",
+        "branch": "main",
+        "dirty": true,
+        "provenance": "git",
+        "built_at": "(no dist/)",
+        "compared_against": "origin/main",
+        "base_commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+        "ahead": 0,
+        "behind": 0,
+        "stale": false,
+        "deployable": false,
+        "reasons": [
+          "the tree had uncommitted changes when this was built",
+          "there is no dist/ here to serve"
+        ]
+      },
+      "cache": {
+        "enabled": true,
+        "item_ttl_s": 45,
+        "search_page_ttl_s": 120,
+        "listings": 0,
+        "search_pages": 0,
+        "note": "item detail and search pages are cached in this process for the TTLs above, and every answer that can come from the cache says so in a `cache` block. Set XIANYU_CACHE=0 to turn it off; nothing else in this server is cached, and the homepage feed deliberately is not -- goofish serves each visitor a different slice of it, so a repeat call is a different answer rather than a stale copy."
+      },
+      "works_without_account": [
+        "browse_feed: public homepage listings",
+        "search_count / search_suggest: inventory estimate and autocomplete",
+        "search_items: relevant product cards and optional shortlist detail",
+        "related_items / recommendations: suggested products",
+        "item_view: listing detail",
+        "seller_profile / seller_items: public seller data"
+      ],
+      "anonymous_flakiness": [
+        "Anonymous page loads can be refused or throttled; no tool is guaranteed to succeed.",
+        "A positive inventory estimate does not guarantee retrievable or relevant search cards.",
+        "Throttle cooldown is local to this process; other clients may share its public IP."
+      ],
+      "notes": [
+        "Unknown fields stay null and are named in missing or fields_missing.",
+        "Filters run on fetched cards. Title evidence cannot establish hardware facts that the seller omitted.",
+        "A continuation preserves original search controls and unreturned cards for ten minutes in this process.",
+        "A virtual display is started automatically when DISPLAY and XIANYU_DISPLAY are absent; Xvfb must be installed."
+      ],
+      "cost": {
+        "search": "Warm page reuse and cached pages avoid navigation. Actual latency depends on the site; use timeout_s.",
+        "detail": "Optional full listing loads are expensive; request a shortlist. Per-listing times are in detail_report."
+      },
+      "note": "Inspect each live probe and its error field. Unmeasured probes are null; an unsuccessful probe does not establish zero inventory or an anonymous session.",
+      "probes": {
+        "ran": true,
+        "measured": [
+          "session_state",
+          "login_probe_ret",
+          "feed_reachable",
+          "browser_launches"
+        ],
+        "not_measured": [],
+        "note": "the four keys above are conclusions of live probes against goofish; a probe that failed reports under its own <key>_error rather than being folded into a verdict"
+      },
+      "limits": {
+        "search_items": {
+          "max_items": 300,
+          "max_pages": 10,
+          "max_detail": 50,
+          "max_attempts": 10,
+          "default_timeout_s": 90
+        },
+        "seller_items": {
+          "page_size": 20,
+          "max_pages": 50
+        },
+        "max_call_timeout_s": 600
+      },
+      "runtime": {
+        "implementation": "typescript",
+        "node": "v24.16.0",
+        "display": "needs-to-be-defined",
+        "headless": false
+      },
+      "cold_start_warm": {
+        "status": "ready",
+        "ms": 17058,
+        "detail": ""
+      }
+    },
+    "error_type": null,
+    "message": null,
+    "retryable": false,
+    "retry_after_s": 0,
+    "diagnostics": {
+      "cooldown": {
+        "retry_after_s": 0,
+        "scope": "this_server_process",
+        "note": "Goofish may throttle a shared public IP. This process cannot measure other clients on that IP."
+      }
+    },
+    "elapsed_ms": 21339
+  },
+  "search": {
+    "schema_version": 2,
+    "build": {
+      "implementation": "typescript",
+      "runtime_fingerprint": "293f3238a4e1f0a6c6646db5d91f85eab495694003a9ce2e4e5b6f03a2be219e",
+      "version": "0.3.0",
+      "commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "describe": "d6bd8d3",
+      "branch": "main",
+      "dirty": true,
+      "provenance": "git",
+      "built_at": "(no dist/)",
+      "compared_against": "origin/main",
+      "base_commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "ahead": 0,
+      "behind": 0,
+      "stale": false,
+      "deployable": false,
+      "reasons": [
+        "the tree had uncommitted changes when this was built",
+        "there is no dist/ here to serve"
+      ]
+    },
+    "ok": false,
+    "status": "error",
+    "count": 0,
+    "data": null,
+    "error_type": "XianyuError",
+    "message": ": Unrecognized keys: \"query\", \"pages\", \"limit\"",
+    "retryable": false,
+    "retry_after_s": 0,
+    "diagnostics": {
+      "reason": "invalid_arguments",
+      "retryable": false,
+      "retry_after_s": 0
+    },
+    "elapsed_ms": 1232
+  }
+}

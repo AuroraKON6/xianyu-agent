@@ -1,0 +1,125 @@
+{
+  "generated_at": "2026-10-12T08:17:25.255295+00:00",
+  "pairs": [
+    {
+      "sku": "MX-201-DBL",
+      "status": "researching",
+      "match_grade": "COMPARABLE",
+      "wholesale_display": "360",
+      "retail_display": "761",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    },
+    {
+      "sku": "CJ-304-DBL",
+      "status": "researching",
+      "match_grade": "COMPARABLE",
+      "wholesale_display": "473.7",
+      "retail_display": "350",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    },
+    {
+      "sku": "HXL-ZSJ",
+      "status": "researching",
+      "match_grade": "UNKNOWN",
+      "wholesale_display": "191.10",
+      "retail_display": "1193.70",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    },
+    {
+      "sku": "LSJ-65",
+      "status": "researching",
+      "match_grade": "COMPARABLE",
+      "wholesale_display": "92",
+      "retail_display": "8.50",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    },
+    {
+      "sku": "CD-304-SX",
+      "status": "researching",
+      "match_grade": "COMPARABLE",
+      "wholesale_display": "458",
+      "retail_display": "538.75",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    },
+    {
+      "sku": "304-SXG",
+      "status": "researching",
+      "match_grade": "UNKNOWN",
+      "wholesale_display": "439.85",
+      "retail_display": "310",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    },
+    {
+      "sku": "CMT-TJ",
+      "status": "researching",
+      "match_grade": "UNKNOWN",
+      "wholesale_display": "295",
+      "retail_display": "1150",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    },
+    {
+      "sku": "HT-CC",
+      "status": "researching",
+      "match_grade": "UNKNOWN",
+      "wholesale_display": "735",
+      "retail_display": "161",
+      "display_spread_note": "展示价差仅供研究方向参考；运费/费率/包装/退货全未观察，贡献利润 unknown",
+      "profit_state": "unknown",
+      "missing_costs": [
+        "supplier_freight: freight not stated",
+        "packaging: packaging not provided",
+        "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "expected_return_loss: return loss inputs not provided"
+      ]
+    }
+  ]
+}

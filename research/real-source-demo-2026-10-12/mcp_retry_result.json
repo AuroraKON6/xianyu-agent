@@ -1,0 +1,2228 @@
+{
+  "at": "2026-10-12T10:12:08Z",
+  "search_count": {
+    "schema_version": 2,
+    "build": {
+      "implementation": "typescript",
+      "runtime_fingerprint": "293f3238a4e1f0a6c6646db5d91f85eab495694003a9ce2e4e5b6f03a2be219e",
+      "version": "0.3.0",
+      "commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "describe": "d6bd8d3",
+      "branch": "main",
+      "dirty": true,
+      "provenance": "git",
+      "built_at": "(no dist/)",
+      "compared_against": "origin/main",
+      "base_commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "ahead": 0,
+      "behind": 0,
+      "stale": false,
+      "deployable": false,
+      "reasons": [
+        "the tree had uncommitted changes when this was built",
+        "there is no dist/ here to serve"
+      ]
+    },
+    "ok": true,
+    "status": "success",
+    "count": 0,
+    "data": {
+      "query": "不锈钢工作台",
+      "match_count": 291757,
+      "has_matches": true,
+      "account_required": false,
+      "source": "filter_hitnum"
+    },
+    "error_type": null,
+    "message": null,
+    "retryable": false,
+    "retry_after_s": 0,
+    "diagnostics": {
+      "cooldown": {
+        "retry_after_s": 0,
+        "scope": "this_server_process",
+        "note": "Goofish may throttle a shared public IP. This process cannot measure other clients on that IP."
+      }
+    },
+    "elapsed_ms": 7609
+  },
+  "browse_feed": {
+    "ok": true,
+    "status": "success",
+    "count": 15
+  },
+  "browse_feed_items": [
+    {
+      "item_id": "656731294568",
+      "title": "幼儿园礼品买多了飞鸽平衡车正品！剩余几十台便宜卖儿童平衡车溜 溜车滑步车无脚踏滑行12寸双轮脚踏车 合适2至7岁的儿童",
+      "price": "36.90",
+      "original_price": "0.00",
+      "city": "连云港",
+      "want_count": "558",
+      "image_count": "9",
+      "seller": "南唐优品家居",
+      "is_video": false,
+      "category_id": "50025418",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i2/O1CN01plNsqX274LRgxA7ZF_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01xccU7E274LRcjm8G9_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01eJ4ma3274LRdJaTGB_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/O1CN01vQN2Dr274LSWNwPM8_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/O1CN01rmWQPy274LSY5FyEg_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/O1CN015gqt54274LRiPuSWT_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN017dnIVz274LRWUr4BA_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN01XouTTd274LRl6ttby_!!0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01HHpDDm274LRckViUs_!!0-fleamarket.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=656731294568",
+      "price_info": {
+        "raw": "36.90",
+        "currency": "CNY",
+        "amount": 36.9,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 36.9,
+        "original_price_amount": 0,
+        "image_count": 9,
+        "want_count": 558,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "连云港"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 1
+    },
+    {
+      "item_id": "1066293438640",
+      "title": "LiberLive c1无弦吉他9-99新 Liberlive C1无弦吉他 官方正品 现货速发 9-99新！功能完好",
+      "price": "959",
+      "original_price": "1299",
+      "city": "杭州",
+      "want_count": "58",
+      "image_count": "5",
+      "seller": "闲畅严选小店",
+      "is_video": false,
+      "category_id": "50025387",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i1/O1CN01FiCRzR1sJiwnzuQyp_!!4611686018427385986-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN01eSuO4F1sJiwpiK0kn_!!4611686018427385986-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN01QUI7761sJiwoEChED_!!4611686018427385986-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/O1CN01n5odlT1sJiwo4pjqq_!!4611686018427385986-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/O1CN01uEyU8r1sJiwpiJfyM_!!4611686018427385986-0-fleamarket.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1066293438640",
+      "price_info": {
+        "raw": "959",
+        "currency": "CNY",
+        "amount": 959,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 959,
+        "original_price_amount": 1299,
+        "image_count": 5,
+        "want_count": 58,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "杭州"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 2
+    },
+    {
+      "item_id": "1069420543320",
+      "title": "【源头批发】秀艾迪创意复古立式小黑板广告牌，全新未用，厂家直 发。木质边框，写字画画都方便，擦掉不留痕。摆摊、咖啡店、奶",
+      "price": "40",
+      "original_price": "0.00",
+      "city": "苏州",
+      "want_count": "10",
+      "image_count": "7",
+      "seller": "一个二胎爸爸的店",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i2/O1CN01OOHL6IYtE5I24uCu_!!4611686018427380726-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i2/2212289861878/O1CN01qQCJDH1PkAxQEyYnB_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/2212289861878/O1CN0157QGOn1PkAxQdAXAW_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/2212289861878/O1CN01zsllbI1PkAxQDljoi_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/2212289861878/O1CN01Stnebh1PkAxQ6l3SO_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/2212289861878/O1CN01CGIBrN1PkAxQ0sYxz_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/2212289861878/O1CN013d5BAL1PkAxQ6keX8_!!2212289861878-0-scmitem176000.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1069420543320",
+      "price_info": {
+        "raw": "40",
+        "currency": "CNY",
+        "amount": 40,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 40,
+        "original_price_amount": 0,
+        "image_count": 7,
+        "want_count": 10,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "苏州"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 3
+    },
+    {
+      "item_id": "1060713642677",
+      "title": "【清仓特价】全新儿童量脚器，家用测脚长神器，宝宝买鞋不用再跑 鞋店啦。ABS材质，结实耐用，脚后跟挡板加高不滑动，测量精",
+      "price": "5.99",
+      "original_price": "0.00",
+      "city": "金华",
+      "want_count": "",
+      "image_count": "6",
+      "seller": "鱼多多杂货批发店",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01IQYAvt2LY29mUa3F3_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01Y7J5fM2LY28Nu9LLr_!!3937219703-2-C2M.png",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01pQsVSo2LY28OICt34_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01hp12Wz2LY28P1Rlwe_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01GwmSTj2LY28OZjNyk_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01h6wkjP2LY28Od2V6q_!!3937219703-0-C2M.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1060713642677",
+      "price_info": {
+        "raw": "5.99",
+        "currency": "CNY",
+        "amount": 5.99,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 5.99,
+        "original_price_amount": 0,
+        "image_count": 6,
+        "want_count": null,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "金华"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "want_count",
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 4
+    },
+    {
+      "item_id": "1084348984149",
+      "title": "只有河南戏剧幻城剧场酒店3大剧套餐预订 发我入住日期和几个剧？没有确定日期无法报价 订酒店套餐可以 #两日通票，任意进出",
+      "price": "898",
+      "original_price": "0.00",
+      "city": "郑州",
+      "want_count": "19",
+      "image_count": "1",
+      "seller": "出游者票务",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i1/O1CN01iicSctTtNWB2BxBg_!!4611686018427382104-49-fleamarket.webp"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1084348984149",
+      "price_info": {
+        "raw": "898",
+        "currency": "CNY",
+        "amount": 898,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 898,
+        "original_price_amount": 0,
+        "image_count": 1,
+        "want_count": 19,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "郑州"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 5
+    },
+    {
+      "item_id": "1056767518808",
+      "title": "掌之食四川火锅川粉，红薯宽粉免泡即涮。宽条形态口感Q弹，属于 干货粉条粉丝类，配料干净无色素不含胶，0脂肪。用于火锅、冒",
+      "price": "5.90",
+      "original_price": "0.00",
+      "city": "成都",
+      "want_count": "1",
+      "image_count": "7",
+      "seller": "AAA代吃小鱼零食仓",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i1/O1CN01xspYHYNsJGL24uCu_!!4611686018427384753-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i2/3937219703/O1CN01DnseXX2LY29R7zBvu_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01nhPfjl2LY29QFzl4n_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01fQQIUR2LY29RCSztF_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN018b5MyH2LY29QFZdqr_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/3937219703/O1CN01eP0Tqn2LY29R4Co4f_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/3937219703/O1CN01cXxPPC2LY29R7vpam_!!3937219703-0-C2M.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1056767518808",
+      "price_info": {
+        "raw": "5.90",
+        "currency": "CNY",
+        "amount": 5.9,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 5.9,
+        "original_price_amount": 0,
+        "image_count": 7,
+        "want_count": 1,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "成都"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 6
+    },
+    {
+      "item_id": "1061907308135",
+      "title": "【特价处理】云南老冰糖手工甘蔗黄冰糖，小颗粒土冰糖，纯天然无 添加，0防腐0色素0硫磺，甜度刚好，甘蔗清香。泡水、煮粥、",
+      "price": "3.99",
+      "original_price": "0.00",
+      "city": "昆明",
+      "want_count": "",
+      "image_count": "7",
+      "seller": "AAA代吃小鱼零食仓",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN0176RQ6ndVkLD24uCu_!!4611686018427380529-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01rpC7Fg2LY23puOXQk_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01EygPP72LY28yzEETB_!!3937219703-2-C2M.png",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01CV0inX2LY24aWzBOM_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/3937219703/O1CN01diADA32LY24ZJpXja_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01sOiNMA2LY24YPzdNN_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01v3vBQp2LY24a1YT4s_!!3937219703-0-C2M.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1061907308135",
+      "price_info": {
+        "raw": "3.99",
+        "currency": "CNY",
+        "amount": 3.99,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 3.99,
+        "original_price_amount": 0,
+        "image_count": 7,
+        "want_count": null,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "昆明"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "want_count",
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 7
+    },
+    {
+      "item_id": "1070509917153",
+      "title": "【清仓折扣】甘草金桔、甘草橄榄蜜饯，金桔类制品，全新未拆封。 肉厚饱满，甘草味浓，酸甜开胃，自己吃、送人都合适。早餐、下",
+      "price": "9",
+      "original_price": "0.00",
+      "city": "滨州",
+      "want_count": "",
+      "image_count": "6",
+      "seller": "AAA代吃小鱼零食仓",
+      "is_video": false,
+      "category_id": "125948002",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01LBw90p2LY29vBRurG_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01V9KifH2LY29SzucIw_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01LJOvVV2LY29qLXsxL_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01tlgT8B2LY29vLKO46_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01U9lS1i2LY29veg02z_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01zTM38E2LY29veeanA_!!3937219703-0-C2M.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1070509917153",
+      "price_info": {
+        "raw": "9",
+        "currency": "CNY",
+        "amount": 9,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 9,
+        "original_price_amount": 0,
+        "image_count": 6,
+        "want_count": null,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "滨州"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "want_count",
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 8
+    },
+    {
+      "item_id": "1058325552500",
+      "title": "【日本制】日本进口日出寿味淋料酒400ml 日式寿喜烧调味料 去腥甜味火锅 [hot]产品卖点： [1]日本进口日出寿",
+      "price": "15.97",
+      "original_price": "0.00",
+      "city": "南京",
+      "want_count": "1",
+      "image_count": "9",
+      "seller": "日淘国际仓",
+      "is_video": false,
+      "category_id": "201698801",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN015qz3sd1p3HsVPmFJK_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/O1CN01ZhgpLs1p3HsVQpw65_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01mFeBMx1p3HsVk5EES_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01FVdLFI1p3HsVk4pIF_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/O1CN01UTLjMj1p3HsVM0Ame_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01HvrMYG1p3HsVPnWHb_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01AEyd211p3HsVQqTMQ_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN01UymFle1p3HsVmJ9rR_!!4611686018427385416-0-fleamarket.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/O1CN01Sfy8S41p3HsVPnWHc_!!4611686018427385416-0-fleamarket.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1058325552500",
+      "price_info": {
+        "raw": "15.97",
+        "currency": "CNY",
+        "amount": 15.97,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 15.97,
+        "original_price_amount": 0,
+        "image_count": 9,
+        "want_count": 1,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "南京"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 9
+    },
+    {
+      "item_id": "1072426727764",
+      "title": "【清仓特价】澳门特产手信小金盒，蝴蝶酥礼盒装，里面有千层酥、 蝴蝶酥、小花曲奇，三种口味组合，送礼自用都合适。包装精致，",
+      "price": "97.90",
+      "original_price": "0.00",
+      "city": "漳州",
+      "want_count": "2",
+      "image_count": "7",
+      "seller": "AAA代吃小鱼零食仓",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i2/O1CN01QnC3VJmlExB24uCu_!!4611686018427383510-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01JnqgKjMSerJ1chua_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01gxjpz2Evb6K1chua_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/2219191597390/O1CN01hckLd1fE5ZL1chua_!!2219191597390-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/2219191597390/O1CN01jU4sgxsmuDL1chua_!!2219191597390-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/2219191597390/O1CN01Lw5IljomCOJ1chua_!!2219191597390-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/2219191597390/O1CN019de1JMlbJ4C1chua_!!2219191597390-0-C2M.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1072426727764",
+      "price_info": {
+        "raw": "97.90",
+        "currency": "CNY",
+        "amount": 97.9,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 97.9,
+        "original_price_amount": 0,
+        "image_count": 7,
+        "want_count": 2,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "漳州"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 10
+    },
+    {
+      "item_id": "1072485558007",
+      "title": "【清仓特价】好人家蒜蓉小龙虾调料，200g一包，麻辣蒜香，炒 花甲、扇贝、小龙虾都能用，底料很足，味道香，做海鲜、烤鱼、",
+      "price": "22.82",
+      "original_price": "0.00",
+      "city": "眉山",
+      "want_count": "",
+      "image_count": "7",
+      "seller": "AAA代吃小鱼零食仓",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN01gV5xw00XHuK24uCu_!!4611686018427380540-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01PbPsc82LY29e1Ntan_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01M15fFp2LY29kqc6FT_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/3937219703/O1CN016bojNV2LY29eMbtsz_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01UCscTf2LY29eAA5BX_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01PuGx922LY29eoaclL_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01mAnLGK2LY29dr5e2a_!!3937219703-0-C2M.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1072485558007",
+      "price_info": {
+        "raw": "22.82",
+        "currency": "CNY",
+        "amount": 22.82,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 22.82,
+        "original_price_amount": 0,
+        "image_count": 7,
+        "want_count": null,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "眉山"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "want_count",
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 11
+    },
+    {
+      "item_id": "1082228607216",
+      "title": "【源头批发】正宗云南新黄冰糖，特级多晶体，厂家直发，全新未拆 封。云南甘蔗原料，古法熬制，无添加，颗粒透亮，清甜不腻，做",
+      "price": "60.80",
+      "original_price": "0.00",
+      "city": "长沙",
+      "want_count": "1",
+      "image_count": "7",
+      "seller": "AAA代吃小鱼零食仓",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN019dODMDBSFxD24uCu_!!4611686018427384071-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i2/3937219703/O1CN01oaf5aP4721E1chua_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN018KAFlLr3Z5B2XrKe_!!3937219703-2-C2M.png",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01uf4TS65tO4B2XrKe_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01LbtvsbxnoBF2XrKe_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01k01YzpwIbWI2XrKe_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01F6AhjZXVK2F2XrKe_!!3937219703-2-C2M.png"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1082228607216",
+      "price_info": {
+        "raw": "60.80",
+        "currency": "CNY",
+        "amount": 60.8,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 60.8,
+        "original_price_amount": 0,
+        "image_count": 7,
+        "want_count": 1,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "长沙"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 12
+    },
+    {
+      "item_id": "1076499769720",
+      "title": "南京同仁堂阿胶党参黄芪植物饮料，净含量30ml(1gX9支X 11瓶/盒)。纸盒包装呈长方体造型，正面中央有金色圆形图案",
+      "price": "158",
+      "original_price": "0.00",
+      "city": "盐城",
+      "want_count": "",
+      "image_count": "8",
+      "seller": "AAA代吃小鱼零食仓",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i3/O1CN01vWOj3nbwa8C24uCu_!!4611686018427386075-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i1/3937219703/O1CN01ArJyhesDJaI1chua_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01iXy9M8kMraD24uCu_!!4611686018427383814-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01V2ex7qAIClC1chua_!!3937219703-2-C2M.png",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN01ufO01jWB2OC1chua_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/2217254400585/O1CN01tRVljJeQeXB1chua_!!2217254400585-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/2217254400585/O1CN01LWzEwyx928G1chua_!!2217254400585-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN01Ow7W39t4PNC1chua_!!3937219703-0-C2M.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1076499769720",
+      "price_info": {
+        "raw": "158",
+        "currency": "CNY",
+        "amount": 158,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 158,
+        "original_price_amount": 0,
+        "image_count": 8,
+        "want_count": null,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "盐城"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "want_count",
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 13
+    },
+    {
+      "item_id": "1082856303456",
+      "title": "【清仓特价】富源百川317三代综合鱼竿，全新未用，台钓竿，厂 家直发。超轻硬，钓鲤鱼鲫鱼都合适，手感轻，腰力足，钓大鱼也",
+      "price": "113",
+      "original_price": "0.00",
+      "city": "威海",
+      "want_count": "4",
+      "image_count": "7",
+      "seller": "卡卡鞋服配饰小店",
+      "is_video": false,
+      "category_id": "50023914",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i4/O1CN01Iaq9Uea9emC24uCu_!!4611686018427384941-2-fleamarket.png",
+        "http://img.alicdn.com/bao/uploaded/i4/3937219703/O1CN015sbm4AU0bVC1chua_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/3937219703/O1CN017eaXRXZhCeJ1chua_!!3937219703-0-C2M.jpg",
+        "http://img.alicdn.com/bao/uploaded/i1/2212289861878/O1CN014u1FSd7AEwB1chua_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/2212289861878/O1CN019dScU0fK8SF1chua_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i3/2212289861878/O1CN01NEzEvlfUjAK1chua_!!2212289861878-0-scmitem176000.jpg",
+        "http://img.alicdn.com/bao/uploaded/i2/2212289861878/O1CN01ouMJq6vcTfK1chua_!!2212289861878-0-scmitem176000.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1082856303456",
+      "price_info": {
+        "raw": "113",
+        "currency": "CNY",
+        "amount": 113,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 113,
+        "original_price_amount": 0,
+        "image_count": 7,
+        "want_count": 4,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "威海"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 14
+    },
+    {
+      "item_id": "1079470207383",
+      "title": "飞鸽26寸自行车，白色，实心胎不用打气，折叠款，带前车筐+后 座架，能放后备箱，出门骑行很方便。成色几乎全新，骑着很稳，",
+      "price": "388",
+      "original_price": "0.00",
+      "city": "揭阳",
+      "want_count": "10",
+      "image_count": "1",
+      "seller": "x***1",
+      "is_video": false,
+      "category_id": "50025467",
+      "image_urls": [
+        "http://img.alicdn.com/bao/uploaded/i2/2221782191043/O1CN01PZbZ4rRaAhK2b8N2_!!4611686018427382723-0-xy_item.jpg"
+      ],
+      "tags": [],
+      "seller_avatar": "",
+      "seller_shop": false,
+      "publish_time": "",
+      "province": "",
+      "condition": "",
+      "shipping_fee": "",
+      "url": "https://www.goofish.com/item?id=1079470207383",
+      "price_info": {
+        "raw": "388",
+        "currency": "CNY",
+        "amount": 388,
+        "min_amount": null,
+        "max_amount": null,
+        "kind": "exact"
+      },
+      "typed": {
+        "price_amount": 388,
+        "original_price_amount": 0,
+        "image_count": 1,
+        "want_count": 10,
+        "view_count": null,
+        "collect_count": null,
+        "condition": null,
+        "published_at": null,
+        "updated_at": null,
+        "location": {
+          "province": null,
+          "city": "揭阳"
+        },
+        "shipping": null,
+        "seller_stats": null
+      },
+      "missing": [
+        "view_count",
+        "collect_count",
+        "condition",
+        "published_at",
+        "updated_at",
+        "location.province",
+        "shipping",
+        "seller_stats"
+      ],
+      "rank": 15
+    }
+  ],
+  "search_items": {
+    "schema_version": 2,
+    "build": {
+      "implementation": "typescript",
+      "runtime_fingerprint": "293f3238a4e1f0a6c6646db5d91f85eab495694003a9ce2e4e5b6f03a2be219e",
+      "version": "0.3.0",
+      "commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "describe": "d6bd8d3",
+      "branch": "main",
+      "dirty": true,
+      "provenance": "git",
+      "built_at": "(no dist/)",
+      "compared_against": "origin/main",
+      "base_commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "ahead": 0,
+      "behind": 0,
+      "stale": false,
+      "deployable": false,
+      "reasons": [
+        "the tree had uncommitted changes when this was built",
+        "there is no dist/ here to serve"
+      ]
+    },
+    "ok": true,
+    "status": "success",
+    "count": 15,
+    "data": {
+      "query": "不锈钢工作台",
+      "source": "search_api",
+      "via": "searchbox",
+      "account_required": false,
+      "attempts": 1,
+      "attempt_log": [
+        {
+          "attempt": 1,
+          "via": "searchbox",
+          "submitted": true,
+          "typed": "",
+          "result_cards": 30,
+          "lost_contexts": 0
+        },
+        {
+          "attempt": 1,
+          "via": "searchbox",
+          "source": "search_api",
+          "pages": 1,
+          "results": 30
+        }
+      ],
+      "cache": {
+        "enabled": true,
+        "hits": 0,
+        "misses": 1,
+        "ttl_s": 120,
+        "pages": [
+          {
+            "page": 1,
+            "hit": false,
+            "age_s": null,
+            "observed_at": "2026-10-12T10:12:53.682Z",
+            "observation_age_s": 1.002
+          }
+        ],
+        "note": "every page below was read from goofish just now (nothing cached, or the cache is off; TTL 120s)"
+      },
+      "diagnostics": {
+        "tokens": [
+          {
+            "token": "不锈钢工作台",
+            "alternatives": [
+              "不锈钢工作台"
+            ],
+            "matching_titles": 25
+          }
+        ],
+        "unmatched_tokens": [],
+        "titles_inspected": 30,
+        "sample_titles": [
+          "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便 款式：双层或三层 商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都 看中哪个请咨询客服...",
+          "处理全新工作台包邮 厨房双层饭店操作台三层工作桌不锈钢工作台 材料为大厂优质不锈钢，生锈包赔，适用于饭店后厨酒店厨房家用切菜不锈钢工作台桌子 店铺不干了，处理全新厨房不锈钢切菜桌子一批，全国只要不是太偏远地区一件也包邮 工作台经久耐用，台面均匀可承重500斤左右！内嵌密度板和加强横梁，真正的...",
+          "【全新包邮】加厚商用双层不锈钢三层工作台双层不锈钢工作台不锈 钢置物架 [钉子]厂家优惠直销一批全新不锈钢工作台，单层双层三层可选，商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题 [下]【功能】 [黄圆]厨房不锈钢工作台都是全新未拆封的，大小...",
+          "处理加厚不锈钢置物架工作台厨房操作台家用全新包邮 适用于后厨，家用，商总，可剁骨！可切菜！可和面！可置物！可打包！ 现有店里做活动处理一批工作台不锈钢桌，赔钱处理一批，厨房不锈钢工作台都是全新未拆封的，大小尺寸都有，款式多种，现在以二手价处理！！ 加厚长...",
+          "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便 款式：双层或三层 商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都 看中哪个请咨询客服..."
+        ],
+        "suggestions": [],
+        "note": "Title matching ignores case, spaces and punctuation. Only explicit equivalents (Xeon/至强) expand automatically; related product categories are suggestions."
+      },
+      "filters": {
+        "applied": {},
+        "scope": "server_post_fetch",
+        "input_count": 25,
+        "excluded_count": 0,
+        "reasons": {},
+        "note": "Goofish provides no verified upstream filter for this workflow. Filters run on fetched cards; missing facts fail a requested filter."
+      },
+      "empty_reason": null,
+      "query_hits": 25,
+      "token_hits": 25,
+      "min_query_hits": 6,
+      "scraped_cards": 30,
+      "pages_fetched": 1,
+      "matched_by": "phrase",
+      "non_matching_count": 5,
+      "count": 15,
+      "items": [
+        {
+          "item_id": "1012132228809",
+          "title": "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便 款式：双层或三层 商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都 看中哪个请咨询客服...",
+          "price": "58",
+          "original_price": "",
+          "city": "河南",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "星辰大海",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i2/1982965880/O1CN01WTt3UX1tJ5z0xezJz_!!4611686018427381880-0-xy_item.jpg"
+          ],
+          "tags": [
+            "410人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i1/O1CN01cJpGtf1tJ60MNUJEb_!!4611686018427381880-0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1767871703000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=1012132228809",
+          "price_info": {
+            "raw": "58",
+            "currency": "CNY",
+            "amount": 58,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 58,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2026-01-08T11:28:23.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "河南"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 1
+        },
+        {
+          "item_id": "822993231389",
+          "title": "处理全新工作台包邮 厨房双层饭店操作台三层工作桌不锈钢工作台 材料为大厂优质不锈钢，生锈包赔，适用于饭店后厨酒店厨房家用切菜不锈钢工作台桌子 店铺不干了，处理全新厨房不锈钢切菜桌子一批，全国只要不是太偏远地区一件也包邮 工作台经久耐用，台面均匀可承重500斤左右！内嵌密度板和加强横梁，真正的...",
+          "price": "58",
+          "original_price": "",
+          "city": "天津",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "小雨如酥",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i3/O1CN01zgGhMn1GDoGHkELk1_!!0-fleamarket.jpg"
+          ],
+          "tags": [
+            "全新",
+            "我爱收纳",
+            "57人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i2/O1CN01Itr1Im1GDo4LH0Iqy_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1723175920000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=822993231389",
+          "price_info": {
+            "raw": "58",
+            "currency": "CNY",
+            "amount": 58,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 58,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2024-08-09T03:58:40.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "天津"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 2
+        },
+        {
+          "item_id": "798747604749",
+          "title": "【全新包邮】加厚商用双层不锈钢三层工作台双层不锈钢工作台不锈 钢置物架 [钉子]厂家优惠直销一批全新不锈钢工作台，单层双层三层可选，商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题 [下]【功能】 [黄圆]厨房不锈钢工作台都是全新未拆封的，大小...",
+          "price": "60",
+          "original_price": "",
+          "city": "云南",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "高扬728",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i4/O1CN01b4buXf2MKZy4jLuIa_!!0-fleamarket.jpg"
+          ],
+          "tags": [
+            "全新",
+            "我爱收纳",
+            "累计降价20%",
+            "42人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i4/O1CN01Rj1YbX2MKZnXCMZO1_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1716354273000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=798747604749",
+          "price_info": {
+            "raw": "60",
+            "currency": "CNY",
+            "amount": 60,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 60,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2024-05-22T05:04:33.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "云南"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 3
+        },
+        {
+          "item_id": "754294186564",
+          "title": "处理加厚不锈钢置物架工作台厨房操作台家用全新包邮 适用于后厨，家用，商总，可剁骨！可切菜！可和面！可置物！可打包！ 现有店里做活动处理一批工作台不锈钢桌，赔钱处理一批，厨房不锈钢工作台都是全新未拆封的，大小尺寸都有，款式多种，现在以二手价处理！！ 加厚长...",
+          "price": "65",
+          "original_price": "",
+          "city": "内蒙古",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "小北店铺",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i1/O1CN01GTtW4h1j163CGMkzq_!!53-fleamarket.heic"
+          ],
+          "tags": [
+            "全新",
+            "五优家家",
+            "累计降价3.00元",
+            "485人想要"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i3/O1CN01QwuuLl1j15w8iHfFy_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1702009218000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=754294186564",
+          "price_info": {
+            "raw": "65",
+            "currency": "CNY",
+            "amount": 65,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 65,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2023-12-08T04:20:18.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "内蒙古"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 4
+        },
+        {
+          "item_id": "1011357337884",
+          "title": "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便 款式：双层或三层 商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都 看中哪个请咨询客服...",
+          "price": "59",
+          "original_price": "",
+          "city": "江苏",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "曈曈姑娘呦",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i1/2221394669914/O1CN01ZTYnL02N6fiES2NKR_!!4611686018427384154-0-xy_item.jpg"
+          ],
+          "tags": [
+            "¥99",
+            "1586人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i4/O1CN01SnkqpY2N6fhwmgZ8C_!!4611686018427384154-0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1767867799000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=1011357337884",
+          "price_info": {
+            "raw": "59",
+            "currency": "CNY",
+            "amount": 59,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 59,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2026-01-08T10:23:19.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "江苏"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 5
+        },
+        {
+          "item_id": "874005545517",
+          "title": "不锈钢工作台全新加厚不锈钢工作台不锈钢桌子案板厨房操作台，打 荷台煤气灶台 适用于后厨，家用，商用，小吃店，大排档不锈钢工作台可剁骨！可切菜！可和面！可置物！可打包！ 关于材质：全新包邮，采用优质201无磁不锈钢材质，五层防水防锈工艺，三十年不生锈，加固螺钉拉门操作台，作为专业做厨房设备的厂家，我...",
+          "price": "58",
+          "original_price": "",
+          "city": "河南",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "百货福利",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i3/O1CN01CIAS7q1JqENg8xHWP_!!4611686018427384887-53-fleamarket.heic"
+          ],
+          "tags": [
+            "11天内降价",
+            "¥138",
+            "153人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://gtms03.alicdn.com/tps/i3/TB1LFGeKVXXXXbCaXXX07tlTXXX-200-200.png",
+          "seller_shop": true,
+          "publish_time": "1736241346000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=874005545517",
+          "price_info": {
+            "raw": "58",
+            "currency": "CNY",
+            "amount": 58,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 58,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2025-01-07T09:15:46.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "河南"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 6
+        },
+        {
+          "item_id": "960316332291",
+          "title": "二手价包邮不锈钢工作台双层厨房拆装操作台三层操作台打包台切菜 桌子包装台和面揉面案板商用打荷台工作台！不锈钢桌子。不锈钢操作台。 优质不锈钢加密度板，台面厚实，承重强！ 用途：剁骨 ！切菜！和面！置物！打包！ ❤️注：高度全部都为80cm ❤️工作台有： 二层 三层 ❤️想了解可点右下角【我想...",
+          "price": "58",
+          "original_price": "",
+          "city": "湖北",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "小九哥",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i3/O1CN01dJ1QNo2B3DIN5aYzf_!!4611686018427386378-0-fleamarket.jpg"
+          ],
+          "tags": [
+            "全新",
+            "五优家家",
+            "¥130",
+            "215人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i3/O1CN01Q4RsXD2B3DEIlS0Iz_!!4611686018427386378-0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1753854940000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=960316332291",
+          "price_info": {
+            "raw": "58",
+            "currency": "CNY",
+            "amount": 58,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 58,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2025-07-30T05:55:40.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "湖北"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 7
+        },
+        {
+          "item_id": "768570424419",
+          "title": "加厚不锈钢工作桌打荷台打包装台面全新包邮加厚双层不锈钢工作台 酒店厨房切菜桌不锈钢操作台三层打包装台打 喜欢哪款尺寸拍下联系我改价！ 台面上层厚度7厘米，层板厚度0.6，下面有密度板支撑。下层厚度5cm，台面承重400斤左右 下层板承重100斤左右，整体可以承重500多斤，可以放心使用， 材料：加...",
+          "price": "39",
+          "original_price": "",
+          "city": "广东",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "吉他jt",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i3/O1CN01hr8cC225EJ2mALDox_!!0-fleamarket.jpg"
+          ],
+          "tags": [
+            "全新",
+            "五优家家",
+            "370人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i3/O1CN01T3ev8q25EIyFWoQ0d_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1708480344000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=768570424419",
+          "price_info": {
+            "raw": "39",
+            "currency": "CNY",
+            "amount": 39,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 39,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2024-02-21T01:52:24.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "广东"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 8
+        },
+        {
+          "item_id": "840884252107",
+          "title": "【包邮】304不锈钢商用工作台加厚厨房桌子双层切菜案板长方形 打荷台家用 全新不锈钢操作台、商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都是全新未拆封的，大小尺寸都有，款式多种，有需要可以咨询我，工作台，适用于，后厨...",
+          "price": "66",
+          "original_price": "",
+          "city": "福建",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "大众商行不绣钢源头厂家",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i4/O1CN01zd9EP71ed2sd5E0Zl_!!53-fleamarket.heic"
+          ],
+          "tags": [
+            "28天内降价",
+            "累计降价12%",
+            "408人想要",
+            "回复超快"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i4/O1CN01pFnDGP1ed2szk3zry_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1727966608000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=840884252107",
+          "price_info": {
+            "raw": "66",
+            "currency": "CNY",
+            "amount": 66,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 66,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2024-10-03T14:43:28.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "福建"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 9
+        },
+        {
+          "item_id": "1007723432633",
+          "title": "工厂处理二手不锈钢工作台双层三层操作台打荷台，使用范围包括学 校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便，本工厂还有商用水槽，不锈钢橱柜，置物架：点我想要咨询。#厨房神器 #不锈钢置物架 #不锈钢收纳架 默认发：长60宽40高80两层59元全新包邮特价款： 尺寸参考： 长度可选：长6...",
+          "price": "59",
+          "original_price": "",
+          "city": "广东",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "燕子福利店",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i2/1746017502/O1CN01Jh6R7y25HyOiAgMcW_!!4611686018427387102-53-xy_item.heic"
+          ],
+          "tags": [
+            "全新",
+            "未使用",
+            "¥88",
+            "540人想要",
+            "回复超快"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i4/O1CN010eDU831U0tSiyxXUi_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1766632776000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=1007723432633",
+          "price_info": {
+            "raw": "59",
+            "currency": "CNY",
+            "amount": 59,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 59,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2025-12-25T03:19:36.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "广东"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 10
+        },
+        {
+          "item_id": "1058564214625",
+          "title": "【闲置转让 】原价800元的304不锈钢工作台桌子商用加厚单 双通厨房橱柜碗柜切菜台不锈钢操作台便宜出 源头厂家，这几天清一些库存，304不锈钢，五层防水防锈工艺，三十年不生锈，桌面可承重300kg，经久耐用，一檫即净！数量不多，清完下架！ ✅款式：单通/双通 ✅尺寸： 长度：80...",
+          "price": "68",
+          "original_price": "",
+          "city": "河南",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "不吃萝卜",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i2/2222595248551/O1CN01v10HTx2D2PuDMtic7_!!4611686018427384231-53-xy_item.heic"
+          ],
+          "tags": [
+            "23天内降价",
+            "58人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://gtms03.alicdn.com/tps/i3/TB1LFGeKVXXXXbCaXXX07tlTXXX-200-200.png",
+          "seller_shop": true,
+          "publish_time": "1781581679000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=1058564214625",
+          "price_info": {
+            "raw": "68",
+            "currency": "CNY",
+            "amount": 68,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 68,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2026-06-16T03:47:59.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "河南"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 11
+        },
+        {
+          "item_id": "798733884492",
+          "title": "库房到期特价处理全新包邮双层三层不锈钢工作台操作台打荷台 全新不锈钢操作台、商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都是全新未拆封的，大小尺寸都有，款式多种，有需要可以咨询我，工作台，适用于，后厨，...",
+          "price": "56",
+          "original_price": "",
+          "city": "北京",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "高扬728",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i3/O1CN01w6H8tU2MKZy22bnL5_!!0-fleamarket.jpg"
+          ],
+          "tags": [
+            "累计降价3.00元",
+            "102人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i4/O1CN01Rj1YbX2MKZnXCMZO1_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1716350437000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=798733884492",
+          "price_info": {
+            "raw": "56",
+            "currency": "CNY",
+            "amount": 56,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 56,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2024-05-22T04:00:37.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "北京"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 12
+        },
+        {
+          "item_id": "823407997707",
+          "title": "二手价处理全新包邮双层三层不锈钢工作台操作台打荷专用台 全新不锈钢操作台、商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都是全新未拆封的，大小尺寸都有，款式多种，有需要可以咨询我，工作台，适用于，后厨，...",
+          "price": "60",
+          "original_price": "",
+          "city": "湖南",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "小雨如酥",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i4/O1CN01hZjIf51GDoGGjAZGt_!!0-fleamarket.jpg"
+          ],
+          "tags": [
+            "全新",
+            "五优家家",
+            "66人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i2/O1CN01Itr1Im1GDo4LH0Iqy_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1723189931000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=823407997707",
+          "price_info": {
+            "raw": "60",
+            "currency": "CNY",
+            "amount": 60,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 60,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2024-08-09T07:52:11.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "湖南"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 13
+        },
+        {
+          "item_id": "876702209091",
+          "title": "全新二手价处理不锈钢工作台，不锈钢桌子案板厨房操作台剁骨打荷 台煤气灶台 适用于后厨，家用，商用，小吃店，大排档不锈钢工作台可剁骨！可切菜！可和面！可置物！可打包！ 关于材质：全新包邮，采用优质201无磁不锈钢材质，五层防水防锈工艺，三十年不生锈，加固螺钉拉门操作台，作为专业做厨房设备的厂家，我们...",
+          "price": "39",
+          "original_price": "",
+          "city": "河南",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "百货福利",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i4/O1CN01pXSEe01JqENhtU9VM_!!4611686018427384887-53-fleamarket.heic"
+          ],
+          "tags": [
+            "全新",
+            "五优家家",
+            "¥68",
+            "1248人想要",
+            "卖家信用极好"
+          ],
+          "seller_avatar": "https://gtms03.alicdn.com/tps/i3/TB1LFGeKVXXXXbCaXXX07tlTXXX-200-200.png",
+          "seller_shop": true,
+          "publish_time": "1736759472000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=876702209091",
+          "price_info": {
+            "raw": "39",
+            "currency": "CNY",
+            "amount": 39,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 39,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2025-01-13T09:11:12.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "河南"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 14
+        },
+        {
+          "item_id": "754512897638",
+          "title": "【厂家清货】加厚不锈钢工作台不锈钢桌子厨房操作台剁骨打荷台煤 气灶台 适用于后厨，家用，商总，可剁骨！可切菜！可和面！ 现有库存一批工作台不锈钢桌，赔钱处理一批，厨房不锈钢工作台都是全新未拆封的，大小尺寸都有，款式多种，现在以二手价处理！！ 加厚长60✘宽40✘高8...",
+          "price": "57",
+          "original_price": "",
+          "city": "广西",
+          "want_count": "0",
+          "image_count": "1",
+          "seller": "小北店铺",
+          "is_video": false,
+          "category_id": "",
+          "image_urls": [
+            "http://img.alicdn.com/bao/uploaded/i1/O1CN01ZYLg0f1j163Q4iAFp_!!53-fleamarket.heic"
+          ],
+          "tags": [
+            "全新",
+            "我爱收纳",
+            "可小刀",
+            "834人想要"
+          ],
+          "seller_avatar": "https://img.alicdn.com/bao/uploaded/i3/O1CN01QwuuLl1j15w8iHfFy_!!0-mtopupload.jpg",
+          "seller_shop": true,
+          "publish_time": "1702106658000",
+          "province": "",
+          "condition": "",
+          "shipping_fee": "",
+          "url": "https://www.goofish.com/item?id=754512897638",
+          "price_info": {
+            "raw": "57",
+            "currency": "CNY",
+            "amount": 57,
+            "min_amount": null,
+            "max_amount": null,
+            "kind": "exact"
+          },
+          "typed": {
+            "price_amount": 57,
+            "original_price_amount": null,
+            "image_count": 1,
+            "want_count": 0,
+            "view_count": null,
+            "collect_count": null,
+            "condition": null,
+            "published_at": "2023-12-09T07:24:18.000Z",
+            "updated_at": null,
+            "location": {
+              "province": null,
+              "city": "广西"
+            },
+            "shipping": null,
+            "seller_stats": null
+          },
+          "missing": [
+            "original_price_amount",
+            "view_count",
+            "collect_count",
+            "condition",
+            "updated_at",
+            "location.province",
+            "shipping",
+            "seller_stats"
+          ],
+          "hardware": {
+            "form_factor": null,
+            "bare_card": null,
+            "evidence": "title_only",
+            "note": "Unknown means the title does not establish this fact. Verify the listing and photos."
+          },
+          "rank": 15
+        }
+      ],
+      "partial": false,
+      "stop_reason": null,
+      "next_cursor": "afd36793-3017-4a5c-954e-724cd0310a13",
+      "effective_limit": 15,
+      "effective_max_items": 300,
+      "requested_limit": 15,
+      "retry_after_s": 0,
+      "freshness": {
+        "oldest_observation_age_s": 1.002,
+        "oldest_observed_at": "2026-10-12T10:12:53.682Z",
+        "cached": false,
+        "price_last_changed_at": null,
+        "note": "Age measures when this server read the card, not when its seller last changed the price. Re-read item details before buying."
+      }
+    },
+    "error_type": null,
+    "message": null,
+    "retryable": false,
+    "retry_after_s": 0,
+    "diagnostics": {
+      "tokens": [
+        {
+          "token": "不锈钢工作台",
+          "alternatives": [
+            "不锈钢工作台"
+          ],
+          "matching_titles": 25
+        }
+      ],
+      "unmatched_tokens": [],
+      "titles_inspected": 30,
+      "sample_titles": [
+        "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便 款式：双层或三层 商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都 看中哪个请咨询客服...",
+        "处理全新工作台包邮 厨房双层饭店操作台三层工作桌不锈钢工作台 材料为大厂优质不锈钢，生锈包赔，适用于饭店后厨酒店厨房家用切菜不锈钢工作台桌子 店铺不干了，处理全新厨房不锈钢切菜桌子一批，全国只要不是太偏远地区一件也包邮 工作台经久耐用，台面均匀可承重500斤左右！内嵌密度板和加强横梁，真正的...",
+        "【全新包邮】加厚商用双层不锈钢三层工作台双层不锈钢工作台不锈 钢置物架 [钉子]厂家优惠直销一批全新不锈钢工作台，单层双层三层可选，商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题 [下]【功能】 [黄圆]厨房不锈钢工作台都是全新未拆封的，大小...",
+        "处理加厚不锈钢置物架工作台厨房操作台家用全新包邮 适用于后厨，家用，商总，可剁骨！可切菜！可和面！可置物！可打包！ 现有店里做活动处理一批工作台不锈钢桌，赔钱处理一批，厨房不锈钢工作台都是全新未拆封的，大小尺寸都有，款式多种，现在以二手价处理！！ 加厚长...",
+        "捡漏来，二手不锈钢工作台双层三层操作台打荷台 使用范围包括学校、工地、食堂、超市、酒店、饭堂等一切公共场所，非常耐用方便 款式：双层或三层 商用厨房切菜桌、打荷台低价处理，所有工作台下面都嵌入了加厚密度板，台面上可以切菜，剁骨头，打包都没问题，厨房不锈钢工作台都 看中哪个请咨询客服..."
+      ],
+      "suggestions": [],
+      "note": "Title matching ignores case, spaces and punctuation. Only explicit equivalents (Xeon/至强) expand automatically; related product categories are suggestions.",
+      "cooldown": {
+        "retry_after_s": 0,
+        "scope": "this_server_process",
+        "note": "Goofish may throttle a shared public IP. This process cannot measure other clients on that IP."
+      }
+    },
+    "elapsed_ms": 14723
+  }
+}

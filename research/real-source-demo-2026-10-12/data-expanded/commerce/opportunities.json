@@ -1,0 +1,3261 @@
+[
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_6419c2d31a7a4269",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_6763e703eab64030",
+    "schema_version": 1,
+    "revision": 8,
+    "created_at": "2026-10-12T08:17:26.656037+00:00",
+    "canonical_sku": "MX-201-DBL",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "美星双层加厚不锈钢工作台 201不锈钢打荷操作台厨房商用",
+    "match_id": "match_f83958c8a647416b",
+    "offer_snapshot_ids": [
+      "offer_f9daa25002eb4dc1"
+    ],
+    "market_snapshot_id": "offer_aa368255c5f345da",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T10:13:35.645881+00:00",
+    "decision_ids": [
+      "dec_f72d13e7ac694760",
+      "dec_4daf641fc51a49f7"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:26.656037+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:26.666013+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_aa368255c5f345da",
+          "offer_f9daa25002eb4dc1"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "761",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "360",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "761",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "360",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "761",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "360",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_aa368255c5f345da",
+        "market_observed_at": "2026-10-12T08:17:25.444761+00:00",
+        "supplier_snapshot_id": "offer_f9daa25002eb4dc1",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_f83958c8a647416b",
+        "match_grade": "COMPARABLE",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 6970.2,
+        "supplier_age_seconds": 6970.4,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:https://s.1688.com (search: 美星双层加厚 201)",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 6970.4,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T10:13:35.645881+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 6970.2,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_f2901b13686e4ad3",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_5c153c9caf164067",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T08:17:26.822289+00:00",
+    "canonical_sku": "CJ-304-DBL",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "304不锈钢工作台 厂家定制双层厨房操作台 201加厚实验室桌子带靠背",
+    "match_id": "match_8541da73cd5f4a97",
+    "offer_snapshot_ids": [
+      "offer_af8eedb4ca49424a"
+    ],
+    "market_snapshot_id": "offer_207cc80fe4334787",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T08:17:26.832919+00:00",
+    "decision_ids": [
+      "dec_16328d8f58db4df5"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:26.822289+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:26.836549+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_207cc80fe4334787",
+          "offer_af8eedb4ca49424a"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "350",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "473.7",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "350",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "473.7",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "350",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "473.7",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_207cc80fe4334787",
+        "market_observed_at": "2026-10-12T08:17:25.458468+00:00",
+        "supplier_snapshot_id": "offer_af8eedb4ca49424a",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_8541da73cd5f4a97",
+        "match_grade": "COMPARABLE",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 1.4,
+        "supplier_age_seconds": 1.6,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:https://www.1688.com (search: 304 双层)",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 1.6,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T08:17:26.832919+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 1.4,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_1f43e0bb8050481c",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_b8304dd982814222",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T08:17:27.013798+00:00",
+    "canonical_sku": "HXL-ZSJ",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "不锈钢展示层架 商用（鸿鑫隆）",
+    "match_id": "match_c271b37233904de7",
+    "offer_snapshot_ids": [
+      "offer_aa62cf9770094bc0"
+    ],
+    "market_snapshot_id": "offer_32c9464e53034a3d",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T08:17:27.032254+00:00",
+    "decision_ids": [
+      "dec_13254ad097dd4a82"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:27.013798+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:27.037585+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_32c9464e53034a3d",
+          "offer_aa62cf9770094bc0"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "1193.70",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "191.10",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "1193.70",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "191.10",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "1193.70",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "191.10",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_32c9464e53034a3d",
+        "market_observed_at": "2026-10-12T08:17:25.489163+00:00",
+        "supplier_snapshot_id": "offer_aa62cf9770094bc0",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_c271b37233904de7",
+        "match_grade": "UNKNOWN",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 1.5,
+        "supplier_age_seconds": 1.8,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:https://s.1688.com (search: 不锈钢货架 商用 四层)",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 1.8,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T08:17:27.032254+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 1.5,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_c389308e12464604",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_4b269992342547a6",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T08:17:27.212624+00:00",
+    "canonical_sku": "LSJ-65",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "沥水碗架 65cm 黑色标准款（区间68-92，取上限）",
+    "match_id": "match_3691cb9229404fa9",
+    "offer_snapshot_ids": [
+      "offer_0a00bf041b3e4be1"
+    ],
+    "market_snapshot_id": "offer_5974cba95d3e487c",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T08:17:27.230822+00:00",
+    "decision_ids": [
+      "dec_fefa91c666534883"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:27.212624+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:27.235815+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_5974cba95d3e487c",
+          "offer_0a00bf041b3e4be1"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "8.50",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "92",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "8.50",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "92",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "8.50",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "92",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_5974cba95d3e487c",
+        "market_observed_at": "2026-10-12T08:17:25.519467+00:00",
+        "supplier_snapshot_id": "offer_0a00bf041b3e4be1",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_3691cb9229404fa9",
+        "match_grade": "COMPARABLE",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 1.7,
+        "supplier_age_seconds": 2.0,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:1688 沥水架检索（区间价取保守上限）",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 2.0,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T08:17:27.230822+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 1.7,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_9817be8ec0034527",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_e6435ad8846c45a7",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T08:17:27.425898+00:00",
+    "canonical_sku": "CD-304-SX",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "304不锈钢水槽 三眼双星水池 厨房洗碗池 商用饭店用（成都）",
+    "match_id": "match_590fb396a7194e92",
+    "offer_snapshot_ids": [
+      "offer_d820ca6c59c74ce5"
+    ],
+    "market_snapshot_id": "offer_d3e210f28b1b4cfd",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T08:17:27.448734+00:00",
+    "decision_ids": [
+      "dec_a7fd4528bbb94335"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:27.425898+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:27.455326+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_d3e210f28b1b4cfd",
+          "offer_d820ca6c59c74ce5"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "538.75",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "458",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "538.75",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "458",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "538.75",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "458",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_d3e210f28b1b4cfd",
+        "market_observed_at": "2026-10-12T08:17:25.538631+00:00",
+        "supplier_snapshot_id": "offer_d820ca6c59c74ce5",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_590fb396a7194e92",
+        "match_grade": "COMPARABLE",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 1.9,
+        "supplier_age_seconds": 2.2,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:https://s.1688.com/kq/-不锈钢双星水池批发",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 2.2,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T08:17:27.448734+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 1.9,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_9eca87fe27fc4379",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_48ff0c65f7884f93",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T08:17:27.670736+00:00",
+    "canonical_sku": "304-SXG",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "304不锈钢水池水槽柜 家/商用厨房双星洗菜洗手盆洗碗池",
+    "match_id": "match_431b37bf53b04a29",
+    "offer_snapshot_ids": [
+      "offer_570defa6cc2948c6"
+    ],
+    "market_snapshot_id": "offer_17e6c1e4b04c4a2a",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T08:17:27.704536+00:00",
+    "decision_ids": [
+      "dec_e6992fff16b44f40"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:27.670736+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:27.714390+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_17e6c1e4b04c4a2a",
+          "offer_570defa6cc2948c6"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "310",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "439.85",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "310",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "439.85",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "310",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "439.85",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_17e6c1e4b04c4a2a",
+        "market_observed_at": "2026-10-12T08:17:25.557346+00:00",
+        "supplier_snapshot_id": "offer_570defa6cc2948c6",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_431b37bf53b04a29",
+        "match_grade": "UNKNOWN",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 2.1,
+        "supplier_age_seconds": 2.4,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:同上检索",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 2.4,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T08:17:27.704536+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 2.1,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_52f550f4a99d4e75",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_050f32c537534611",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T08:17:27.932678+00:00",
+    "canonical_sku": "CMT-TJ",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "不锈钢调料台（创美特）",
+    "match_id": "match_2f6103ee184c457c",
+    "offer_snapshot_ids": [
+      "offer_8d9bc1022c5646ba"
+    ],
+    "market_snapshot_id": "offer_3ea0d9b6cb5f4b58",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T08:17:27.964016+00:00",
+    "decision_ids": [
+      "dec_cd0c35fdeb474415"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:27.932678+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:27.975560+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_3ea0d9b6cb5f4b58",
+          "offer_8d9bc1022c5646ba"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "1150",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "295",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "1150",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "295",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "1150",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "295",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_3ea0d9b6cb5f4b58",
+        "market_observed_at": "2026-10-12T08:17:25.599386+00:00",
+        "supplier_snapshot_id": "offer_8d9bc1022c5646ba",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_2f6103ee184c457c",
+        "match_grade": "UNKNOWN",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 2.4,
+        "supplier_age_seconds": 2.7,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:https://s.1688.com (search: 不锈钢调料台 批发)",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 2.7,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T08:17:27.964016+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 2.4,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_9b1c5d11ce6e42cd",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_a0dd5d2d92c145f4",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T08:17:28.184588+00:00",
+    "canonical_sku": "HT-CC",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "不锈钢推车定做 商用餐车（区间611-1499，取海涛具体价）",
+    "match_id": "match_5b7687e4feab4b96",
+    "offer_snapshot_ids": [
+      "offer_3077f36043ff4a74"
+    ],
+    "market_snapshot_id": "offer_db2fab65280f4586",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T08:17:28.227054+00:00",
+    "decision_ids": [
+      "dec_0e439f8c8db04705"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T08:17:28.184588+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T08:17:28.239594+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_db2fab65280f4586",
+          "offer_3077f36043ff4a74"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "161",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "735",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "161",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "735",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "161",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "735",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_db2fab65280f4586",
+        "market_observed_at": "2026-10-12T08:17:25.640517+00:00",
+        "supplier_snapshot_id": "offer_3077f36043ff4a74",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_5b7687e4feab4b96",
+        "match_grade": "UNKNOWN",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 2.6,
+        "supplier_age_seconds": 3.0,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:https://s.1688.com (search: 不锈钢推车定做)",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 3.0,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T08:17:28.227054+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 2.6,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  },
+  {
+    "record_type": "opportunity",
+    "record_id": "opp_227b9282fd444702",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_8fa6df426c574e7b",
+    "schema_version": 1,
+    "revision": 5,
+    "created_at": "2026-10-12T10:14:30.319551+00:00",
+    "canonical_sku": "MX-201-DBL-REALXY",
+    "source": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "title": "real-xianyu pair",
+    "match_id": "match_01cfba474b7541d5",
+    "offer_snapshot_ids": [
+      "offer_f9daa25002eb4dc1"
+    ],
+    "market_snapshot_id": "offer_c131b6aa15084e1c",
+    "status": "researching",
+    "status_reason": "economics computed (unit-economics-v1)",
+    "economics_ref": "computed:unit-economics-v1:2026-10-12T10:14:30.352335+00:00",
+    "decision_ids": [
+      "dec_27807079bbf44036"
+    ],
+    "history": [
+      {
+        "at": "2026-10-12T10:14:30.319551+00:00",
+        "from": null,
+        "to": "discovered",
+        "reason": "created",
+        "evidence_refs": [],
+        "actor": "system"
+      },
+      {
+        "at": "2026-10-12T10:14:30.365477+00:00",
+        "from": "discovered",
+        "to": "researching",
+        "reason": "economics computed (unit-economics-v1)",
+        "evidence_refs": [
+          "offer_c131b6aa15084e1c",
+          "offer_f9daa25002eb4dc1"
+        ],
+        "actor": "system"
+      }
+    ],
+    "economics": {
+      "rule_version": "unit-economics-v1",
+      "currency": "CNY",
+      "quantity": 1,
+      "moq": null,
+      "scenarios": {
+        "conservative": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "59",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "360",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "base": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "59",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "360",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        },
+        "optimistic": {
+          "components": {
+            "sale_price": {
+              "state": "known",
+              "amount": "59",
+              "currency": "CNY",
+              "reason": null
+            },
+            "procurement_cost": {
+              "state": "known",
+              "amount": "360",
+              "currency": "CNY",
+              "reason": null
+            },
+            "supplier_freight": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "freight not stated"
+            },
+            "packaging": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "packaging not provided"
+            },
+            "platform_fee": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "platform fee terms not provided (need current account+category rate/fixed)"
+            },
+            "expected_return_loss": {
+              "state": "unknown",
+              "amount": null,
+              "currency": null,
+              "reason": "return loss inputs not provided"
+            },
+            "installation": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "after_sales_reserve": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            },
+            "attributable_costs": {
+              "state": "not_applicable",
+              "amount": null,
+              "currency": null,
+              "reason": null
+            }
+          },
+          "contribution_profit": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+          },
+          "contribution_margin": null,
+          "break_even_price": {
+            "state": "unknown",
+            "amount": null,
+            "currency": null,
+            "reason": "cost structure incomplete"
+          },
+          "min_viable_price": null,
+          "status": "unknown",
+          "missing": [
+            "supplier_freight: freight not stated",
+            "packaging: packaging not provided",
+            "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+            "expected_return_loss: return loss inputs not provided"
+          ]
+        }
+      },
+      "scenarios_distinct": false,
+      "scenarios_note": "no range inputs provided; conservative/base/optimistic are identical",
+      "cash_occupied": {
+        "state": "unknown",
+        "amount": null,
+        "currency": null,
+        "reason": "freight: freight not stated"
+      },
+      "evidence_gaps": [
+        "base/expected_return_loss: return loss inputs not provided",
+        "base/packaging: packaging not provided",
+        "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "base/supplier_freight: freight not stated",
+        "conservative/expected_return_loss: return loss inputs not provided",
+        "conservative/packaging: packaging not provided",
+        "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "conservative/supplier_freight: freight not stated",
+        "optimistic/expected_return_loss: return loss inputs not provided",
+        "optimistic/packaging: packaging not provided",
+        "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+        "optimistic/supplier_freight: freight not stated"
+      ],
+      "computed_with_estimated_platform_fee": false,
+      "inputs": {
+        "market_snapshot_id": "offer_c131b6aa15084e1c",
+        "market_observed_at": "2026-10-12T10:13:35.362469+00:00",
+        "supplier_snapshot_id": "offer_f9daa25002eb4dc1",
+        "supplier_observed_at": "2026-10-12T08:17:25.255295+00:00",
+        "match_id": "match_01cfba474b7541d5",
+        "match_grade": "COMPARABLE",
+        "platform_fee_source": "missing",
+        "commercial_terms": null,
+        "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+        "quantity": 1,
+        "freight_basis": "per_unit",
+        "applied_tier": null,
+        "tier_note": null,
+        "cost_metadata": null,
+        "demo_costs": false
+      },
+      "freshness": {
+        "market_age_seconds": 55.0,
+        "supplier_age_seconds": 7025.1,
+        "market_fresh": true,
+        "supplier_fresh": true,
+        "all_fresh": true,
+        "supplier_provenance": {
+          "policy_version": "quote-provenance-v1",
+          "eligible": true,
+          "source_kind": "supplier_original",
+          "source_reference": "public-web:https://s.1688.com (search: 美星双层加厚 201)",
+          "source_observed_at": "2026-10-12T08:17:25.255295+00:00",
+          "valid_until": "2026-10-13T08:17:25.255295+00:00",
+          "imported_at": "2026-10-12T08:17:25.350250+00:00",
+          "age_seconds": 7025.1,
+          "expired": false,
+          "reasons": [],
+          "assessed_at": "2026-10-12T10:14:30.352335+00:00",
+          "provider_verified": false,
+          "ttl_seconds": 86400,
+          "business_eligible": true,
+          "freshness": "current"
+        },
+        "market_provenance": {
+          "freshness": "current",
+          "age_seconds": 55.0,
+          "ttl_seconds": 259200,
+          "source_kind": "market_observation",
+          "business_eligible": true
+        }
+      }
+    }
+  }
+]

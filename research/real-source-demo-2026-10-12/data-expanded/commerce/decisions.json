@@ -1,0 +1,962 @@
+[
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_f72d13e7ac694760",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_2857897a98684f0a",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.689964+00:00",
+    "summary": "not qualified: match grade COMPARABLE is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_6419c2d31a7a4269",
+    "opportunity_id": "opp_6419c2d31a7a4269",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_aa368255c5f345da"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_f9daa25002eb4dc1"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_f83958c8a647416b"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_16328d8f58db4df5",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_d12211ae4db14291",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.879426+00:00",
+    "summary": "not qualified: match grade COMPARABLE is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_f2901b13686e4ad3",
+    "opportunity_id": "opp_f2901b13686e4ad3",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_207cc80fe4334787"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_af8eedb4ca49424a"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_8541da73cd5f4a97"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_13254ad097dd4a82",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_3c9a34a2e8764e9c",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:27.091143+00:00",
+    "summary": "not qualified: match grade UNKNOWN is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_1f43e0bb8050481c",
+    "opportunity_id": "opp_1f43e0bb8050481c",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_32c9464e53034a3d"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_aa62cf9770094bc0"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_c271b37233904de7"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_fefa91c666534883",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_f97e878183814231",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:27.292194+00:00",
+    "summary": "not qualified: match grade COMPARABLE is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_c389308e12464604",
+    "opportunity_id": "opp_c389308e12464604",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_5974cba95d3e487c"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_0a00bf041b3e4be1"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_3691cb9229404fa9"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_a7fd4528bbb94335",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_1f72735c8fce4086",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:27.533683+00:00",
+    "summary": "not qualified: match grade COMPARABLE is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_9817be8ec0034527",
+    "opportunity_id": "opp_9817be8ec0034527",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_d3e210f28b1b4cfd"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_d820ca6c59c74ce5"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_590fb396a7194e92"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_e6992fff16b44f40",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_7676765161d341a9",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:27.800630+00:00",
+    "summary": "not qualified: match grade UNKNOWN is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_9eca87fe27fc4379",
+    "opportunity_id": "opp_9eca87fe27fc4379",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_17e6c1e4b04c4a2a"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_570defa6cc2948c6"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_431b37bf53b04a29"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_cd0c35fdeb474415",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_7cb18f20704649a1",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:28.060478+00:00",
+    "summary": "not qualified: match grade UNKNOWN is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_52f550f4a99d4e75",
+    "opportunity_id": "opp_52f550f4a99d4e75",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_3ea0d9b6cb5f4b58"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_8d9bc1022c5646ba"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_2f6103ee184c457c"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_0e439f8c8db04705",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_230c3a359f054c96",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:28.347988+00:00",
+    "summary": "not qualified: match grade UNKNOWN is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_9b1c5d11ce6e42cd",
+    "opportunity_id": "opp_9b1c5d11ce6e42cd",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_db2fab65280f4586"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_3077f36043ff4a74"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_5b7687e4feab4b96"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_4daf641fc51a49f7",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_fbe4fbbcbab1430a",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.716128+00:00",
+    "summary": "not qualified: match grade COMPARABLE is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_6419c2d31a7a4269",
+    "opportunity_id": "opp_6419c2d31a7a4269",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_aa368255c5f345da"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_f9daa25002eb4dc1"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_f83958c8a647416b"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  },
+  {
+    "record_type": "decision_record",
+    "record_id": "dec_27807079bbf44036",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "",
+    "trace_id": "trace_894e09a8831f4efe",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:14:30.483387+00:00",
+    "summary": "not qualified: match grade COMPARABLE is below EXACT; direct arbitrage not allowed; conservative profit unknown: supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided",
+    "actor_role": "pricing_agent",
+    "decision_type": "opportunity_review",
+    "target_ref": "opp_227b9282fd444702",
+    "opportunity_id": "opp_227b9282fd444702",
+    "options": [
+      {
+        "option": "advance",
+        "note": "requires EXACT match, positive conservative profit, fresh inputs"
+      },
+      {
+        "option": "keep_researching",
+        "note": "close evidence gaps"
+      },
+      {
+        "option": "reject",
+        "note": "no viable path to positive contribution profit"
+      }
+    ],
+    "recommendation": "stay in research; close the listed gaps before testing",
+    "evidence_refs": [
+      {
+        "ref_type": "market_snapshot",
+        "ref_id": "offer_c131b6aa15084e1c"
+      },
+      {
+        "ref_type": "supplier_snapshot",
+        "ref_id": "offer_f9daa25002eb4dc1"
+      },
+      {
+        "ref_type": "product_match",
+        "ref_id": "match_01cfba474b7541d5"
+      },
+      {
+        "ref_type": "economics",
+        "ref_id": "unit-economics-v1@2026-10-12T08:17:25.255295+00:00"
+      }
+    ],
+    "input_versions": {
+      "market_snapshot_revision": 1,
+      "supplier_snapshot_revision": 1,
+      "economics_rule": "unit-economics-v1",
+      "match_rule": "hard-constraints-v1"
+    },
+    "constraint_checks": [
+      {
+        "check": "exact_match",
+        "state": "blocked"
+      },
+      {
+        "check": "profit_known_positive",
+        "state": "blocked"
+      },
+      {
+        "check": "inputs_fresh",
+        "state": "pass"
+      },
+      {
+        "check": "costs_not_demo",
+        "state": "pass"
+      },
+      {
+        "check": "platform_fee_terms_current",
+        "state": "pass"
+      }
+    ],
+    "unknowns": [
+      "base/expected_return_loss: return loss inputs not provided",
+      "base/packaging: packaging not provided",
+      "base/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "base/supplier_freight: freight not stated",
+      "conservative/expected_return_loss: return loss inputs not provided",
+      "conservative/packaging: packaging not provided",
+      "conservative/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "conservative/supplier_freight: freight not stated",
+      "optimistic/expected_return_loss: return loss inputs not provided",
+      "optimistic/packaging: packaging not provided",
+      "optimistic/platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "optimistic/supplier_freight: freight not stated"
+    ],
+    "model_version": "deterministic-v1",
+    "cost": {},
+    "authorization_type": "human",
+    "mandate_ref": "",
+    "result": null
+  }
+]

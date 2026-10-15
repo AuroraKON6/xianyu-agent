@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-10-12T06:14:43.631379+00:00",
+  "supplier_batch": "impb_0a61986ad02f42ba",
+  "opp_1b22d848792348e8": {
+    "opportunity_id": "opp_1b22d848792348e8",
+    "sku": "MX-201-DBL",
+    "status": "researching",
+    "match_grade": "COMPARABLE",
+    "sale_price_basis": "market display/list price used as sale assumption, not a transaction",
+    "conservative_profit": {
+      "state": "unknown",
+      "amount": null,
+      "currency": null,
+      "reason": "supplier_freight: freight not stated; packaging: packaging not provided; platform_fee: platform fee terms not provided (need current account+category rate/fixed); expected_return_loss: return loss inputs not provided"
+    },
+    "missing_costs": [
+      "supplier_freight: freight not stated",
+      "packaging: packaging not provided",
+      "platform_fee: platform fee terms not provided (need current account+category rate/fixed)",
+      "expected_return_loss: return loss inputs not provided"
+    ],
+    "material_use": {
+      "eligible": false,
+      "reasons": [
+        "no_active_confirmation"
+      ],
+      "confirmation_id": "",
+      "policy_version": "intake-confirmation-v1",
+      "checked_at": "2026-10-12T06:15:00.234874+00:00"
+    }
+  }
+}

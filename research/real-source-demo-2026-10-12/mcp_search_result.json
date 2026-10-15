@@ -1,0 +1,103 @@
+{
+  "at": "2026-10-12T10:08:33Z",
+  "search_items": {
+    "schema_version": 2,
+    "build": {
+      "implementation": "typescript",
+      "runtime_fingerprint": "293f3238a4e1f0a6c6646db5d91f85eab495694003a9ce2e4e5b6f03a2be219e",
+      "version": "0.3.0",
+      "commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "describe": "d6bd8d3",
+      "branch": "main",
+      "dirty": true,
+      "provenance": "git",
+      "built_at": "(no dist/)",
+      "compared_against": "origin/main",
+      "base_commit": "d6bd8d387189b5bff590058e748352dadf251ad5",
+      "ahead": 0,
+      "behind": 0,
+      "stale": false,
+      "deployable": false,
+      "reasons": [
+        "the tree had uncommitted changes when this was built",
+        "there is no dist/ here to serve"
+      ]
+    },
+    "ok": false,
+    "status": "error",
+    "count": 0,
+    "data": null,
+    "error_type": "SearchUnavailableError",
+    "message": "goofish never served a usable result set for \"不锈钢工作台 商用\" in 75s, over 2 attempt(s) of which 2 typed the query. Last attempt: {\"attempt\":2,\"via\":\"searchbox\",\"search_api_ret\":\"RGV587_ERROR::SM::哎哟喂,被挤爆啦,请稍后重试!\"}. \"\"",
+    "retryable": true,
+    "retry_after_s": 60,
+    "diagnostics": {
+      "reason": "rate_limited",
+      "retryable": true,
+      "retry_after_s": 60,
+      "tokens": [
+        {
+          "token": "不锈钢工作台",
+          "alternatives": [
+            "不锈钢工作台"
+          ],
+          "matching_titles": 0
+        },
+        {
+          "token": "商用",
+          "alternatives": [
+            "商用"
+          ],
+          "matching_titles": 0
+        }
+      ],
+      "unmatched_tokens": [
+        "不锈钢工作台",
+        "商用"
+      ],
+      "titles_inspected": 0,
+      "sample_titles": [],
+      "suggestions": [],
+      "note": "Title matching ignores case, spaces and punctuation. Only explicit equivalents (Xeon/至强) expand automatically; related product categories are suggestions.",
+      "inventory": {
+        "match_count": 202558,
+        "state": "measured"
+      },
+      "attempt_log": [
+        {
+          "attempt": 1,
+          "via": "searchbox",
+          "retryable": "enter-did-not-submit",
+          "typed": "不锈钢工作台 商用",
+          "cards_left_on_home": 32,
+          "lost_contexts": 0,
+          "home_path": "/"
+        },
+        {
+          "attempt": 2,
+          "via": "searchbox",
+          "reused_page": true,
+          "path": "https://www.goofish.com/"
+        },
+        {
+          "attempt": 2,
+          "via": "searchbox",
+          "submitted": true,
+          "typed": "",
+          "result_cards": 20,
+          "lost_contexts": 0
+        },
+        {
+          "attempt": 2,
+          "via": "searchbox",
+          "search_api_ret": "RGV587_ERROR::SM::哎哟喂,被挤爆啦,请稍后重试!"
+        }
+      ],
+      "next_cursor": "4cdca553-d011-40fd-8c41-4a63acdfde8d",
+      "effective_limit": 20,
+      "effective_max_items": 300,
+      "requested_limit": 20
+    },
+    "elapsed_ms": 77629
+  }
+}

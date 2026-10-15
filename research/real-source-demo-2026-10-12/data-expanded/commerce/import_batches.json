@@ -1,0 +1,25 @@
+[
+  {
+    "record_id": "impb_85e8d37c74ac4dc4",
+    "record_type": "supplier_import_batch",
+    "provider_id": "supplier_file:公开网页批发观察-扩充（未经确认）",
+    "supplier": "公开网页批发观察-扩充（未经确认）",
+    "operator": "glm-real-source-demo",
+    "content_sha256": "b62e38cb6be2ee7ac99bc6e2434c079cadde6a062fe75e147bed92cdfb619945",
+    "preview_id": "prev_1cb657e316894f20",
+    "status": "committed",
+    "error": null,
+    "snapshot_ids": [
+      "offer_f9daa25002eb4dc1",
+      "offer_af8eedb4ca49424a",
+      "offer_aa62cf9770094bc0",
+      "offer_0a00bf041b3e4be1",
+      "offer_d820ca6c59c74ce5",
+      "offer_570defa6cc2948c6",
+      "offer_8d9bc1022c5646ba",
+      "offer_3077f36043ff4a74"
+    ],
+    "created_at": "2026-10-12T08:17:25.430143+00:00",
+    "revoked_at": null
+  }
+]

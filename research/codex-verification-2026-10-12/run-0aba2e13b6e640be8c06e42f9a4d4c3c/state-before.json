@@ -1,0 +1,1210 @@
+﻿{
+    "sources":  [
+                    {
+                        "path":  ".pi/extensions/xianyu-ops.ts",
+                        "sha256":  "2029620f21abd6f1fc70f8f469143af3ec09b03148c60b75bc210a98927176d9"
+                    },
+                    {
+                        "path":  ".pi/settings.json",
+                        "sha256":  "befd05ee06d0076b78317b7d9b35b912f3aff12829f6d69553310564b5ce0d23"
+                    },
+                    {
+                        "path":  "scripts/audit_commerce_ledgers.py",
+                        "sha256":  "dd7b360ca1eabbb02b7724b6723dc9b55529853ffe534f7caa02d18c16da1f56"
+                    },
+                    {
+                        "path":  "scripts/backup_commerce.py",
+                        "sha256":  "33bdc9eabd6e1fc53934a8578961c9b8c994de284259af03f5f61f1f77b19b27"
+                    },
+                    {
+                        "path":  "scripts/check_supplier_intake.py",
+                        "sha256":  "1fa915596c5e3178571912df7ec9c2dae7254b301fa3c7cc38ed855159a466a5"
+                    },
+                    {
+                        "path":  "scripts/commerce_backup_drill.py",
+                        "sha256":  "b35f5522e048f42078ba93f3b5ae87eeb61c09d1918a59b55350582615e4e773"
+                    },
+                    {
+                        "path":  "scripts/commercial_alpha_intake.py",
+                        "sha256":  "b91c74e64e4ef4a28220a94a7471c8616e75b3c71bc450c12887291d652cdc62"
+                    },
+                    {
+                        "path":  "scripts/demo_commerce_pipeline.py",
+                        "sha256":  "d9f66762e454e33971e2a9387ce1175227835af322a233c3c6f948dec99836d5"
+                    },
+                    {
+                        "path":  "scripts/export_commerce_to_sql.py",
+                        "sha256":  "1813d876c4fc8816259a720184eef4b96900ed7f5de8346dfa0d6ba3de9ae6df"
+                    },
+                    {
+                        "path":  "scripts/full_flow_smoke.py",
+                        "sha256":  "5a081a362739630ce98a334c74ef9449ca14cb84c488c5bac34eab39d0e15e48"
+                    },
+                    {
+                        "path":  "scripts/install_openclaw_integration.ps1",
+                        "sha256":  "ca9400b354e247935aeb3fe16479efe5c7b17b0860f7bba10bb7ca471f2494e3"
+                    },
+                    {
+                        "path":  "scripts/open_openclaw_control_center.ps1",
+                        "sha256":  "f936099dcdbec3c0f826e6fffcae95108be9c4248f65bf34811ab24f05623ee9"
+                    },
+                    {
+                        "path":  "scripts/open_xianyu_console.ps1",
+                        "sha256":  "6e5b006053efddd16c122506aa304cc4cdf67429c58a52b09543e9d261c81ab3"
+                    },
+                    {
+                        "path":  "scripts/run_full_flow_smoke.ps1",
+                        "sha256":  "8a83bd82f945418648425b3192708b9442f2b869f2b2689f8c200187d5adfbe3"
+                    },
+                    {
+                        "path":  "scripts/run_pi_quote_review_real.py",
+                        "sha256":  "b6f9c0639bfdfd8a23cad6fab5692d78d3ad2fbcb87908ba398044de04182a47"
+                    },
+                    {
+                        "path":  "scripts/run_server.ps1",
+                        "sha256":  "468978c2b29d1d1125d07631257472f54ff79e0af430e2f9f0a36e7578e291f9"
+                    },
+                    {
+                        "path":  "scripts/run_tests_isolated.ps1",
+                        "sha256":  "cb3df911b683a46edce0b6863d414651a33da86b0377cd877af1067a714fc0ee"
+                    },
+                    {
+                        "path":  "scripts/run_wp08_real_model_task.py",
+                        "sha256":  "d1a115912a5950ce5e19f556dbfed22369965be625d9f80d3456ea551db9ca29"
+                    },
+                    {
+                        "path":  "scripts/run_wp11_real_polish.py",
+                        "sha256":  "05e906478cf12cf4af7b385219689fcbf51c2c0f9b8f3f32b3ae57bb18916468"
+                    },
+                    {
+                        "path":  "scripts/start_openclaw_control_center.ps1",
+                        "sha256":  "91ed61999209e0dbdc4420d931f6abd4cf61db031ceb6d47cd852c3afe9517b0"
+                    },
+                    {
+                        "path":  "scripts/start_openclaw_gateway.ps1",
+                        "sha256":  "58fad7bab77e6c56a70abca87afbe55cdfd862c35612db3572bd160ef37b8e02"
+                    },
+                    {
+                        "path":  "scripts/start_xianyu_workflow.ps1",
+                        "sha256":  "79cd07af131cd5d0a23b553ae5a4086b2b212eb86801ec34c3baaa711cc74e10"
+                    },
+                    {
+                        "path":  "scripts/stop_openclaw_control_center.ps1",
+                        "sha256":  "b4652d2b0b7265dac3ea60be38eaae65c80d15b1065f2b6f788790cfbfbab625"
+                    },
+                    {
+                        "path":  "scripts/stop_openclaw_gateway.ps1",
+                        "sha256":  "23de606becf7eefcc528b0275065c17e3db03b2dc376ff617f192057ad81bee0"
+                    },
+                    {
+                        "path":  "scripts/stop_xianyu_workflow.ps1",
+                        "sha256":  "47fc5f8a6438d4728a51ef54276c58af341aac433d3d0bbf4f9b3fcf2b04280f"
+                    },
+                    {
+                        "path":  "scripts/wp09b_playwright_qa.py",
+                        "sha256":  "4d1e45e294dd9c570f518b01fa1281364dedbaf288da16be18b283e5965be31d"
+                    },
+                    {
+                        "path":  "tests/intake_ui_fixture.py",
+                        "sha256":  "6c8532940363d5c1f3d22a9b8978f6cd8d42179f2a0aac72c882cfb6742b66d9"
+                    },
+                    {
+                        "path":  "tests/pi_usage_ui_fixture.py",
+                        "sha256":  "60d5a0fd2852b32fbd3b76ed5c0e9cfb97975d65f6213a866d3591836ee79061"
+                    },
+                    {
+                        "path":  "tests/preflight_helpers.py",
+                        "sha256":  "7df9e8f5200903b46d5167f2489ba1278e54d7ce171a221ebdee6f442273f861"
+                    },
+                    {
+                        "path":  "tests/quote_fixtures.py",
+                        "sha256":  "37868131cfc63b3ff3ea30275ed0c4036317110b69dbd9c876e5eeb4bc2764e1"
+                    },
+                    {
+                        "path":  "tests/test_account_attribution.py",
+                        "sha256":  "4b3489ea4e9c3f22cca4c81296e0580e14e48d1de1d68ac41dffa1f9c7bad837"
+                    },
+                    {
+                        "path":  "tests/test_account_commercial_terms.py",
+                        "sha256":  "292d5fc87f6193f6f642d99487afa13443be09d796cd26620935cc316a3bdd75"
+                    },
+                    {
+                        "path":  "tests/test_account_ops_queues.py",
+                        "sha256":  "f0bf8d100881f7160c3691147213661936ec436eaec6fc2a6036cdafe49e3663"
+                    },
+                    {
+                        "path":  "tests/test_account_profiles.py",
+                        "sha256":  "abe4a3d0f1b07b20cd83b5c9a4bddf8bfdc244bf8cafa2f62425043635803982"
+                    },
+                    {
+                        "path":  "tests/test_account_prompt_profiles.py",
+                        "sha256":  "142b12af76fa33003874af09c814caa2cdfae3d606538f2bd48c9c484777cae6"
+                    },
+                    {
+                        "path":  "tests/test_account_runtime.py",
+                        "sha256":  "73f9127155b60fb075996a5ca2bb1f1d0d52e5fd6834c5e3c53bc56e7086f18a"
+                    },
+                    {
+                        "path":  "tests/test_action_executor.py",
+                        "sha256":  "acd69badc7740eca2768e74f89b9c320a3b40fbb98bbc87546c7211a9883146b"
+                    },
+                    {
+                        "path":  "tests/test_action_scope.py",
+                        "sha256":  "0452e6e81825396553203a4b26e598110fa4604eea23ca4ab8976e5997b09d31"
+                    },
+                    {
+                        "path":  "tests/test_adapter_sync_contract.py",
+                        "sha256":  "e69782d74adcb9c118245409254c1c2a6748c324bb37b9e426e4e36f086bd397"
+                    },
+                    {
+                        "path":  "tests/test_agent_collaboration.py",
+                        "sha256":  "087174d926fbd2dd408b9ad5616bce49e990cdda8c3f07f5aa88c23262206ea4"
+                    },
+                    {
+                        "path":  "tests/test_agent_discussion.py",
+                        "sha256":  "74550e666704f472c5655064012c2eb8c8fd3bde626ede8f53b99594a2802426"
+                    },
+                    {
+                        "path":  "tests/test_agent_jobs.py",
+                        "sha256":  "3e9856b1055bca67be14a070671e85a876f8fc1859b0b2cbd916552b82176fd0"
+                    },
+                    {
+                        "path":  "tests/test_automatic_message_intake.py",
+                        "sha256":  "84c36e7611998be2d19c576440ee3faa93e2dedfa4889c2153db1f5bd2950434"
+                    },
+                    {
+                        "path":  "tests/test_backup.py",
+                        "sha256":  "a2919e59e77ddc2dea996d6687d470a9d91feb8e3372ae91e81a5ef6fd758c2a"
+                    },
+                    {
+                        "path":  "tests/test_bridge_events.py",
+                        "sha256":  "1d243e9608a4e5ec49d468c717fec87be39d17936fe6258ba126cd026a682e38"
+                    },
+                    {
+                        "path":  "tests/test_browser_account_import.py",
+                        "sha256":  "75bff1dafe5c1e7357ba10cc418051e63c17fe8b3c667f3e0066964505849509"
+                    },
+                    {
+                        "path":  "tests/test_browser_adapter_contract.py",
+                        "sha256":  "d4b861fcc8453bad70bcc1e1e2847cd687f3a442a0a06749f408264fbc2c96df"
+                    },
+                    {
+                        "path":  "tests/test_browser_control.py",
+                        "sha256":  "35d74c76a2d112d5eb505407ebfa1270c4f9cf051036a6d2d79124f3c911900a"
+                    },
+                    {
+                        "path":  "tests/test_browser_pool.py",
+                        "sha256":  "74a524db6eb93011f5486c29e666842e87396203801cdb38e990aca06b9cf93a"
+                    },
+                    {
+                        "path":  "tests/test_browser_write_evidence.py",
+                        "sha256":  "5d8fe5998e7d24895adb1583a6760ffdccd07963dc91b13a53d5915adcc044b9"
+                    },
+                    {
+                        "path":  "tests/test_candidate_activation.py",
+                        "sha256":  "8ef985d7a0c9f7066eddc29e2e7ed8aa050f2851c9db3b0b9b813f1d8866446b"
+                    },
+                    {
+                        "path":  "tests/test_candidate_evidence_store.py",
+                        "sha256":  "0b7375718e55e21eb775bfabf91d3b10124d921b85e3e1f642129144faa4243d"
+                    },
+                    {
+                        "path":  "tests/test_chat_events.py",
+                        "sha256":  "cbf8765eb9ae39b2900308c804f54bed848bf548686d04b4f8e6311b53d126d8"
+                    },
+                    {
+                        "path":  "tests/test_cli_resale_agent_review.py",
+                        "sha256":  "42b53c9bb9e533d79332ed1be4121ef27f8f7d71bc722360d6c26c8aca1588d7"
+                    },
+                    {
+                        "path":  "tests/test_commerce_api.py",
+                        "sha256":  "0a4d8a47dfb52d56e336f8bad9ce3cacc02ccc4105ed9032cbc63ddfeea2c020"
+                    },
+                    {
+                        "path":  "tests/test_commerce_audit.py",
+                        "sha256":  "2995a97189ce1a82b7b50b595f303c9970677cfc76011ba564457f9238bd3eed"
+                    },
+                    {
+                        "path":  "tests/test_commerce_contracts.py",
+                        "sha256":  "7e966ddafb919d1a24711ee70df94b2c3fa23a3aa66fef954e222f2078b1eea5"
+                    },
+                    {
+                        "path":  "tests/test_commerce_integration_ui.py",
+                        "sha256":  "e7242fc5768c04628420a75dd038282d287c90d402a1db30c00ab7c4641a8ca7"
+                    },
+                    {
+                        "path":  "tests/test_commerce_repositories.py",
+                        "sha256":  "87ce7a9e99c7f5672ac431e549819943b2c02ce93663324e5d35fc5de5d65516"
+                    },
+                    {
+                        "path":  "tests/test_commercial_alpha_first_order_e2e.py",
+                        "sha256":  "cadf6bcf9ae0d8286e24de6ffdd0c7b134a7a657b31bbed5124a6f7e5302adb1"
+                    },
+                    {
+                        "path":  "tests/test_commercial_alpha_intake.py",
+                        "sha256":  "cb8483dd18aba7a34231b33fe61f9eef2d3e7f1f9f6891cd404e1c2bd2b70ac3"
+                    },
+                    {
+                        "path":  "tests/test_commercial_launch.py",
+                        "sha256":  "7cfd7aa057fb7b490a4bc2e8f593c4bd9503a6b4fea24fa59fcf5c072cafe5a2"
+                    },
+                    {
+                        "path":  "tests/test_commercial_observation.py",
+                        "sha256":  "602e67eff8172b19b9276471aa58faf588f5944281e011f938e330bdc91788c3"
+                    },
+                    {
+                        "path":  "tests/test_commercial_preflight.py",
+                        "sha256":  "e3c071c97f37043306fb82e3f60f2ac021d8b805e6541c12c2fcc1cb85549398"
+                    },
+                    {
+                        "path":  "tests/test_commercial_trial.py",
+                        "sha256":  "ebe67badd220469e0f72aa296663d1ee8a7eaa513edf2d9bee039f330909c7e4"
+                    },
+                    {
+                        "path":  "tests/test_console_ui_contract.py",
+                        "sha256":  "986205a53e8f510b3a8bcbe73ca2c1a9c0c2b2bf69e60bde47db1980b21adf46"
+                    },
+                    {
+                        "path":  "tests/test_conversation_profiles.py",
+                        "sha256":  "a59d547a71b3cf67e0c6561bfbd943b6b38417fe5cfbc4f104d8de40e31ff54a"
+                    },
+                    {
+                        "path":  "tests/test_daily_review_snapshot.py",
+                        "sha256":  "01bee680f9e94da38e054fe69f1675fe05c264496ecbaff276c54e67437e8375"
+                    },
+                    {
+                        "path":  "tests/test_db_boundary.py",
+                        "sha256":  "66ac1fd2af73a08cf215b1264c0208eff20e8ed6e1756bc78b2d212265bf8bb2"
+                    },
+                    {
+                        "path":  "tests/test_db_migration.py",
+                        "sha256":  "7980fe49af5e515067ac7387881ac218654f2aabaf3e61c6e0d9d1d1b3323b3b"
+                    },
+                    {
+                        "path":  "tests/test_delete_refund_workflows.py",
+                        "sha256":  "3c6b16187dbc9818bdd1ef6e49597e0473a0fd203d38dbad08d92859a9bbdc4f"
+                    },
+                    {
+                        "path":  "tests/test_discovery_inbox.py",
+                        "sha256":  "058535b47fd59c0a2e8e4b115ef567ca80ccbbfb5c56e0c06bd6cc42f2fc325b"
+                    },
+                    {
+                        "path":  "tests/test_discovery_strategy_modes.py",
+                        "sha256":  "d6470622cf0b006b99dd0612688735721f09e5e64346619011fca0f9019ea592"
+                    },
+                    {
+                        "path":  "tests/test_ecommerce_channel_integration.py",
+                        "sha256":  "3332d62cef49513628929f2f576095e5724030ec69568bc3b8c07ee4db2a354f"
+                    },
+                    {
+                        "path":  "tests/test_execution_evidence.py",
+                        "sha256":  "5795e59983725fa00934292c68a5d3b018e44db7b3042d35dd6e2af280a9a535"
+                    },
+                    {
+                        "path":  "tests/test_execution_queue.py",
+                        "sha256":  "e37e658051b2146e1995fdb8f69763fdbab297c015f478336f20408401545e05"
+                    },
+                    {
+                        "path":  "tests/test_execution_reliability.py",
+                        "sha256":  "85469b1fb45aa5bc76305c4162e121011c04ee4e1e4d5a8cf8c66fdc7efec955"
+                    },
+                    {
+                        "path":  "tests/test_feishu_cli_migration.py",
+                        "sha256":  "d84b6cfcb8efc1c7e8ef67bee34fc00a484a5ef3d52e4eccf171408af62a0a7a"
+                    },
+                    {
+                        "path":  "tests/test_first_run_readiness.py",
+                        "sha256":  "e1f2fbd7ffac279fc6651273b846a26c1a57c406ecd2af3b53f5d8f961588046"
+                    },
+                    {
+                        "path":  "tests/test_fulfill_order.py",
+                        "sha256":  "e72600096d8127c28102ddf2c5fc573471d6d1392941d0fd1db6b776122ca5ff"
+                    },
+                    {
+                        "path":  "tests/test_g1b_cost_eligibility.py",
+                        "sha256":  "0c4004d1022fc8eb800c101924bcf7027ec05e2740b882a8cfb87a60780a8e1c"
+                    },
+                    {
+                        "path":  "tests/test_g2c_decision_card.py",
+                        "sha256":  "2a88e47a274d3dac53c7f945b294561d00303dbd6afc11e3a5c21892318283f0"
+                    },
+                    {
+                        "path":  "tests/test_g4a_main_chain_wiring.py",
+                        "sha256":  "4ee9454aa794cd83250a7c736018bcf8bbe4a13878dd177103b085679ee109e9"
+                    },
+                    {
+                        "path":  "tests/test_g4b_golden_finance.py",
+                        "sha256":  "15c54deb62913a664c68c0d96a7b9bd56c81e2f0321a7617d6990c93284f7091"
+                    },
+                    {
+                        "path":  "tests/test_g5a_drills.py",
+                        "sha256":  "baae01b799f0311e052921a01caa00511aee527dad79f4ccce1ad2c83b44a1cf"
+                    },
+                    {
+                        "path":  "tests/test_intake_confirmation.py",
+                        "sha256":  "35d735cd6655d6fb3ebd4045311af149e3243ab4cd24a4d8bc73dae40f2d2720"
+                    },
+                    {
+                        "path":  "tests/test_intake_confirmation_ui.py",
+                        "sha256":  "15b678be10296d13c8b6a35067a1131ecd492be022a7ed710527d7af1d911084"
+                    },
+                    {
+                        "path":  "tests/test_inventory_and_listing.py",
+                        "sha256":  "d3973b7691d69b79b8ddaf81d08aacc9552a4c17e007bb7dfede40a7cc224e81"
+                    },
+                    {
+                        "path":  "tests/test_listing_structured_draft.py",
+                        "sha256":  "9ea32b5b3335bb898509fd136270a042ae2d4f1334c2a0f05d5e3a842e0fc998"
+                    },
+                    {
+                        "path":  "tests/test_llm_manager.py",
+                        "sha256":  "2b5c7e5ad6218ac20d38f3aab4cf68950fcd92421d99da77539c01b58438dab1"
+                    },
+                    {
+                        "path":  "tests/test_market_channel.py",
+                        "sha256":  "0b1cb57a9d53fc9be46456a6dd3a01ecb2203425215d56bbe4cbd9c69327c439"
+                    },
+                    {
+                        "path":  "tests/test_market_probe_client.py",
+                        "sha256":  "b32fa3f17637bd5ea42502a4699e4ba4421dc6c0df0c29aba88fb4254b8bba0b"
+                    },
+                    {
+                        "path":  "tests/test_message_envelope.py",
+                        "sha256":  "c149dcf20e1cb4db1cf6e4130dbc9924860d644468055cc986c6938537d1da93"
+                    },
+                    {
+                        "path":  "tests/test_message_import_scheduler.py",
+                        "sha256":  "8ad01384a98004ac4dd38482e0ad3c0f88bba4ca462702feeafec75ba64b6658"
+                    },
+                    {
+                        "path":  "tests/test_message_intake_alerting.py",
+                        "sha256":  "9867f33b90b614dce0a5e5f750d6d10f30b068ce2f712e1e250f7a2db1a976c3"
+                    },
+                    {
+                        "path":  "tests/test_message_intake_hardening.py",
+                        "sha256":  "af6fbc653fb284ed459b90071b6363494878222516a8cfb931959c0acde4d6ec"
+                    },
+                    {
+                        "path":  "tests/test_message_intake_importer.py",
+                        "sha256":  "14927acefce774c16f59645e58af4af36a1feb8ce147b6fd0b9e0815363798fc"
+                    },
+                    {
+                        "path":  "tests/test_message_intake_recovery.py",
+                        "sha256":  "21c492f1b04ccf358363d6d330e98d846c49a1acf54270bc0d4904e38673f702"
+                    },
+                    {
+                        "path":  "tests/test_models.py",
+                        "sha256":  "bf53d6bc09c34633877f120f1b4a627aaa57dcacbfaf6e2dfaf3cd189b3d322c"
+                    },
+                    {
+                        "path":  "tests/test_ollama_removal.py",
+                        "sha256":  "c9418e146fa1fea83a5595d2373e8b7c83902b84e5975cbb2c474f832e4ad58d"
+                    },
+                    {
+                        "path":  "tests/test_opc_dashboard.py",
+                        "sha256":  "62d9d3641ab8e0cf4512a2b11dcaeec2b6be00333d9a1f97c4189365c36c25fb"
+                    },
+                    {
+                        "path":  "tests/test_openclaw_router.py",
+                        "sha256":  "9bc3f307dab9b3702634de3d0584a26be3d1ee87ec5a2f27eeaaa92d88638276"
+                    },
+                    {
+                        "path":  "tests/test_operating_mandates.py",
+                        "sha256":  "c347099b4287c7ea32a196d7e1962f3efe71862f3895748e142ceacd15434a87"
+                    },
+                    {
+                        "path":  "tests/test_opportunity_adoption.py",
+                        "sha256":  "18e475060f05a764f799343c5ac241226d412247cce351ef3e03c0a48b634e50"
+                    },
+                    {
+                        "path":  "tests/test_order_runtime.py",
+                        "sha256":  "efe6d2b62a8cc7ed200857efc4c281d5403d617a0df49f08d6aeb309de400fe4"
+                    },
+                    {
+                        "path":  "tests/test_pi_jobs.py",
+                        "sha256":  "d9a5045149cb0e0d3efd73f641beeef0d890bcecc05aa4f0702c433bd6173356"
+                    },
+                    {
+                        "path":  "tests/test_pi_outbound_gate.py",
+                        "sha256":  "344db875ac25e1939947e44037574890296761e782d3b406333d17fe20d6c525"
+                    },
+                    {
+                        "path":  "tests/test_pi_recovery_completion.py",
+                        "sha256":  "b3cf6476d068504399756678a322f7889f252782b1cee6858c54a5092eb992f8"
+                    },
+                    {
+                        "path":  "tests/test_pi_recovery_round6.py",
+                        "sha256":  "17c7958f037b32578d2b45477a34f01cb1c080bb94c9241872d4f91c30755491"
+                    },
+                    {
+                        "path":  "tests/test_pi_reliability.py",
+                        "sha256":  "2d9976d782c51f5f21192b59a5623ebc2a76f7f84b81d822b55fce6b4521c0b4"
+                    },
+                    {
+                        "path":  "tests/test_pi_resources.py",
+                        "sha256":  "82d288bc49c447e4568329caeb0e11a215322623fff025c17a396d075352a7e9"
+                    },
+                    {
+                        "path":  "tests/test_pi_runtime.py",
+                        "sha256":  "a0c88ab517b96c812b355a7c0c641c5d21a835585093032c3ce33280730edf5c"
+                    },
+                    {
+                        "path":  "tests/test_pi_server.py",
+                        "sha256":  "8432a2d175445874c95e87e929ede8df40314fb95f808fc8592ff247b61e2d47"
+                    },
+                    {
+                        "path":  "tests/test_pi_stage2.py",
+                        "sha256":  "01342b0e1debf734b0851c8af6a95dc102f2574ba054e0dfd13b4e0a97a02050"
+                    },
+                    {
+                        "path":  "tests/test_pi_usage_reconciliation.py",
+                        "sha256":  "9f043a8106b99b24deaa7057e0e795719e73816a7dc022faf9d6563ef7778a54"
+                    },
+                    {
+                        "path":  "tests/test_pi_usage_ui.py",
+                        "sha256":  "cde428794b4564e12dbed6b755c4cc977fa266e73018ec6b291fd6e8b3b439e3"
+                    },
+                    {
+                        "path":  "tests/test_pi_validation.py",
+                        "sha256":  "510a88faf32a3a73b566b81e336583838a3c7b07237ffa44a8fda21b7d8ea6ef"
+                    },
+                    {
+                        "path":  "tests/test_price_commitments.py",
+                        "sha256":  "78d6ba284f89c17b150eae2201e36461e00cdf882775743909ac8db172333e14"
+                    },
+                    {
+                        "path":  "tests/test_procurement_ledger.py",
+                        "sha256":  "6e94ed773814a26cb8fdece9b78933babc7b4570ac526920c5972cc6e2b3865e"
+                    },
+                    {
+                        "path":  "tests/test_product_matching.py",
+                        "sha256":  "a9d6e64288fbc93ce2161a428a54a20ff3e6434396d12ffaff34acdd5f96892e"
+                    },
+                    {
+                        "path":  "tests/test_product_scoring.py",
+                        "sha256":  "2983c2c5eb9b442d8589c5a2c7450b3aa36ed0a8f0881c6282942dccf6e79744"
+                    },
+                    {
+                        "path":  "tests/test_provider_capabilities.py",
+                        "sha256":  "0b4e82f5c789311f29403fdf5a7b847f3048347d9bb266a5e9616bce7c4976b9"
+                    },
+                    {
+                        "path":  "tests/test_provider_fetcher.py",
+                        "sha256":  "3e1ed8132a0c7b03cd2a2def0f7d7e2e97ebf1f2a385647f526c5042eae3a744"
+                    },
+                    {
+                        "path":  "tests/test_quote_provenance.py",
+                        "sha256":  "be8876b8e687565c4b0aef846ffb67fe3906876f2955174508859958e1c0028b"
+                    },
+                    {
+                        "path":  "tests/test_radar_dispatch.py",
+                        "sha256":  "7b4b4befce0e7916f63610bf202091577e900680da7f2d69654d8b644496195f"
+                    },
+                    {
+                        "path":  "tests/test_recovery_drills.py",
+                        "sha256":  "3cb8f693a9244daedbf7af3264f960d31a2b8725726518a5b6478b3615bd7f54"
+                    },
+                    {
+                        "path":  "tests/test_reply_drafts.py",
+                        "sha256":  "7d958192acbc0f02c6a6f9c99b024a0d97a7c79fa3fd0ac2075a25ae40bb66c1"
+                    },
+                    {
+                        "path":  "tests/test_reply_outbox.py",
+                        "sha256":  "82d81131b15d31e01e15a9250ba025589ad15515f8514f9012a8115436a225a0"
+                    },
+                    {
+                        "path":  "tests/test_reply_polish.py",
+                        "sha256":  "22c4ec9bc60a0b6525867fdd29034c9ca97fd4e5337b1caa0519bbfcd1e79558"
+                    },
+                    {
+                        "path":  "tests/test_reply_trace.py",
+                        "sha256":  "d78011d52edc846fd40d5fc6039d21043aa0a7dc9ee55f682a24c4f1e25496f3"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone10.py",
+                        "sha256":  "9e357e40511431c716d0767ad782f36e1c0bc3a1bc82fb60c79644675544d5dc"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone3.py",
+                        "sha256":  "e767243bc6968689b87f663a4f9fbfa51c2d942eb92b695cba6ff0fc3f91a848"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone4.py",
+                        "sha256":  "0e18b9d69ece06a0dc984a4b0fea605fc95aad220bc7b310435a9324261bba41"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone5.py",
+                        "sha256":  "42b64a012595994d22e2c1335c74b837e5df686a6bd1569558ebc10bb7195dc2"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone6.py",
+                        "sha256":  "5dc829b3f8ffd48381ac1c28775ea1f84d00ba65810c6ae0dbfc1c6e57ebd06e"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone7.py",
+                        "sha256":  "e51659a82f5c24d429f11150ba4765fe56c455ffc6589606504b0d78d25b81be"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone8.py",
+                        "sha256":  "76564327b4c74ba9b9a97e7698821de1ed7742221a90a087adeb692e25e81c7e"
+                    },
+                    {
+                        "path":  "tests/test_resale_milestone9.py",
+                        "sha256":  "306b2b17544e5e2530118f3dec60d98db7a67f32d2f6b14aca49e2af974bf8c0"
+                    },
+                    {
+                        "path":  "tests/test_resale_opportunities.py",
+                        "sha256":  "f54df676a6e8709ae73079b93f57438edfcbcdc98a59f8519c7968b55f9425db"
+                    },
+                    {
+                        "path":  "tests/test_resale_ui.py",
+                        "sha256":  "28b449bc8f64e7cdcd8a33cbcf37b5ff2bd9351b3cad47c8096fa681eafbf195"
+                    },
+                    {
+                        "path":  "tests/test_send_message.py",
+                        "sha256":  "fad9bca7f0d52ce383153d47bc3b9f07c1af0ef0e8b3f1e2e11aea349ddc0440"
+                    },
+                    {
+                        "path":  "tests/test_settings_env.py",
+                        "sha256":  "e087d345b3d68b6dcc05da205ab394262b8cbe6a673519993088ca9d34438459"
+                    },
+                    {
+                        "path":  "tests/test_single_execution_path.py",
+                        "sha256":  "7d2d4a2607d6fe5c302f301128678064653e4779bc557d4522f685416e5fcf32"
+                    },
+                    {
+                        "path":  "tests/test_source_quotas.py",
+                        "sha256":  "a08c045a705944bb3c156426bd4353085dd3b336a70a4e3b9a785aad3ec5f078"
+                    },
+                    {
+                        "path":  "tests/test_supplier_import.py",
+                        "sha256":  "232f4a93ea215e92cbc5009ac90448478876d9b4d68fc5c0e8305a08e954e25b"
+                    },
+                    {
+                        "path":  "tests/test_supplier_import_precision.py",
+                        "sha256":  "db3d9fe1cb8d5606d43163e7f6e4b6dc877e2bf3298e34f38c1e5e23eb667c4e"
+                    },
+                    {
+                        "path":  "tests/test_supplier_intake.py",
+                        "sha256":  "45d87226a321eb9be7e70f096537823f8f33a1a1b0cf9e4ef5c1ef99f60dc519"
+                    },
+                    {
+                        "path":  "tests/test_sync_persistence.py",
+                        "sha256":  "377a778391dbbbf205d252899a13a59d41f1a04ae5d0b1da157455ae1829bfe5"
+                    },
+                    {
+                        "path":  "tests/test_trial_run.py",
+                        "sha256":  "fc84ba8ccf58e5e3abde88c0dd0ef2c6c906eea9dfc07536bb3f6b81289cd81d"
+                    },
+                    {
+                        "path":  "tests/test_unit_economics.py",
+                        "sha256":  "f6c70834f6470c8413f5f1594f48c33bed5477394c2727a3bb346d929d9f8b70"
+                    },
+                    {
+                        "path":  "tests/test_work_orders.py",
+                        "sha256":  "3f352804aea1658f6e76c1f46afece80f1011c80447a8bbc42d90bcb674d5cd8"
+                    },
+                    {
+                        "path":  "tests/test_wp08_script.py",
+                        "sha256":  "4255c402aa071a14f765643f6e4a1a762fe4c8d2e78260e2980627470ad6ff83"
+                    },
+                    {
+                        "path":  "tests/test_xianguanjia_adapter.py",
+                        "sha256":  "77b74097e6b4bdadf8c336bbb14516af593008515b24b2ca739eabcceef16c05"
+                    },
+                    {
+                        "path":  "web/app.js",
+                        "sha256":  "e87e2265f6ffb86178fdbb0a5ebb99d7eb5c49faad9b32e15b606096d41723da"
+                    },
+                    {
+                        "path":  "web/console.html",
+                        "sha256":  "a805293d8a1087c4f7e3c5134ff2a509cc9413e20de73db2751a8d92e1643999"
+                    },
+                    {
+                        "path":  "web/intake-confirmation.js",
+                        "sha256":  "73bbd2aa8728c1d3f71ea9bd327448dd180d6bcaf7428d17e9a02bb1bcf6b8e6"
+                    },
+                    {
+                        "path":  "web/pi-usage.js",
+                        "sha256":  "8f511815da48e9357ffe4f176af09eb187e737a2a0bee81534c65a8cd03d4586"
+                    },
+                    {
+                        "path":  "web/style.css",
+                        "sha256":  "a27700ef215123863c4160e1d9031f110993cb5651c6775637d14c1395e0f07d"
+                    },
+                    {
+                        "path":  "xianyu_agent/__init__.py",
+                        "sha256":  "9a7f880928f626c21b5c70d2f37fd6257d46142a5d8c683cf729fa8580101202"
+                    },
+                    {
+                        "path":  "xianyu_agent/__main__.py",
+                        "sha256":  "e23736033765112d70dc9fa07bc75da39dcb7584f73fdd4c657813ef11226e54"
+                    },
+                    {
+                        "path":  "xianyu_agent/account_attribution.py",
+                        "sha256":  "0e97ea0cce4aff6055b473a2c696600985cb209efbf7a78f689952d7009f4159"
+                    },
+                    {
+                        "path":  "xianyu_agent/account_commercial_terms.py",
+                        "sha256":  "7ef57e511ab80cac9e326043fc7c1c5e77e3e94d2c09c81ffcbdb6475ee9b976"
+                    },
+                    {
+                        "path":  "xianyu_agent/account_ops_queues.py",
+                        "sha256":  "c7ca781110149564cf812ba5d61fed4fea97fa74f13171f41f19e9e52e7d68a3"
+                    },
+                    {
+                        "path":  "xianyu_agent/account_profiles.py",
+                        "sha256":  "ad95d1f4c4aef3c88cdf4705e6e76dc77409d3649ddd634cd7623aa33ffd8473"
+                    },
+                    {
+                        "path":  "xianyu_agent/account_prompt_profiles.py",
+                        "sha256":  "2c0bd7ed852071619013fe68f6003a4ff44df9557fc513d50a4983928c45b530"
+                    },
+                    {
+                        "path":  "xianyu_agent/account_runtime.py",
+                        "sha256":  "8f3a46f91de7dd34514d3ceadd110acb9ca0333a8447113c06e81a3817b6e797"
+                    },
+                    {
+                        "path":  "xianyu_agent/action_executor.py",
+                        "sha256":  "1e3cef26795f79298b7877c0b5b2240dfe6dabafa92fb6cade552ebc2ca6dd65"
+                    },
+                    {
+                        "path":  "xianyu_agent/action_scope.py",
+                        "sha256":  "1cd4816e43c49d2d2e6a64e6e57426d05ad9cb3e99e9a3707939a1d874cb552e"
+                    },
+                    {
+                        "path":  "xianyu_agent/adapters.py",
+                        "sha256":  "a105f6b195da4890b734dc9a534ebbab911db024d52952fa787cbfeb8fb908e5"
+                    },
+                    {
+                        "path":  "xianyu_agent/after_sales.py",
+                        "sha256":  "94ee7055df3e72888e11f1260b9fc96fea01ce301b8c650ecc2362f5ed31986b"
+                    },
+                    {
+                        "path":  "xianyu_agent/agent_jobs.py",
+                        "sha256":  "5377cefd3642ed651f21d2e9e39ad3685aad9c3039f79820c4e5fdc41cb9fa40"
+                    },
+                    {
+                        "path":  "xianyu_agent/agent_registry.py",
+                        "sha256":  "259be39cf9d8d130112c1a064637f289be33f3dff6e3d997db2ae001e08f75b4"
+                    },
+                    {
+                        "path":  "xianyu_agent/agent_scheduler.py",
+                        "sha256":  "fe1b7168030bac003cdf4beafb3409e78f89c6190fd82b524f57122dfb4dd798"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/__init__.py",
+                        "sha256":  "1a2230daf56e34bf210b00a5145bf984ea08fe3cafe3a13023061d3691733b1b"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/after_sales_agent.py",
+                        "sha256":  "445513a08a87ab47532c222f568798c98c90cab14b1eb25622c755b39c5b2d7f"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/analytics.py",
+                        "sha256":  "b1ea1d364c7d8559c94d4517f4b9336a69a2595ef82816d8ee220c1c414f668e"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/base.py",
+                        "sha256":  "eb5a15469e0f29438c5e11ac8e9c311fe4769e79302d62b92a900e26ffdfbe96"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/customer_service.py",
+                        "sha256":  "4a28765301ec56e780f71476745ac6c83195e4c18eb128bd1f5957487fe9e1fd"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/discovery.py",
+                        "sha256":  "421ba42708faee5cca00f0de66716f75b69ea75f1e5125587ac704b70a79af5f"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/github_agent.py",
+                        "sha256":  "70fe9bae9a404170530051b84c5b698c701fda0230874fc1b691dc207f7b2acb"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/listing.py",
+                        "sha256":  "77a6bacf66336c57d8e0a75dbe9dce1cde7a6be4e9e0606d5c90e0e9254e4139"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/order.py",
+                        "sha256":  "1268e5c256af789a84ae3903496224396c27d251db88d50d7f58113df695d61b"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/resale_pricing.py",
+                        "sha256":  "8cd994bee2fc791bb7fd48cc8a62f8a0460c8b9e643a95556e6ed6f639810681"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/resale_research.py",
+                        "sha256":  "267523c48920ce7dcf76bc84f31fdb2240d68e9de1356f2cffdd05b3251f7191"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/resale_risk.py",
+                        "sha256":  "e44ec25688219b4604d38dd576a44f0a79e6c1cffacebd86f2d3b199dd67f1e3"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/sourcing.py",
+                        "sha256":  "516d266495e6beb5286201a6770d4f571c75e8564ba2ef0384ade029c5b92c76"
+                    },
+                    {
+                        "path":  "xianyu_agent/agents/strategy.py",
+                        "sha256":  "a0a3430c86e788c13c6a730f43c37d0c067cfac2e2b4e95e86e86233eb1c2e44"
+                    },
+                    {
+                        "path":  "xianyu_agent/arbitrage.py",
+                        "sha256":  "4cecc171f40111d2f0767e16b84c41f96e40be671ff0c275a85f035853e1ae37"
+                    },
+                    {
+                        "path":  "xianyu_agent/auto_reply.py",
+                        "sha256":  "0538fa320654ba456ed4299a7ac73f84ff1958907e23a55e061b365ffe79303b"
+                    },
+                    {
+                        "path":  "xianyu_agent/backup.py",
+                        "sha256":  "148c3d4a08abd0ccec9be749cadc818612d12fbdaa0f8228d395597dcf1b2de3"
+                    },
+                    {
+                        "path":  "xianyu_agent/bridge_events.py",
+                        "sha256":  "2f1b4f72b740e808ad1a4c8a77265ed5c6f9fccc0db8e48ff02262f1bf0d677e"
+                    },
+                    {
+                        "path":  "xianyu_agent/browser_adapter.py",
+                        "sha256":  "260581b5de2016526e6e7db0363cd21f57a394cc92bae5949df279b208a552b3"
+                    },
+                    {
+                        "path":  "xianyu_agent/browser_control.py",
+                        "sha256":  "c3266e5338972268dd2a64e631ce1aae591e0bbf06610d96109c7e82dc72791f"
+                    },
+                    {
+                        "path":  "xianyu_agent/browser_pool.py",
+                        "sha256":  "2fb8512627f40a8f2e1e23f7de1660ff49d7081c13a8dc82ea1a69748fe871de"
+                    },
+                    {
+                        "path":  "xianyu_agent/browser_write_evidence.py",
+                        "sha256":  "b470b6510ca09cf2e560d5518928200a4da0a4b5cbda6c7f4c38c9b3884bd3d2"
+                    },
+                    {
+                        "path":  "xianyu_agent/budget_reservations.py",
+                        "sha256":  "bcbae917a596ad956e55e1af5680270e645ed8f7fc0de7f3b79d0e52dc85228b"
+                    },
+                    {
+                        "path":  "xianyu_agent/candidate_activation.py",
+                        "sha256":  "9e84003e30e4389b56c809fdda3c27d91f5629fd7b347fa73f5ddea76b7d1822"
+                    },
+                    {
+                        "path":  "xianyu_agent/candidate_evidence_store.py",
+                        "sha256":  "04453d645692d25938b8990ec7cef6154b9fead3daa17cd5cfbf5296c83f5744"
+                    },
+                    {
+                        "path":  "xianyu_agent/chat_events.py",
+                        "sha256":  "0fc243b6341e0f6798497a14bddfbcc5692412b98520291523ed2e6f07c9f02f"
+                    },
+                    {
+                        "path":  "xianyu_agent/cli.py",
+                        "sha256":  "827686d9f8a623aaea0b945b5814c5c14c5955fe6f60e90d4b4a3f227698816e"
+                    },
+                    {
+                        "path":  "xianyu_agent/commerce/__init__.py",
+                        "sha256":  "4ecdf23a00422792590fbb3e823ac6b5fdb339d9418afce14df7af7003b318cb"
+                    },
+                    {
+                        "path":  "xianyu_agent/commerce/contracts.py",
+                        "sha256":  "c7cc4d9c9aa1072102d2988bffde89404649d34c0269388ec3de405cc0f88d3f"
+                    },
+                    {
+                        "path":  "xianyu_agent/commerce/repositories.py",
+                        "sha256":  "fd6ea31fedbbbd6ebd0446cac0d6ecbb09e5e8d048d2f32e63dddd068ac420e4"
+                    },
+                    {
+                        "path":  "xianyu_agent/commercial_alpha_intake.py",
+                        "sha256":  "ad8c688a213b2ffc8a30619eee3e59501b983d786c26013679fbdc5e595fbfbd"
+                    },
+                    {
+                        "path":  "xianyu_agent/commercial_launch.py",
+                        "sha256":  "51f18ffcb0d4a7c16964d84918f4707b1425998bc4f2f71879b3b967e6c7d95f"
+                    },
+                    {
+                        "path":  "xianyu_agent/commercial_preflight.py",
+                        "sha256":  "696f9ab79baa57f43961c7223adc5f2d9931f58cbdcd41badd410ccfe6a11683"
+                    },
+                    {
+                        "path":  "xianyu_agent/commercial_trial.py",
+                        "sha256":  "5e6195d456ec6777db1c540a79895255a8e475ec9b54262f988cd2c08048b798"
+                    },
+                    {
+                        "path":  "xianyu_agent/config.py",
+                        "sha256":  "96a1ccfc04852de1f70ac0041aacd124aaeaa2ca7dcb5d5d7a149843ba335e20"
+                    },
+                    {
+                        "path":  "xianyu_agent/conversation_profiles.py",
+                        "sha256":  "996ef2772d6616752eb917af18e8b306955c2c73b646961b4e2716733ab084af"
+                    },
+                    {
+                        "path":  "xianyu_agent/cookie_manager.py",
+                        "sha256":  "4602cee994537aef8042974571e65c6eb85d6706e141760de8283f2722903210"
+                    },
+                    {
+                        "path":  "xianyu_agent/db_manager.py",
+                        "sha256":  "0f12d98048123e90318d677badcaad798b125a4705fb381aa8fa958cb23fae49"
+                    },
+                    {
+                        "path":  "xianyu_agent/db_migration.py",
+                        "sha256":  "bbf67fb95e70aee133bd2ba4a3fdad12752867fae7a58d2be4dbbfc2033cc522"
+                    },
+                    {
+                        "path":  "xianyu_agent/decision_records.py",
+                        "sha256":  "3fd0e6c81df6ce4627e64540a893720b954413ca4b22f67715da0b95fbb50faa"
+                    },
+                    {
+                        "path":  "xianyu_agent/discovery_inbox.py",
+                        "sha256":  "b3259b739a41010e0dbeefeeaf8df7596e79ae66af836fbc4e5bee02bb0a52dd"
+                    },
+                    {
+                        "path":  "xianyu_agent/execution_queue.py",
+                        "sha256":  "30a8683a0a235aa4b3525bfffb5bd0ae6a4f3fed7a2945425edbba249d12e45a"
+                    },
+                    {
+                        "path":  "xianyu_agent/feishu.py",
+                        "sha256":  "4fb0d099eeec2c37740bef326fe9ad514d38193f8d2d8ad19ed4e0b6bb4a77de"
+                    },
+                    {
+                        "path":  "xianyu_agent/first_run_readiness.py",
+                        "sha256":  "ddf2adb8686fba59430dbc744653ba9238e360debac24fa324467f7eaf49d6c6"
+                    },
+                    {
+                        "path":  "xianyu_agent/geetest/__init__.py",
+                        "sha256":  "d9438ce57c9eb9453b65735f61586d0ca59b78b4f62b5152d9d09384c0b4eb12"
+                    },
+                    {
+                        "path":  "xianyu_agent/geetest/geetest_config.py",
+                        "sha256":  "2202023e4b68eee93f55de26aaa6a4b32b32c7d64f7e378e64104556150e1f07"
+                    },
+                    {
+                        "path":  "xianyu_agent/geetest/geetest_lib.py",
+                        "sha256":  "b06e2f2063b11bc131f919af9e57ce45b4f2b1b4ca08d94b1c81334b728edaf7"
+                    },
+                    {
+                        "path":  "xianyu_agent/github_discovery.py",
+                        "sha256":  "007a9743c7c1c01a6dff431f615c2deea54b7a1613f93eb0e39042be45df2b38"
+                    },
+                    {
+                        "path":  "xianyu_agent/image_search.py",
+                        "sha256":  "7b9b40a3dd7f7c07eefbabf6c3ab7d50eee7dfe545c28100a56a58a7ba562dcd"
+                    },
+                    {
+                        "path":  "xianyu_agent/intake_confirmation.py",
+                        "sha256":  "5dff4d1bfbacac79a7623ab4196790a2ed58afc3ed8846bd486ea4acc3785dee"
+                    },
+                    {
+                        "path":  "xianyu_agent/inventory.py",
+                        "sha256":  "f09d5b4989add4a00400999202d93963d594fc39531324957bc4ffa763d8dbf1"
+                    },
+                    {
+                        "path":  "xianyu_agent/ledger_service.py",
+                        "sha256":  "43539fff8a95f50f97addc4f8bfe45c8f06b4644233085fc259d2060e407fb8d"
+                    },
+                    {
+                        "path":  "xianyu_agent/listing_guard.py",
+                        "sha256":  "f4d331ee6b72cf36e6124514eb17ab182e9188bb58d77c853b14e607c918b803"
+                    },
+                    {
+                        "path":  "xianyu_agent/listing_strategy.py",
+                        "sha256":  "53e46bfd36aceee7ce7b4a55bfdcfa27e16509487a80ba2ae38facd1c5b74efe"
+                    },
+                    {
+                        "path":  "xianyu_agent/llm.py",
+                        "sha256":  "34a2da22cc83a89eb754aa448b764e58f38919ead6c3d2e030834deac970090e"
+                    },
+                    {
+                        "path":  "xianyu_agent/llm_manager.py",
+                        "sha256":  "0d7da1eb84dd96bd8eba7fd4d3cfc2f1ab8df06bd55168fe70c746509a3a846a"
+                    },
+                    {
+                        "path":  "xianyu_agent/market_channel.py",
+                        "sha256":  "f693b33f1b127b6bf48f46c9426e7e8e730bd0eb2f037adda48bcbecf3aa6373"
+                    },
+                    {
+                        "path":  "xianyu_agent/memory.py",
+                        "sha256":  "558f828b1fda970055d722a5678cadfc5e19a35cdad9fa0f1d1dd785f689f49d"
+                    },
+                    {
+                        "path":  "xianyu_agent/message_envelope.py",
+                        "sha256":  "6f6fe97417b38fa00afdc07f56b9ce347916810c13d351e3ffcb1ebe30b1fb13"
+                    },
+                    {
+                        "path":  "xianyu_agent/message_import_scheduler.py",
+                        "sha256":  "e207a0d65acbbd60186f094e87e35f61d1c94f9f763c57924d787b1581c32a6c"
+                    },
+                    {
+                        "path":  "xianyu_agent/message_intake.py",
+                        "sha256":  "24e8a4f6c59cbfe557557323fc50b153ce6ec1a80cea1541ac1b0df72fd0244c"
+                    },
+                    {
+                        "path":  "xianyu_agent/models.py",
+                        "sha256":  "6a7caffb597dda925e0f0ce8484ddd6b99e9a26ab18322c5c0f4c0395f91be72"
+                    },
+                    {
+                        "path":  "xianyu_agent/opc_dashboard.py",
+                        "sha256":  "9dc95f3657c5bb69db4221ca0a7716396df2fb862352ec95c0d2d72fa0cfd14a"
+                    },
+                    {
+                        "path":  "xianyu_agent/openclaw_router.py",
+                        "sha256":  "8b642da8540767d5a0fa58aa177dbaab9992e4a74c48b39b713a33917adf3dad"
+                    },
+                    {
+                        "path":  "xianyu_agent/operating_mandates.py",
+                        "sha256":  "3e8cc16474fd936f4c63efaa2bf6100e42fa75123313992245be434a86bf8145"
+                    },
+                    {
+                        "path":  "xianyu_agent/opportunity_adoption.py",
+                        "sha256":  "68b1a8c1d583d79e641ca2b809c9ec0f65e8463137d2c3edd70cc10825441845"
+                    },
+                    {
+                        "path":  "xianyu_agent/opportunity_service.py",
+                        "sha256":  "ccbb4e9f284176372fd655e731520c0587ef3d25a09a61015024413a524172eb"
+                    },
+                    {
+                        "path":  "xianyu_agent/order_runtime.py",
+                        "sha256":  "9adc59bc42bc52ef92fbca2fab874a75dbdcdc3260c08af9d8dec82b17fd1ac9"
+                    },
+                    {
+                        "path":  "xianyu_agent/order_status_handler.py",
+                        "sha256":  "b3ef2ba9c8c7660f92c70302d6994fdfc263d4924abd4f97dcb13a2764b17707"
+                    },
+                    {
+                        "path":  "xianyu_agent/physical_sourcing.py",
+                        "sha256":  "dc80f73f06f1c4653e810a2a3c9a59e4df7a9097bd23f245688f63d407b10861"
+                    },
+                    {
+                        "path":  "xianyu_agent/pi_jobs.py",
+                        "sha256":  "0c65998f9719e12cc8b7e4d3f531cbc232a0ad96386c21650cfe5c28a1ce6ce2"
+                    },
+                    {
+                        "path":  "xianyu_agent/pi_runtime.py",
+                        "sha256":  "c1e650a9402250c0ecb1fa38907e204f7a6e0823e99f071e39925086ae1f5db2"
+                    },
+                    {
+                        "path":  "xianyu_agent/pi_usage_reconciliation.py",
+                        "sha256":  "6c479ad68a2725360cea3f182b6796aa8270e76f09d2e375d60213279932999f"
+                    },
+                    {
+                        "path":  "xianyu_agent/pi_validation.py",
+                        "sha256":  "7b0ce5c9000c4897bbafad030aae9fa0d3ae0f3e8124ed7648e83d540dd5f0ad"
+                    },
+                    {
+                        "path":  "xianyu_agent/platform_guard.py",
+                        "sha256":  "5a1f076e04400269f8c68929f71dee2ffae9e52ca6c1e84815dd4a74686847e4"
+                    },
+                    {
+                        "path":  "xianyu_agent/price_commitments.py",
+                        "sha256":  "2594327243cceca7bdde697b20b54d17360125a1f2bc54600328e138cddbb88e"
+                    },
+                    {
+                        "path":  "xianyu_agent/procurement.py",
+                        "sha256":  "fcd4ff9bb8dd838edc9859662901e2d294dba56638453af0cb65951d029bffe3"
+                    },
+                    {
+                        "path":  "xianyu_agent/product_discovery.py",
+                        "sha256":  "e86e1d8c1a2a6ba76c7adad8a47880f436c67c9dc6327c83489787c91750a53c"
+                    },
+                    {
+                        "path":  "xianyu_agent/product_matching.py",
+                        "sha256":  "a1b0168eeaa7f445a93214823c9fd49e4a3df542750373b210156743b5fc69b4"
+                    },
+                    {
+                        "path":  "xianyu_agent/providers/__init__.py",
+                        "sha256":  "490d7ac4215970d99d342a3677c866917e16b1495496c5d5a227739d6e8d7b2f"
+                    },
+                    {
+                        "path":  "xianyu_agent/providers/base.py",
+                        "sha256":  "93aba696b67cee3390c9e325336b62742222019dd62293ff52d3f96db729e2fb"
+                    },
+                    {
+                        "path":  "xianyu_agent/providers/capabilities.py",
+                        "sha256":  "54ff3d9dc43ebe2632b92b13171dd0cfc4837d6fe9be76f26ff447cfecef1fd1"
+                    },
+                    {
+                        "path":  "xianyu_agent/providers/fetcher.py",
+                        "sha256":  "9a1645ef28121aed69cb32f168fcd2e085289006d3b021beb39550c9bd6e46f7"
+                    },
+                    {
+                        "path":  "xianyu_agent/providers/freshness.py",
+                        "sha256":  "41f1408737c46bd38ea2a0524d90f278830a23deb2af29754fb7b7ded529d8aa"
+                    },
+                    {
+                        "path":  "xianyu_agent/providers/supplier_file.py",
+                        "sha256":  "50878e47f66d97f23b54a6fb1aca18d17bf97c18211429f915b8c5f9c4e72650"
+                    },
+                    {
+                        "path":  "xianyu_agent/quote_provenance.py",
+                        "sha256":  "bdaaa2f9913af033c89d166b82738e78c6bf1dbd8524e580d786243d0e39c429"
+                    },
+                    {
+                        "path":  "xianyu_agent/radar_dispatch.py",
+                        "sha256":  "4710703ddf0c4c5cdc835e99bc10281b3cc61045c2d9fe604bdac2bf55781eb8"
+                    },
+                    {
+                        "path":  "xianyu_agent/recovery.py",
+                        "sha256":  "96c42face128b86dc91c192b016cfabf42e26e996935c7d5fdfae71c42c45feb"
+                    },
+                    {
+                        "path":  "xianyu_agent/reply_drafts.py",
+                        "sha256":  "e34b29dc68f7dc67d4a5c7ef7ce55cfdcda5b2cf5e0f4f799d8e908bc3621df8"
+                    },
+                    {
+                        "path":  "xianyu_agent/reply_outbox.py",
+                        "sha256":  "8ade4ac4d41ab8bb0d9630ab41180a9dc60c1cff2a0cd22045ea9244238382b6"
+                    },
+                    {
+                        "path":  "xianyu_agent/resale.py",
+                        "sha256":  "4746d426fcae613841621cb945d773da1cabf5526b609456229b434f310713e8"
+                    },
+                    {
+                        "path":  "xianyu_agent/ruflo_integration.py",
+                        "sha256":  "3d2d177617aa331cdaa12ecf9d623879477c7902ca76b9a9c134aeed4c78d559"
+                    },
+                    {
+                        "path":  "xianyu_agent/scheduler.py",
+                        "sha256":  "da518407fd0f43b43898aac216573d46467f985c981ca5b0dce85aeb871d7a7f"
+                    },
+                    {
+                        "path":  "xianyu_agent/secure_confirm.py",
+                        "sha256":  "93e3613371fa7396b0670170abbe38766a6b8f9b366c30b69de7c443fcbc4af9"
+                    },
+                    {
+                        "path":  "xianyu_agent/server.py",
+                        "sha256":  "498aff00c9d9bef6e974d6013a94edecb29d7478d0203cb699fe9489e52734fc"
+                    },
+                    {
+                        "path":  "xianyu_agent/shadow_observer.py",
+                        "sha256":  "c63f9217c005ce2f070fc1a587e527bacd4159b3086e2603a79d278ff3f29bc5"
+                    },
+                    {
+                        "path":  "xianyu_agent/source_quotas.py",
+                        "sha256":  "8d94477ed5e304fafb761cf7bbab139973a2c8f9e430be3946581c733055345d"
+                    },
+                    {
+                        "path":  "xianyu_agent/storage.py",
+                        "sha256":  "34f47068ea3b34686459469be6eb7f63e2477c6e328b1ccab9ae3e8a9675e997"
+                    },
+                    {
+                        "path":  "xianyu_agent/supplier_import.py",
+                        "sha256":  "3389c77bba56c7fa27eb4fcc1cc855d4164910cfee6be250a5d03197db9e09bd"
+                    },
+                    {
+                        "path":  "xianyu_agent/supplier_intake.py",
+                        "sha256":  "c4e214f1092f16f018ef7c17de358ab343b514e3ee831c26d6bbae121e50c78f"
+                    },
+                    {
+                        "path":  "xianyu_agent/sync_persistence.py",
+                        "sha256":  "10a7f787558f7d4ecf59499ee3ccb72e19821a19e46d4a86fc869bb2633bd2bc"
+                    },
+                    {
+                        "path":  "xianyu_agent/trial_run.py",
+                        "sha256":  "1888ac0244663a076ab723731dc5aed7a55dd29289267fb664d195850d736e15"
+                    },
+                    {
+                        "path":  "xianyu_agent/unit_economics.py",
+                        "sha256":  "49178e21553101b8f5380f9456e3a19292f70459f9c420fc955e1a02cacc065f"
+                    },
+                    {
+                        "path":  "xianyu_agent/url_crawler.py",
+                        "sha256":  "c20ea2ef907c056ed35ae561181f42491a5f4197778e08729a80d1dd30c2fbf1"
+                    },
+                    {
+                        "path":  "xianyu_agent/work_orders.py",
+                        "sha256":  "dfd37a214a192bfd244a8980b2822ee5562fd79a19334b6af495e88ad67bd23a"
+                    },
+                    {
+                        "path":  "xianyu_agent/workflow.py",
+                        "sha256":  "08d5313ab72627476809fa96f517d5e718a3de373038240c0e14cb3928ca30a0"
+                    },
+                    {
+                        "path":  "xianyu_agent/xianyu_crypto.py",
+                        "sha256":  "ac710cc5062abb41fce834ff3fce34797ca82cb43b33181d73212996f3931b86"
+                    },
+                    {
+                        "path":  "xianyu_agent/xianyu_ws.py",
+                        "sha256":  "d18cd88c95ca4034659362125af9938f0dcc3855ad9a26d10a986f71326c3ba1"
+                    }
+                ],
+    "live":  [
+                 {
+                     "path":  "data/live/agent_collaboration.jsonl",
+                     "sha256":  "aba68c53212137e89415d048d75511ee1186447eb426c5d23ad364128d446228"
+                 },
+                 {
+                     "path":  "data/live/commerce/agent_jobs.json",
+                     "sha256":  "256e5b2eaf7ed670ec9037610d1adb3746fac74d17111a313086b80fb8635507"
+                 },
+                 {
+                     "path":  "data/live/commerce/decisions.json",
+                     "sha256":  "57e251db2b38397f5cf726f042528b7dfeb9204d762d2bc10e9b0ae3bc17862c"
+                 },
+                 {
+                     "path":  "data/live/commerce/provider_capabilities.json",
+                     "sha256":  "0001ba6cbd1c7015d0fa1b27842ccf4b6f59d4917a70e88af89f9620ccb5a14a"
+                 },
+                 {
+                     "path":  "data/live/commercial_trial_reports/ct_1535df990771.md",
+                     "sha256":  "d133c61ed07a002220ee7e4b7ff5ab650ef54d9c553eeb53843e04caecc608da"
+                 },
+                 {
+                     "path":  "data/live/events.jsonl",
+                     "sha256":  "8fc2348f7b0f1c612c59a7ad7a49a92895139a83ff12917f9b9d419b6ad64295"
+                 },
+                 {
+                     "path":  "data/live/execution_jobs.json.lock",
+                     "sha256":  "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+                 },
+                 {
+                     "path":  "data/live/memory/profile.json",
+                     "sha256":  "9480ea0bf6bad8b8a602098a0d79ad238d61d7646a5c3a894057dc2639bba2e7"
+                 },
+                 {
+                     "path":  "data/live/order_runtime_state.json",
+                     "sha256":  "4382b57fc4f20c2ac944a7f3cd62886aff3e2f63fd4102c521fd34f5217b5bfb"
+                 },
+                 {
+                     "path":  "data/live/pi_agent/auth.json",
+                     "sha256":  "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                 },
+                 {
+                     "path":  "data/live/pi_agent/models-store.json",
+                     "sha256":  "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+                 },
+                 {
+                     "path":  "data/live/pi_sessions/2026-08-17T18-32-52-966Z_7c0d869e-8133-5686-8ef6-1d0fbcb9a2f4.jsonl",
+                     "sha256":  "4296cb30abe06f1ff1595e876cf763a24f2c81fda8243188d5e998fa741c137c"
+                 },
+                 {
+                     "path":  "data/live/pi_sessions/2026-09-21T03-04-30-273Z_pi-jobs-xianyu.jsonl",
+                     "sha256":  "11ba83a18b3c00c4f7a13693d74cf58f9d501d15b30630cc7bb94b962adfd864"
+                 },
+                 {
+                     "path":  "data/live/price_commitments.json.lock",
+                     "sha256":  "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+                 },
+                 {
+                     "path":  "data/live/resale_candidates.json",
+                     "sha256":  "eeccf9bf98853d6ccd9c9d14dcda2490c39c3e15958aa779ed439519021fe47e"
+                 },
+                 {
+                     "path":  "data/live/research/2026-08-02T10-29-58-github-opportunities.json",
+                     "sha256":  "d513254cb63f360f6b013145e83b8c76bb25747117dbf58b1c4e79643522d74f"
+                 },
+                 {
+                     "path":  "data/live/research/2026-08-02T10-30-00-github-opportunities.json",
+                     "sha256":  "d513254cb63f360f6b013145e83b8c76bb25747117dbf58b1c4e79643522d74f"
+                 },
+                 {
+                     "path":  "data/live/research/2026-08-11T10-30-00-github-opportunities.json",
+                     "sha256":  "d513254cb63f360f6b013145e83b8c76bb25747117dbf58b1c4e79643522d74f"
+                 },
+                 {
+                     "path":  "data/live/work_orders.json",
+                     "sha256":  "73b8eb77e4c66aa1f1727db349df4272122a875d51f434100ce5c76c6747d9bd"
+                 },
+                 {
+                     "path":  "data/live/xianyu_data.db",
+                     "sha256":  "ff592fe4260460ddd53876e97eec68753be8f2e08d054517c7eb7a0517124564"
+                 }
+             ]
+}

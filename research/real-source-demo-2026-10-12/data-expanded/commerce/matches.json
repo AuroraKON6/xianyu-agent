@@ -1,0 +1,603 @@
+[
+  {
+    "record_type": "product_match",
+    "record_id": "match_f83958c8a647416b",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_5bfb2ec9e2b84c54",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.881288+00:00",
+    "left_snapshot_id": "offer_aa368255c5f345da",
+    "right_snapshot_id": "offer_f9daa25002eb4dc1",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "COMPARABLE",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "美星",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "mx201dbl",
+        "right": "mx201dbl",
+        "state": "pass"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      },
+      {
+        "field": "feature_counts",
+        "left": [],
+        "right": [
+          "('层', 2)"
+        ],
+        "state": "unknown"
+      },
+      {
+        "field": "steel_grade",
+        "left": "",
+        "right": "201",
+        "state": "unknown"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "non-critical unknowns: brand, dimensions, material, feature_counts, steel_grade (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_8541da73cd5f4a97",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_68127f729bb341fb",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:25.960698+00:00",
+    "left_snapshot_id": "offer_207cc80fe4334787",
+    "right_snapshot_id": "offer_af8eedb4ca49424a",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "COMPARABLE",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "未具名",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "cj304dbl",
+        "right": "cj304dbl",
+        "state": "pass"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      },
+      {
+        "field": "feature_counts",
+        "left": [],
+        "right": [
+          "('层', 2)"
+        ],
+        "state": "unknown"
+      },
+      {
+        "field": "steel_grade",
+        "left": "",
+        "right": "304",
+        "state": "unknown"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "non-critical unknowns: brand, dimensions, material, feature_counts, steel_grade (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_c271b37233904de7",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_4b56501c44c141ef",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.044176+00:00",
+    "left_snapshot_id": "offer_32c9464e53034a3d",
+    "right_snapshot_id": "offer_aa62cf9770094bc0",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "UNKNOWN",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "鸿鑫隆",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "",
+        "right": "",
+        "state": "unknown"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "critical constraints unknown: brand, model, dimensions, material (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_3691cb9229404fa9",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_f7a92d8fb62e4f7e",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.143264+00:00",
+    "left_snapshot_id": "offer_5974cba95d3e487c",
+    "right_snapshot_id": "offer_0a00bf041b3e4be1",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "COMPARABLE",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "未具名",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "lsj65",
+        "right": "lsj65",
+        "state": "pass"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "non-critical unknowns: brand, dimensions, material (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_590fb396a7194e92",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_bf7404c1b9544d0e",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.225668+00:00",
+    "left_snapshot_id": "offer_d3e210f28b1b4cfd",
+    "right_snapshot_id": "offer_d820ca6c59c74ce5",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "COMPARABLE",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "未具名",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "cd304sx",
+        "right": "cd304sx",
+        "state": "pass"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      },
+      {
+        "field": "feature_counts",
+        "left": [],
+        "right": [
+          "('星', 2)"
+        ],
+        "state": "unknown"
+      },
+      {
+        "field": "steel_grade",
+        "left": "",
+        "right": "304",
+        "state": "unknown"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "non-critical unknowns: brand, dimensions, material, feature_counts, steel_grade (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_431b37bf53b04a29",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_0a6aae2d3c274f23",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.317630+00:00",
+    "left_snapshot_id": "offer_17e6c1e4b04c4a2a",
+    "right_snapshot_id": "offer_570defa6cc2948c6",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "UNKNOWN",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "未具名",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "",
+        "right": "",
+        "state": "unknown"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      },
+      {
+        "field": "feature_counts",
+        "left": [],
+        "right": [
+          "('星', 2)"
+        ],
+        "state": "unknown"
+      },
+      {
+        "field": "steel_grade",
+        "left": "",
+        "right": "304",
+        "state": "unknown"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "critical constraints unknown: brand, model, dimensions, material, feature_counts, steel_grade (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_2f6103ee184c457c",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_ab4148d573ec4ff4",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.415441+00:00",
+    "left_snapshot_id": "offer_3ea0d9b6cb5f4b58",
+    "right_snapshot_id": "offer_8d9bc1022c5646ba",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "UNKNOWN",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "创美特",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "",
+        "right": "",
+        "state": "unknown"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "critical constraints unknown: brand, model, dimensions, material (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_5b7687e4feab4b96",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_e6b20e1f298447ca",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T08:17:26.538024+00:00",
+    "left_snapshot_id": "offer_db2fab65280f4586",
+    "right_snapshot_id": "offer_3077f36043ff4a74",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "UNKNOWN",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "海涛",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "",
+        "right": "",
+        "state": "unknown"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "critical constraints unknown: brand, model, dimensions, material (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  },
+  {
+    "record_type": "product_match",
+    "record_id": "match_01cfba474b7541d5",
+    "scope": "domestic_xianyu",
+    "account_id": "",
+    "source_ref": "matching:hard-constraints-v1",
+    "trace_id": "trace_8b8f10a3109d4ef0",
+    "schema_version": 1,
+    "revision": 1,
+    "created_at": "2026-10-12T10:13:35.566351+00:00",
+    "left_snapshot_id": "offer_c131b6aa15084e1c",
+    "right_snapshot_id": "offer_f9daa25002eb4dc1",
+    "left_snapshot_revision": 1,
+    "right_snapshot_revision": 1,
+    "grade": "COMPARABLE",
+    "rule_version": "hard-constraints-v1",
+    "hard_constraints": [
+      {
+        "field": "condition",
+        "left": "new",
+        "right": "new",
+        "state": "pass"
+      },
+      {
+        "field": "brand",
+        "left": "",
+        "right": "美星",
+        "state": "unknown"
+      },
+      {
+        "field": "model",
+        "left": "mx201dbl",
+        "right": "mx201dbl",
+        "state": "pass"
+      },
+      {
+        "field": "dimensions",
+        "left": null,
+        "right": null,
+        "state": "unknown"
+      },
+      {
+        "field": "material",
+        "left": "",
+        "right": "不锈钢",
+        "state": "unknown"
+      },
+      {
+        "field": "unit_class",
+        "left": "piece",
+        "right": "piece",
+        "state": "pass"
+      },
+      {
+        "field": "feature_counts",
+        "left": [],
+        "right": [
+          "('层', 2)"
+        ],
+        "state": "unknown"
+      },
+      {
+        "field": "steel_grade",
+        "left": "",
+        "right": "201",
+        "state": "unknown"
+      }
+    ],
+    "conflicts": [],
+    "recall_score": 0.0,
+    "explanation": "non-critical unknowns: brand, dimensions, material, feature_counts, steel_grade (recall similarity 0.00 is reporting only, not proof)",
+    "human_correction": null
+  }
+]
