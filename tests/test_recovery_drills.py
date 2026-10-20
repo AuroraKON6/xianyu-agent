@@ -171,6 +171,7 @@ class RestartRecoveryDrills(DrillBase):
         result = self.opportunities.evaluate(
             self.opportunity["record_id"],
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging=money("5"),
             expected_return_loss=money("12"),
             attributable_costs=money("4"),
@@ -245,6 +246,7 @@ class FullFlowCombinationDrill(DrillBase):
         evaluated = self.opportunities.evaluate(
             self.opportunity["record_id"],
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging=money("5"),
             expected_return_loss=money("12"),
             attributable_costs=money("4"),
@@ -298,6 +300,7 @@ class FullFlowCombinationDrill(DrillBase):
         rechecked = self.opportunities.evaluate(
             self.opportunity["record_id"],
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging=money("5"),
             expected_return_loss=money("12"),
             attributable_costs=money("4"),

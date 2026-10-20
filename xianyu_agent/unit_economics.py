@@ -41,7 +41,7 @@ from .commerce.contracts import (
     money_from_mapping,
 )
 
-ECONOMICS_RULE_VERSION = "unit-economics-v1"
+ECONOMICS_RULE_VERSION = "unit-economics-v2"
 
 SCENARIO_CONSERVATIVE = "conservative"
 SCENARIO_BASE = "base"
@@ -101,17 +101,27 @@ def compute_platform_fee(
     rate: Optional[str],
     fixed: Optional[str],
 ) -> Money:
-    """price * rate + fixed; unknown when either parameter is missing."""
+    """price * rate + fixed; unknown unless the terms pair is complete.
+
+    R09: exactly one of rate/fixed is a PARTIAL contract — the missing
+    half is an unknown fee, never a silent 0 (declare ``"0"`` when a
+    contract genuinely has no fixed component).
+    """
     if rate is None and fixed is None:
         return Money.unknown("platform fee terms not provided (need current account+category rate/fixed)")
+    if rate is None:
+        return Money.unknown(
+            "partial platform fee terms: fixed provided without rate; declare rate explicitly ('0' when none)"
+        )
+    if fixed is None:
+        return Money.unknown(
+            "partial platform fee terms: rate provided without fixed; declare fixed explicitly ('0' when none)"
+        )
     price = sale_price
     if price.state != PRICE_STATE_KNOWN:
         return Money.unknown("sale price unknown, cannot compute platform fee")
-    total = Decimal("0")
-    if rate is not None:
-        total += price.amount * Decimal(str(rate))  # type: ignore[union-attr]
-    if fixed is not None:
-        total += Decimal(str(fixed))
+    total = Decimal(str(rate)) * price.amount  # type: ignore[union-attr]
+    total += Decimal(str(fixed))
     return Money.known(total, price.currency)
 
 
@@ -119,17 +129,68 @@ def compute_return_loss(
     *,
     probability: Optional[str],
     loss_amount: Optional[Mapping[str, Any]],
+    return_freight: Optional[Mapping[str, Any]] = None,
 ) -> Money:
-    if probability is not None and loss_amount is not None:
-        loss = money_from_mapping(loss_amount, field_name="loss_amount")
+    """Expected return loss; a quoted return freight can be the loss basis.
+
+    R09: ``return_freight`` is the first-class handle for 退货运费 — when
+    a probability exists, the quoted return freight serves as the loss
+    amount basis; a quoted freight without a probability basis stays
+    unknown (never guessed).
+    """
+    basis = loss_amount if loss_amount is not None else return_freight
+    if probability is not None and basis is not None:
+        loss = money_from_mapping(basis, field_name="return_loss_basis")
         if loss.state != PRICE_STATE_KNOWN:
-            return Money.unknown("loss_amount unknown")
+            return Money.unknown("return loss basis unknown")
         if Decimal(str(probability)) < 0 or Decimal(str(probability)) > 1:
             raise EconomicsError("return probability must be within [0, 1]")
         return Money.known(Decimal(str(probability)) * loss.amount, loss.currency)  # type: ignore[union-attr]
-    if loss_amount is not None:
-        return money_from_mapping(loss_amount, field_name="loss_amount")
+    if basis is not None:
+        return money_from_mapping(basis, field_name="return_loss_basis")
     return Money.unknown("return loss inputs not provided")
+
+
+def _tax_component(tax: Optional[Mapping[str, Any]]) -> Optional[Dict[str, Any]]:
+    """R09: tax applicability with source; the rate is recorded, never
+    assumed/applied by this module (the amount must come from the quote's
+    tax terms)."""
+    if tax is None:
+        return None
+    applicability = str(tax.get("applicability") or "").strip().lower()
+    source = str(tax.get("source") or "").strip()
+    if applicability == "not_applicable":
+        return {
+            "component": Money.not_applicable(),
+            "applicability": applicability,
+            "source": source or "unspecified",
+        }
+    if applicability == "applies":
+        amount = tax.get("amount")
+        declared_rate = None if tax.get("rate") is None else str(tax.get("rate"))
+        if amount is None:
+            return {
+                "component": Money.unknown(
+                    "tax applies but amount not provided; rate is never assumed"
+                ),
+                "applicability": applicability,
+                "source": source or "unspecified",
+                "declared_rate": declared_rate,
+            }
+        money = money_from_mapping(amount, field_name="tax")
+        return {
+            "component": money,
+            "applicability": applicability,
+            "source": source or "unspecified",
+            "declared_rate": declared_rate,
+        }
+    return {
+        "component": Money.unknown(
+            "tax applicability not assessed for this quote (declare applies/not_applicable with a source)"
+        ),
+        "applicability": applicability or "unknown",
+        "source": source or "unspecified",
+    }
 
 
 def compute_unit_economics(
@@ -144,6 +205,8 @@ def compute_unit_economics(
     expected_return_loss: Optional[Mapping[str, Any]] = None,
     return_probability: Optional[str] = None,
     return_loss_amount: Optional[Mapping[str, Any]] = None,
+    return_freight: Optional[Mapping[str, Any]] = None,
+    tax: Optional[Mapping[str, Any]] = None,
     installation: Optional[Mapping[str, Any]] = None,
     after_sales_reserve: Optional[Mapping[str, Any]] = None,
     attributable_costs: Optional[Mapping[str, Any]] = None,
@@ -177,6 +240,18 @@ def compute_unit_economics(
         sale = money_from_mapping(
             scenario_value(scenario, "sale_price", sale_price), field_name="sale_price"
         )
+        # R09: procurement and supplier freight are stress-overridable per
+        # scenario (a conservative procurement price increase must actually
+        # reach the conservative profit); the base values stay the basis
+        # for cash_occupied below.
+        procurement_scenario = money_from_mapping(
+            scenario_value(scenario, "procurement_cost", procurement_cost),
+            field_name="procurement_cost",
+        )
+        freight_scenario = money_from_mapping(
+            scenario_value(scenario, "supplier_freight", supplier_freight),
+            field_name="supplier_freight",
+        )
         fee = money_from_mapping(
             scenario_value(scenario, "platform_fee", platform_fee), field_name="platform_fee"
         )
@@ -198,12 +273,14 @@ def compute_unit_economics(
         elif ret_loss.state == PRICE_STATE_UNKNOWN:
             prob = scenario_value(scenario, "return_probability", return_probability)
             loss_amt = scenario_value(scenario, "return_loss_amount", return_loss_amount)
-            ret_loss = compute_return_loss(probability=prob, loss_amount=loss_amt)
+            ret_loss = compute_return_loss(probability=prob, loss_amount=loss_amt,
+                                            return_freight=return_freight)
 
+        tax_info = _tax_component(tax)
         components: Dict[str, Money] = {
             "sale_price": sale,
-            "procurement_cost": procurement,
-            "supplier_freight": freight,
+            "procurement_cost": procurement_scenario,
+            "supplier_freight": freight_scenario,
             "packaging": _money(scenario_value(scenario, "packaging", packaging), field_name="packaging"),
             "platform_fee": fee,
             "expected_return_loss": ret_loss,
@@ -211,6 +288,8 @@ def compute_unit_economics(
             "after_sales_reserve": _money(scenario_value(scenario, "after_sales_reserve", after_sales_reserve), field_name="after_sales_reserve", default_not_applicable=True),
             "attributable_costs": _money(scenario_value(scenario, "attributable_costs", attributable_costs), field_name="attributable_costs", default_not_applicable=True),
         }
+        if tax_info is not None:
+            components["tax"] = tax_info["component"]
 
         inflow = components["sale_price"]
         outflow = sum_components(
@@ -237,7 +316,11 @@ def compute_unit_economics(
             else None
         )
 
-        # break-even / minimum viable sale price from known cost structure
+        # break-even / minimum viable sale price from known cost structure.
+        # R09 honesty: a break-even may NEVER present a fee-excluded cost
+        # structure as complete — it is known only under the full rate
+        # model, or when every outflow component (platform fee included,
+        # not_applicable excepted) is known.
         fixed_out = sum_components(
             {
                 name: value
@@ -245,27 +328,35 @@ def compute_unit_economics(
                 if name not in ("sale_price", "platform_fee")
             }
         )
+        fee_complete = fee.state in (PRICE_STATE_KNOWN, PRICE_STATE_NOT_APPLICABLE)
         if (
             fee.state == PRICE_STATE_KNOWN
             and fixed_out.state == PRICE_STATE_KNOWN
             and platform_fee_rate is not None
+            and platform_fee_fixed is not None
             and Decimal(str(platform_fee_rate)) < 1
         ):
             rate = Decimal(str(platform_fee_rate))
-            fixed_fee = Decimal(str(platform_fee_fixed or "0"))
+            fixed_fee = Decimal(str(platform_fee_fixed))
             break_even = (fixed_out.amount + fixed_fee) / (Decimal("1") - rate)  # type: ignore[union-attr]
             currency = fee.currency
-        elif fixed_out.state == PRICE_STATE_KNOWN:
+        elif fixed_out.state == PRICE_STATE_KNOWN and fee_complete:
             break_even = fixed_out.amount  # type: ignore[union-attr]
             currency = fixed_out.currency
         else:
             break_even = None
             currency = inflow.currency if inflow.state == PRICE_STATE_KNOWN else "CNY"
+        break_even_note = None
+        if break_even is None:
+            break_even_note = (
+                "cost structure incomplete (platform fee or another component unknown); "
+                "a fee-excluded break-even must not be presented as valid"
+            )
 
         min_viable = break_even
-        if break_even is not None and target_margin is not None and platform_fee_rate is not None:
+        if break_even is not None and target_margin is not None and platform_fee_rate is not None and platform_fee_fixed is not None:
             rate = Decimal(str(platform_fee_rate))
-            fixed_fee = Decimal(str(platform_fee_fixed or "0"))
+            fixed_fee = Decimal(str(platform_fee_fixed))
             desired = Decimal(str(target_margin))
             if rate + desired < 1:
                 min_viable = (fixed_out.amount + fixed_fee) / (Decimal("1") - rate - desired)  # type: ignore[union-attr]
@@ -274,7 +365,7 @@ def compute_unit_economics(
             "components": {name: value.to_dict() for name, value in components.items()},
             "contribution_profit": profit.to_dict(),
             "contribution_margin": str(margin.quantize(Decimal("0.0001"))) if margin is not None else None,
-            "break_even_price": Money.known(break_even, currency).to_dict() if break_even is not None else Money.unknown("cost structure incomplete").to_dict(),
+            "break_even_price": Money.known(break_even, currency).to_dict() if break_even is not None else Money.unknown(break_even_note or "cost structure incomplete").to_dict(),
             "min_viable_price": Money.known(min_viable, currency).to_dict() if min_viable is not None else None,
             "status": profit.state,
             "missing": [
@@ -283,6 +374,12 @@ def compute_unit_economics(
                 if value.state == PRICE_STATE_UNKNOWN
             ],
         }
+        if tax_info is not None:
+            scenarios[scenario]["tax"] = {
+                "applicability": tax_info["applicability"],
+                "source": tax_info["source"],
+                **({"declared_rate": tax_info["declared_rate"]} if "declared_rate" in tax_info else {}),
+            }
         if freight_note and scenario == SCENARIO_BASE:
             scenarios[scenario]["notes"] = [freight_note]
 
@@ -318,4 +415,13 @@ def compute_unit_economics(
         "cash_occupied": cash_occupied.to_dict(),
         "evidence_gaps": sorted(set(evidence_gaps)),
         "computed_with_estimated_platform_fee": platform_fee_rate is not None,
+        "tax_applicability": (
+            {"state": "provided", "source": str((tax or {}).get("source") or "")}
+            if tax is not None
+            else {
+                "state": "not_assessed",
+                "note": "current quotes are assumed tax-inclusive; pass tax terms "
+                        "(applicability + source + amount) when a quote is ex-tax",
+            }
+        ),
     }

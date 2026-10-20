@@ -56,6 +56,9 @@ PRICE_KIND_UNKNOWN = "unknown"
 
 DEFAULT_MAX_PAGES = 5
 DEFAULT_PAGE_RETRIES = 2
+# R08: a 429 can never be followed by an immediate zero-delay retry; the
+# cooldown grows with the attempt index (2s, 4s, ...).
+RATE_LIMIT_COOLDOWN_SECONDS = 2.0
 
 _RANGE_RE = re.compile(r"^\s*([0-9]+(?:\.[0-9]+)?)\s*[-~至到]\s*([0-9]+(?:\.[0-9]+)?)\s*$")
 _NUMBER_RE = re.compile(r"^\s*([0-9]+(?:\.[0-9]+)?)\s*$")
@@ -384,10 +387,14 @@ class ChannelFetchSession:
         self._sleep = sleep or (lambda _seconds: None)
         self._now = now
         self._auth_invalid = False
-        # Codex D7: composition-root wiring. When the caller does not pass a
-        # per-source quota ledger, default to the persisted ledger that lives
-        # next to the repositories, so real fetch attempts (retries and later
-        # pages included) are metered against the recorded contract.
+        self._quota_unknown_refused = False
+        # Codex D7 + R08: composition-root wiring. When the caller does not
+        # pass a per-source quota ledger, default to the persisted ledger
+        # that lives next to the repositories. Every transport attempt is
+        # authorized BEFORE it happens: the first request must claim the
+        # caller's single-use precharge ticket; retries and further pages
+        # meter themselves. Fresh sessions without a verified ticket meter
+        # from the start -- a spent precharge can never be reused.
         self._quota_ledger = quota_ledger
         if self._quota_ledger is None:
             data_dir = getattr(repos, "data_dir", None)
@@ -396,12 +403,6 @@ class ChannelFetchSession:
                 self._quota_ledger = SourceQuotaLedger(data_dir)
         self._quota_source = str(quota_source or MARKET_CHANNEL_PROVIDER)
         self._quota_manual = bool(quota_manual)
-        # Codex D7: the CALLER precharges the session's first request (the
-        # fetch call itself is one authorized attempt); the session meters
-        # every additional attempt itself. Unmanaged sources (no contract
-        # recorded anywhere) stay unmetered here -- the background dispatcher
-        # refuses unattended loops against them separately.
-        self._first_request_pending = True
 
     def fetch(self, *, resume_token: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
         if resume_token is not None and not isinstance(resume_token, Mapping):
@@ -424,6 +425,12 @@ class ChannelFetchSession:
                 if self._auth_invalid:
                     status = "auth_invalid"
                     stop_reason = "credentials rejected by the channel; session stopped without retry"
+                elif self._quota_unknown_refused:
+                    status = "quota_unknown"
+                    stop_reason = (
+                        "no contract limit recorded for this source; unattended fetch "
+                        "refused before any transport attempt"
+                    )
                 else:
                     status = "degraded"
                     stop_reason = "page failed after retries; partial results saved"
@@ -489,32 +496,53 @@ class ChannelFetchSession:
                     "inferred as delisted or zero stock",
         }
 
+    def _admit_attempt(self, cursor: str, failed_pages: List[Dict[str, Any]]) -> bool:
+        """Authorize ONE transport attempt BEFORE it happens (R08).
+
+        * unmanaged source + unattended -> refuse outright (no transport);
+        * an outstanding, still-current precharge ticket -> claim it
+          (the attempt is already counted by the authorizing caller);
+        * otherwise meter this attempt (retries and pages included).
+        """
+        if self._quota_ledger is None or not self._quota_source:
+            return True
+        if not self._quota_ledger.is_managed(self._quota_source):
+            if self._quota_manual:
+                # manual fetch on an uncontracted source stays allowed and
+                # is still COUNTED (no gate, no ticket)
+                self._quota_ledger.record_attempt(
+                    self._quota_source, manual=True, now=self._now
+                )
+                return True
+            self._quota_unknown_refused = True
+            failed_pages.append({
+                "page_cursor": cursor, "error_kind": "quota_unknown",
+                "error": (
+                    f"source {self._quota_source}: no contract limit recorded; "
+                    "unattended fetch refused before any transport attempt"
+                ),
+            })
+            return False
+        if self._quota_ledger.claim_precharge(
+            self._quota_source, manual=self._quota_manual, now=self._now
+        ):
+            return True
+        try:
+            self._quota_ledger.consume_attempt(
+                self._quota_source, manual=self._quota_manual, now=self._now
+            )
+            return True
+        except Exception as exc:  # QuotaExhausted / UnattendedQuotaUnknown
+            failed_pages.append({"page_cursor": cursor, "error_kind": "quota_exhausted",
+                                 "error": str(exc)})
+            return False
+
     def _fetch_page_with_retries(self, cursor: str, failed_pages: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         attempts = self._page_retries + 1
         last: Dict[str, Any] = {}
         for attempt in range(attempts):
-            # Codex D7: meter every attempt EXCEPT the session's first --
-            # that one is precharged by the caller who authorized the fetch
-            if (
-                self._quota_ledger is not None
-                and self._quota_source
-                and self._quota_ledger.is_managed(self._quota_source)
-            ):
-                if self._first_request_pending:
-                    self._first_request_pending = False
-                else:
-                    try:
-                        self._quota_ledger.check_and_consume(
-                            self._quota_source, manual=self._quota_manual, now=self._now
-                        )
-                    except Exception as exc:  # QuotaExhausted / UnattendedQuotaUnknown
-                        failed_pages.append({"page_cursor": cursor, "error_kind": "quota_exhausted",
-                                             "error": str(exc), "attempt": attempt + 1})
-                        return None
-            else:
-                # unmanaged source: still consume the precharge marker so a
-                # later managed window cannot double-skip the first request
-                self._first_request_pending = False
+            if not self._admit_attempt(cursor, failed_pages):
+                return None
             try:
                 return self._client.fetch_page(cursor)
             except ChannelAuthError as exc:
@@ -524,6 +552,10 @@ class ChannelFetchSession:
                 return None
             except MarketChannelError as exc:
                 last = {"page_cursor": cursor, "error_kind": exc.kind, "error": str(exc), "attempt": attempt + 1}
-                self._sleep(0)  # injectable for tests; production passes a real sleeper
+                if isinstance(exc, ChannelRateLimited):
+                    # R08/Q5: a 429 always cools down before the retry
+                    self._sleep(RATE_LIMIT_COOLDOWN_SECONDS * (attempt + 1))
+                else:
+                    self._sleep(0)  # injectable for tests; production passes a real sleeper
         failed_pages.append(last)
         return None

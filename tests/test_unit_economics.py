@@ -45,6 +45,7 @@ class UnitEconomicsTests(unittest.TestCase):
             supplier_freight=money("15"),
             packaging=money("5"),
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             expected_return_loss=money("12"),
             attributable_costs=money("4"),
         )
@@ -62,6 +63,7 @@ class UnitEconomicsTests(unittest.TestCase):
             supplier_freight=None,  # e.g. 到付 or not quoted
             packaging=money("5"),
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             expected_return_loss=money("12"),
             attributable_costs=money("4"),
         )
@@ -93,6 +95,7 @@ class UnitEconomicsTests(unittest.TestCase):
             supplier_freight=money("15"),
             packaging=money("5"),
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             expected_return_loss=money("12"),
             moq=5,
         )
@@ -105,6 +108,7 @@ class UnitEconomicsTests(unittest.TestCase):
             supplier_freight=money("15"),
             packaging=money("5"),
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             expected_return_loss=money("12"),
         )
         self.assertFalse(result["scenarios_distinct"])
@@ -116,6 +120,7 @@ class UnitEconomicsTests(unittest.TestCase):
             supplier_freight=money("15"),
             packaging=money("5"),
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             expected_return_loss=money("12"),
             scenario_overrides={
                 "conservative": {"sale_price": money("270")},  # observed market low
@@ -145,6 +150,7 @@ class UnitEconomicsTests(unittest.TestCase):
             supplier_freight=money("0.03"),
             packaging=money("0.03"),
             platform_fee_rate="0",
+            platform_fee_fixed="0",
             expected_return_loss=money("0"),
         )
         self.assertEqual(Decimal(result["scenarios"][SCENARIO_BASE]["contribution_profit"]["amount"]), Decimal("0.01"))
@@ -156,6 +162,7 @@ class UnitEconomicsTests(unittest.TestCase):
             supplier_freight=money("15"),
             packaging=money("5"),
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             expected_return_loss=money("12"),
             installation={"state": "not_applicable"},
             after_sales_reserve={"state": "not_applicable"},
@@ -243,6 +250,7 @@ class OpportunityServiceTests(unittest.TestCase):
     def _evaluate(self, opportunity_id, **kwargs):
         params = dict(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging=money("5"),
             expected_return_loss=money("12"),
             attributable_costs=money("4"),
@@ -347,6 +355,7 @@ class QualificationInvalidationTests(unittest.TestCase):
     def _evaluate(self, opportunity_id, **kwargs):
         params = dict(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging=money("5"),
             expected_return_loss=money("12"),
             attributable_costs=money("4"),
@@ -402,6 +411,140 @@ class QualificationInvalidationTests(unittest.TestCase):
         result = self._evaluate(opportunity["record_id"])
         self.assertFalse(result["qualification"]["qualified"])
         self.assertEqual(result["opportunity"]["status"], "paused")
+
+
+
+class R09CostSheetAcceptanceTests(unittest.TestCase):
+    """Taskbook R09 counter-examples: partial fee terms, return freight,
+    tax applicability, honest break-even, stress overrides, currency
+    conflict, and same-input determinism across entry points."""
+
+    def _full_inputs(self):
+        return dict(
+            sale_price=money("300"),
+            procurement_cost=money("160"),
+            supplier_freight=money("15"),
+            packaging=money("5"),
+            platform_fee_rate="0.03",
+            platform_fee_fixed="0",
+            expected_return_loss=money("12"),
+        )
+
+    def test_missing_rate_keeps_fee_and_profit_unknown(self):
+        inputs = self._full_inputs()
+        inputs.pop("platform_fee_rate")
+        inputs["platform_fee_fixed"] = "2"
+        result = compute_unit_economics(**inputs)
+        base = result["scenarios"][SCENARIO_BASE]
+        self.assertEqual(base["components"]["platform_fee"]["state"], "unknown")
+        self.assertIn("without rate", base["components"]["platform_fee"]["reason"])
+        self.assertEqual(base["contribution_profit"]["state"], "unknown")
+
+    def test_missing_fixed_fee_keeps_fee_and_profit_unknown(self):
+        inputs = self._full_inputs()
+        inputs.pop("platform_fee_fixed")
+        result = compute_unit_economics(**inputs)
+        base = result["scenarios"][SCENARIO_BASE]
+        self.assertEqual(base["components"]["platform_fee"]["state"], "unknown")
+        self.assertIn("without fixed", base["components"]["platform_fee"]["reason"])
+        self.assertEqual(base["contribution_profit"]["state"], "unknown")
+
+    def test_return_freight_alone_is_not_a_quantified_loss(self):
+        result = compute_unit_economics(
+            sale_price=money("300"), procurement_cost=money("160"),
+            supplier_freight=money("15"), packaging=money("5"),
+            platform_fee_rate="0.03", platform_fee_fixed="0",
+            return_freight=money("18"),
+        )
+        component = result["scenarios"][SCENARIO_BASE]["components"]["expected_return_loss"]
+        self.assertEqual(component["state"], "unknown")
+        self.assertIn("not provided", component["reason"])
+
+    def test_return_freight_times_probability_is_the_expected_loss(self):
+        loss = compute_return_loss(probability="0.1", loss_amount=None, return_freight=money("18"))
+        self.assertEqual(loss.state, "known")
+        self.assertEqual(loss.amount, Decimal("1.8"))
+
+    def test_procurement_price_increase_stress_flips_profit(self):
+        inputs = self._full_inputs()
+        inputs["scenario_overrides"] = {
+            SCENARIO_CONSERVATIVE: {"procurement_cost": money("220")},
+        }
+        result = compute_unit_economics(**inputs)
+        base = result["scenarios"][SCENARIO_BASE]["contribution_profit"]
+        conservative = result["scenarios"][SCENARIO_CONSERVATIVE]["contribution_profit"]
+        self.assertEqual(base["state"], "known")
+        self.assertEqual(conservative["state"], "known")
+        self.assertGreater(Decimal(base["amount"]), Decimal(conservative["amount"]))
+
+    def test_currency_conflict_refused(self):
+        with self.assertRaises(EconomicsError):
+            compute_unit_economics(
+                sale_price=money("300"), procurement_cost=money("160", "USD"),
+                supplier_freight=money("15"), packaging=money("5"),
+                platform_fee_rate="0.03", platform_fee_fixed="0",
+                expected_return_loss=money("12"),
+            )
+
+    def test_tax_applicability_is_recorded_never_assumed(self):
+        # absent: metadata says not_assessed, no component invented
+        result = compute_unit_economics(**self._full_inputs())
+        self.assertEqual(result["tax_applicability"]["state"], "not_assessed")
+        self.assertNotIn("tax", result["scenarios"][SCENARIO_BASE]["components"])
+        # applies without amount: unknown, rate never assumed
+        result = compute_unit_economics(
+            **self._full_inputs(),
+            tax={"applicability": "applies", "rate": "0.13", "source": "supplier quote 2026-10"},
+        )
+        component = result["scenarios"][SCENARIO_BASE]["components"]["tax"]
+        self.assertEqual(component["state"], "unknown")
+        self.assertIn("never assumed", component["reason"])
+        self.assertEqual(result["scenarios"][SCENARIO_BASE]["tax"]["declared_rate"], "0.13")
+        # not_applicable with source: skipped from the sum
+        result = compute_unit_economics(
+            **self._full_inputs(),
+            tax={"applicability": "not_applicable", "source": "consumer tax-inclusive quote"},
+        )
+        self.assertEqual(result["scenarios"][SCENARIO_BASE]["components"]["tax"]["state"], "not_applicable")
+        self.assertEqual(result["scenarios"][SCENARIO_BASE]["contribution_profit"]["state"], "known")
+        # applies with amount: counted
+        result = compute_unit_economics(
+            **self._full_inputs(),
+            tax={"applicability": "applies", "amount": money("10"), "source": "quote states ex-tax"},
+        )
+        taxed = Decimal(result["scenarios"][SCENARIO_BASE]["contribution_profit"]["amount"])
+        plain = compute_unit_economics(**self._full_inputs())
+        untaxed = Decimal(plain["scenarios"][SCENARIO_BASE]["contribution_profit"]["amount"])
+        self.assertEqual(untaxed - taxed, Decimal("10"))
+
+    def test_break_even_is_unknown_when_fee_is_unknown(self):
+        inputs = self._full_inputs()
+        inputs.pop("platform_fee_rate")
+        inputs.pop("platform_fee_fixed")
+        result = compute_unit_economics(**inputs)
+        be = result["scenarios"][SCENARIO_BASE]["break_even_price"]
+        self.assertEqual(be["state"], "unknown")
+        self.assertIn("fee-excluded", be["reason"])
+
+    def test_same_cost_sheet_same_result_across_calls(self):
+        first = compute_unit_economics(**self._full_inputs())
+        second = compute_unit_economics(**self._full_inputs())
+        self.assertEqual(
+            first["scenarios"][SCENARIO_BASE]["components"],
+            second["scenarios"][SCENARIO_BASE]["components"],
+        )
+        self.assertEqual(
+            first["scenarios"][SCENARIO_CONSERVATIVE]["contribution_profit"],
+            second["scenarios"][SCENARIO_CONSERVATIVE]["contribution_profit"],
+        )
+        self.assertEqual(first["rule_version"], "unit-economics-v2")
+
+    def test_moq_cash_occupied_scales_with_batch(self):
+        result = compute_unit_economics(**self._full_inputs(), moq=10)
+        cash = result["cash_occupied"]
+        self.assertEqual(cash["state"], "known")
+        self.assertEqual(Decimal(cash["amount"]), Decimal("1750"))  # (160+15) * 10
+
 
 
 if __name__ == "__main__":

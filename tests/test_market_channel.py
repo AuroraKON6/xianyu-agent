@@ -167,12 +167,26 @@ class ChannelFetchSessionTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="market-channel-"))
         self.repos = JsonCommerceRepositories(self.tmp)
+        # R08: sessions must hold a verified admission — give these
+        # pagination/auth/retry tests a managed contract so they exercise
+        # the transport semantics (the quota contract itself is covered by
+        # test_source_quotas / test_quota_combinations).
+        from xianyu_agent.source_quotas import SourceQuotaLedger
+
+        self.quota = SourceQuotaLedger(self.tmp, limits={MARKET_CHANNEL_PROVIDER: 200})
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def _session(self, client, **kwargs):
-        defaults = dict(keyword="工作台", max_pages=3, page_retries=1, now=NOW)
+        defaults = dict(
+            keyword="工作台",
+            max_pages=3,
+            page_retries=1,
+            now=NOW,
+            quota_ledger=self.quota,
+            quota_source=MARKET_CHANNEL_PROVIDER,
+        )
         defaults.update(kwargs)
         return ChannelFetchSession(self.repos, client, **defaults)
 
@@ -255,7 +269,7 @@ class ChannelFetchSessionTests(unittest.TestCase):
         # re-reading the same cached content later adds nothing new
         later = NOW + timedelta(hours=1)
         client2 = _PagedClient([{"items": [item], "next_cursor": ""}])
-        second = ChannelFetchSession(self.repos, client2, keyword="工作台", now=later).fetch()
+        second = self._session(client2, now=later).fetch()
         self.assertEqual(len(first["snapshot_ids"]), 1)
         self.assertEqual(len(second["snapshot_ids"]), 1)
         self.assertEqual(first["snapshot_ids"][0], second["snapshot_ids"][0])  # same stored record

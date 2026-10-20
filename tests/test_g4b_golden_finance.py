@@ -64,6 +64,7 @@ class _GoldenChain:
             f"/commerce/opportunities/{opportunity_id}/evaluate",
             json={
                 "platform_fee_rate": "0.03",
+                "platform_fee_fixed": "0",
                 "packaging": {"state": "known", "amount": "5", "currency": "CNY"},
                 "expected_return_loss": {"state": "known", "amount": "12", "currency": "CNY"},
                 "attributable_costs": {"state": "known", "amount": "4", "currency": "CNY"},

@@ -208,6 +208,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
     def test_a20_demo_costs_flag_blocks_qualification(self):
         result = self._evaluate(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging={"state": "known", "amount": "5", "currency": "CNY"},
             expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
             attributable_costs={"state": "known", "amount": "4", "currency": "CNY"},
@@ -308,6 +309,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
                 supplier_freight={"state": "known", "amount": "20", "currency": "CNY"},
                 packaging={"state": "known", "amount": "5", "currency": "CNY"},
                 platform_fee_rate="0.03",
+                platform_fee_fixed="0",
                 expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
             )
 
@@ -336,6 +338,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
     def test_a24_no_fabricated_scenarios_and_price_basis(self):
         result = self._evaluate(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging={"state": "known", "amount": "5", "currency": "CNY"},
             expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
         )
@@ -348,6 +351,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
 
         with_low = self._evaluate(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging={"state": "known", "amount": "5", "currency": "CNY"},
             expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
             scenario_overrides={
@@ -361,6 +365,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
     def test_a25_newer_supplier_snapshot_pauses_ready(self):
         result = self._evaluate(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging={"state": "known", "amount": "5", "currency": "CNY"},
             expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
         )
@@ -377,6 +382,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
     def test_a25_match_correction_and_expiry_pause_ready(self):
         result = self._evaluate(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging={"state": "known", "amount": "5", "currency": "CNY"},
             expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
         )
@@ -400,6 +406,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
     def test_a25_valid_ready_stays_ready(self):
         result = self._evaluate(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging={"state": "known", "amount": "5", "currency": "CNY"},
             expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
         )
@@ -414,6 +421,7 @@ class G1BCostEligibilityServiceTests(unittest.TestCase):
         # matrix 15.1: 300 - 160 - 20 - 5 - 9 - 4 - 12 = 90
         result = self._evaluate(
             platform_fee_rate="0.03",
+            platform_fee_fixed="0",
             packaging={"state": "known", "amount": "5", "currency": "CNY"},
             expected_return_loss={"state": "known", "amount": "12", "currency": "CNY"},
             attributable_costs={"state": "known", "amount": "4", "currency": "CNY"},
