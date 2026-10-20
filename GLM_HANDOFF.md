@@ -2,6 +2,8 @@
 
 日期：2026-10-11。状态：规划已交付，新增工作包尚未实施。
 
+> **2026-10-20 起的最新入口**：全面审查与重构计划见 `E:\闲鱼\research\resale-rebuild-review-2026-10-20\00-MASTER-PLAN.md` 与 `10-GLM-TASKBOOK.md`（R00–R36 任务卡）。当前实施基线与能力账本见 `docs/refactor/BASELINE_20261020.md` 与 `docs/refactor/capabilities.json`。本文的 G0–G5 计划保留为历史与领域背景；两份计划冲突时以 2026-10-20 任务书为准。
+
 工作目录：`E:\闲鱼\xianyu`。总负责人：用户。方案与验收参考：Codex。代码、测试、运行证据执行者：GLM。
 
 本文件是 GLM 的开工入口，不是商业上线批准。GLM 是开发执行者，不代表生产模型也要切换为 GLM。

@@ -215,6 +215,11 @@ class DecisionCommitProtocolTests(unittest.TestCase):
         submit = client.post("/commerce/pi-tasks/quote-review", json={})
         job_id = submit.json()["record_id"]
         runner = server.pi_task_runner
+        # R02: the shared runner's boundary flag is raised by the app
+        # runtime (or run-next), no longer at import time; a lifespan
+        # shutdown elsewhere in the suite may have stopped it.
+        if not runner.status["started"] or runner.status["stopped"]:
+            runner.start()
         from unittest.mock import patch
         from xianyu_agent.pi_jobs import ModelUsageLedger
 

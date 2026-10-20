@@ -279,3 +279,15 @@ def start_background_observer(observer: ShadowObserver, *, interval_seconds: flo
     thread.start()
     thread.stop_event = stop_event  # type: ignore[attr-defined]
     return thread
+
+
+def stop_background_observer(thread: Optional[threading.Thread]) -> bool:
+    """Signal a started observer thread to stop and wait briefly (R02)."""
+    if thread is None:
+        return False
+    stop_event = getattr(thread, "stop_event", None)
+    if stop_event is None:
+        return False
+    stop_event.set()
+    thread.join(timeout=5.0)
+    return not thread.is_alive()

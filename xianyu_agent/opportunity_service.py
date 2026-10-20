@@ -395,21 +395,18 @@ class OpportunityService:
 
     # ---- revalidation ----
 
-    def validate_current(
+    def _evaluate_current_gates(
         self,
         opportunity_id: str,
         *,
         terms_lookup: Optional[Any] = None,
         now: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Synchronously re-run the ready gates before downstream use.
+        """Compute the ready-gate report against current facts (pure read).
 
-        A stored ``ready_for_test`` is a projection of the moment it was
-        computed. Price changes (a newer supplier snapshot for the same
-        provider+SKU), a human match correction, quote expiry or a
-        commercial-terms revision invalidate it; this method re-checks the
-        CURRENT facts and pauses the opportunity when any gate fails.
-        History is preserved in the transition log; nothing is rewritten.
+        Shared by :meth:`validate_current` (explicit command; pauses a
+        stale ready) and :meth:`inspect_current` (read-only projection
+        for the decision card). Never mutates anything itself.
         """
         opportunity = self._repos.opportunities.get(opportunity_id)
         if opportunity is None:
@@ -478,14 +475,57 @@ class OpportunityService:
             "valid": not reasons,
             "reasons": reasons,
         }
-        if reasons and status == OPPORTUNITY_READY_FOR_TEST:
+        return report
+
+    def inspect_current(
+        self,
+        opportunity_id: str,
+        *,
+        terms_lookup: Optional[Any] = None,
+        now: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """R04: read-only gate report for query surfaces.
+
+        Same gates as the explicit revalidate command, but a stale ready
+        is REPORTED (the card shows it as not currently valid) instead of
+        being paused — GET rendering must never transition state.
+        """
+        report = self._evaluate_current_gates(opportunity_id, terms_lookup=terms_lookup, now=now)
+        report["transitioned"] = False
+        report["note"] = (
+            "read-only inspection; run the explicit revalidate command to pause a stale ready"
+        )
+        return report
+
+    def validate_current(
+        self,
+        opportunity_id: str,
+        *,
+        terms_lookup: Optional[Any] = None,
+        now: Optional[Any] = None,
+        actor: str = "system-revalidate",
+    ) -> Dict[str, Any]:
+        """Explicit command: re-run the ready gates and pause when stale.
+
+        A stored ``ready_for_test`` is a projection of the moment it was
+        computed. Price changes (a newer supplier snapshot for the same
+        provider+SKU), a human match correction, quote expiry or a
+        commercial-terms revision invalidate it; this method re-checks the
+        CURRENT facts and pauses the opportunity when any gate fails.
+        History is preserved in the transition log; nothing is rewritten.
+        """
+        report = self._evaluate_current_gates(opportunity_id, terms_lookup=terms_lookup, now=now)
+        status = str(report.get("status_before"))
+        if not report.get("valid") and status == OPPORTUNITY_READY_FOR_TEST:
             paused = self._repos.opportunities.transition(
                 opportunity_id,
                 to_status=OPPORTUNITY_PAUSED,
-                reason="ready invalidated before use: " + "; ".join(reasons),
-                actor="system-revalidate",
+                reason="ready invalidated before use: " + "; ".join(report.get("reasons") or []),
+                actor=actor,
             )
             report["status_after"] = str(paused.get("status"))
+        report["transitioned"] = "status_after" in report
+        report["actor"] = actor
         return report
 
     # ---- projections ----

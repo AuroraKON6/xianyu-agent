@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
@@ -108,7 +108,22 @@ workflow = CommerceWorkflow(settings)
 if hasattr(workflow.adapter, "set_cookie_provider"):
     workflow.adapter.set_cookie_provider(db_manager.get_cookie)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-app = FastAPI(title="Xianyu Pi Commerce Agent", version="0.7.0")
+from .app_factory import AppRuntime  # noqa: E402
+from .run_coordination import ChainClaimError, ChainCoordination  # noqa: E402
+from .security.auth import AuthMiddleware, TokenRegistry  # noqa: E402
+from .security.policy import AuthDecisionError as _AuthDecisionError  # noqa: E402
+from .api.dependencies import (  # noqa: E402
+    get_principal,
+    guard_approval,
+    require_approvals_grant,
+)
+
+# R02: explicit runtime container owns the app instance and lifecycle.
+# Importing this module starts no threads and no loops any more; the
+# former import-time pi_task_runner.start() / shadow-observer thread
+# moved into runtime.start().
+runtime = AppRuntime(settings=settings)
+app = runtime.app
 
 # Initialize multi-agent system with real workflow
 llm_manager.init(settings)
@@ -134,7 +149,11 @@ from .pi_jobs import (  # noqa: E402
     PiTaskRunner,
     ReadOnlyJobGate,
 )
-from .shadow_observer import ShadowObserver, start_background_observer  # noqa: E402
+from .shadow_observer import (  # noqa: E402
+    ShadowObserver,
+    start_background_observer,
+    stop_background_observer,
+)
 from .pi_usage_reconciliation import build_usage_reconciliation_router
 from .supplier_intake import build_supplier_intake_router
 from .operating_mandates import (  # noqa: E402
@@ -177,7 +196,13 @@ pi_task_runner = PiTaskRunner(
     daily_token_budget=int(os.environ.get("PI_DAILY_TOKEN_BUDGET", "200000")),
     outbound_gate=_pi_outbound_material_gate,
 )
-pi_task_runner.start()
+# R05: chain ownership/claims for this process (single stage-advancer).
+chain_coordination = ChainCoordination(settings.data_dir)
+# R02: the runner thread boundary flag is raised by the runtime, not at
+# import; run_once() stays available for tests and manual stepping.
+# R05: the thread only starts when this process owns the pi chain.
+if chain_coordination.owner_for("pi-task-runner") == "python":
+    runtime.manage_thread("pi-task-runner", start=pi_task_runner.start, stop=pi_task_runner.stop)
 app.include_router(build_usage_reconciliation_router(
     pi_task_runner,
     token_sha256=os.environ.get("PI_USAGE_RECONCILE_TOKEN_SHA256", ""),
@@ -194,10 +219,25 @@ shadow_observer = ShadowObserver(
     offers=commerce_repositories.offers,
     import_service=supplier_import_service,
 )
-shadow_observer_thread = start_background_observer(
-    shadow_observer,
-    interval_seconds=float(os.environ.get("SHADOW_OBSERVER_INTERVAL_SECONDS", "60")),
-    enabled=os.environ.get("SHADOW_OBSERVER_ENABLED", "1") not in ("0", "false", "False"),
+# R02: the observer thread starts with the runtime (and stays disabled
+# entirely when SHADOW_OBSERVER_ENABLED is off); the module keeps a
+# late-bound handle so shutdown can stop it.
+shadow_observer_thread: Optional[Any] = None
+
+
+def _start_shadow_observer_thread() -> None:
+    global shadow_observer_thread
+    shadow_observer_thread = start_background_observer(
+        shadow_observer,
+        interval_seconds=float(os.environ.get("SHADOW_OBSERVER_INTERVAL_SECONDS", "60")),
+        enabled=os.environ.get("SHADOW_OBSERVER_ENABLED", "1") not in ("0", "false", "False"),
+    )
+
+
+runtime.manage_thread(
+    "shadow-observer",
+    start=_start_shadow_observer_thread,
+    stop=lambda: stop_background_observer(shadow_observer_thread),
 )
 
 
@@ -311,39 +351,114 @@ app.add_middleware(
 WEB_DIR = PROJECT_ROOT / "web"
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
-    # Bind and open SQLite at the configured live boundary before any request
-    # or scheduler loop can touch the database.
-    db_manager.init_db()
-    execution_queue.reconcile_expired_leases(work_order_manager)
-    # Codex E (A94): reconcile the two write authorities at boot -- release
-    # inventory locks whose procurement record does not exist so orphaned
-    # reservations cannot hold sellable stock hostage forever
-    procurement_service.reconcile_orphan_locks()
-    # Read-only/background discovery loops. Platform writes are queue-only.
-    asyncio.create_task(github_discovery_loop(workflow))
-    asyncio.create_task(product_discovery_loop(workflow))
-    # Agent scheduler loops
-    asyncio.create_task(start_agent_scheduler(agents, settings))
-    asyncio.create_task(message_import_scheduler_loop())
+# R02: every boot action, background loop and stop hook is registered on
+# the runtime; startup/shutdown handlers only delegate, so repeated
+# starts cannot double-loop and shutdown cancels every task handle.
+runtime.on_boot(db_manager.init_db)
+runtime.on_boot(lambda: execution_queue.reconcile_expired_leases(work_order_manager))
+# Codex E (A94): reconcile the two write authorities at boot -- release
+# inventory locks whose procurement record does not exist so orphaned
+# reservations cannot hold sellable stock hostage forever. Late-bound:
+# procurement_service is constructed further down this module.
+runtime.on_boot(lambda: procurement_service.reconcile_orphan_locks())
+
+
+def _start_radar_dispatcher() -> None:
     # Radar dispatcher: opt-in periodic tick inside this same writer process;
     # manual POST /commerce/radar/tick works regardless of this flag.
-    if os.environ.get("RADAR_DISPATCHER_ENABLED", "0") in ("1", "true", "True"):
-        radar_dispatcher.start(
-            interval_seconds=float(os.environ.get("RADAR_DISPATCHER_INTERVAL_SECONDS", "60"))
-        )
+    # R05: only the chain owner advances radar; the claim file makes a
+    # second live process refuse to double-tick.
+    if chain_coordination.owner_for("radar") != "python":
+        return
+    if os.environ.get("RADAR_DISPATCHER_ENABLED", "0") not in ("1", "true", "True"):
+        return
+    try:
+        chain_coordination.claim("radar")
+    except ChainClaimError as exc:
+        logger.warning("radar chain not claimed: %s", exc)
+        return
+    radar_dispatcher.start(
+        interval_seconds=float(os.environ.get("RADAR_DISPATCHER_INTERVAL_SECONDS", "60"))
+    )
+
+
+def _stop_radar_dispatcher() -> None:
+    radar_dispatcher.stop()
+    chain_coordination.release("radar")
+
+
+runtime.on_boot(_start_radar_dispatcher)
+runtime.on_stop(_stop_radar_dispatcher)
+runtime.on_stop(pi_runtime.stop)  # passive status only; never starts Pi
+
+# R03: unified authentication. Every request resolves to a principal
+# before handlers run: bearer tokens are validated against the registry
+# (env XIANYU_AUTH_TOKENS and/or <data_dir>/security/tokens.json); Pi
+# job-token sessions resolve to a read-only job principal; token-less
+# loopback requests resolve to the local operator only while
+# XIANYU_AUTH_LOCAL_OPERATOR is enabled and XIANYU_AUTH_REQUIRED is off
+# (strict mode refuses them everywhere except /health).
+_auth_registry = TokenRegistry.from_sources(
+    env_json=os.environ.get("XIANYU_AUTH_TOKENS", ""),
+    file_path=settings.data_dir / "security" / "tokens.json",
+)
+app.add_middleware(
+    AuthMiddleware,
+    registry=_auth_registry,
+    local_operator_enabled=os.environ.get("XIANYU_AUTH_LOCAL_OPERATOR", "1")
+    not in ("0", "false", "False"),
+    strict=os.environ.get("XIANYU_AUTH_REQUIRED", "0") in ("1", "true", "True"),
+    internal_auth_rules=(
+        # legacy routers enforcing their own operator credentials
+        r"^/commerce/pi-usage(/|$)",
+        r"^/commerce/supplier-imports/[^/]+/confirmation/(preview|confirm)$",
+        r"^/commerce/intake-confirmations/[^/]+/revoke$",
+    ),
+)
+# R05: one stage-advancer per chain. Each python-owned loop claims its
+# chain at start (a live holder elsewhere makes this loop exit without
+# advancing) and releases it on shutdown/cancel. Chains owned by n8n or
+# manual are not registered at all, so exactly one owner advances them.
+def _coordinated_loop(chain, factory):
+    async def runner():
+        try:
+            chain_coordination.claim(chain)
+        except ChainClaimError as exc:
+            logger.warning("chain %s not claimed, loop exits without advancing: %s", chain, exc)
+            return
+        try:
+            await factory()
+        finally:
+            chain_coordination.release(chain)
+
+    return runner
+
+
+for _chain, _factory in (
+    ("github-discovery", lambda: github_discovery_loop(workflow)),
+    ("product-discovery", lambda: product_discovery_loop(workflow)),
+    ("agent-scheduler", lambda: start_agent_scheduler(agents, settings)),
+    ("message-import", lambda: message_import_scheduler_loop()),
+):
+    if chain_coordination.owner_for(_chain) == "python":
+        runtime.add_loop(_chain, _coordinated_loop(_chain, _factory))
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    await runtime.start_async()
 
 
 @app.on_event("shutdown")
-def on_shutdown() -> None:
-    radar_dispatcher.stop()
-    pi_runtime.stop()
+async def on_shutdown() -> None:
+    await runtime.shutdown()
 
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
-    memory = workflow.load_memory()
+    # R04: peek() is the read-only memory view — a health probe must not
+    # create or rewrite memory/profile.json.
+    memory = workflow.memory.peek()
     return {
         "ok": True,
         "orchestrator": "pi",
@@ -388,7 +503,8 @@ def console_intake_confirmation_js() -> FileResponse:
 
 @app.get("/memory")
 def memory() -> Dict[str, Any]:
-    return workflow.load_memory()
+    # R04: read-only view — peek() never materializes the profile file
+    return workflow.memory.peek()
 
 
 @app.post("/memory")
@@ -2148,7 +2264,10 @@ async def list_bridge_events(
     return {"ok": True, "events": events, "metrics": bridge_events.metrics()}
 
 
-@app.post("/approvals/{approval_id}/decision")
+@app.post(
+    "/approvals/{approval_id}/decision",
+    dependencies=[Depends(require_approvals_grant)],
+)
 async def decide_approval(approval_id: str, req: ApprovalDecisionRequest) -> Dict[str, Any]:
     """Approve or reject a pending human approval request."""
     try:
@@ -2164,7 +2283,10 @@ async def decide_approval(approval_id: str, req: ApprovalDecisionRequest) -> Dic
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/approvals/{approval_id}/execute")
+@app.post(
+    "/approvals/{approval_id}/execute",
+    dependencies=[Depends(require_approvals_grant)],
+)
 async def execute_approved_approval(approval_id: str) -> Dict[str, Any]:
     """Enqueue an approved approval for execution (creates a job, does not execute immediately)."""
     try:
@@ -2195,9 +2317,26 @@ class ExecutionVerificationRequest(BaseModel):
 
 @app.get("/execution-jobs")
 def list_execution_jobs(limit: int = 50) -> List[Dict[str, Any]]:
-    """List execution jobs."""
-    execution_queue.reconcile_expired_leases(work_order_manager)
+    """List execution jobs (read-only; lease recovery is an explicit command)."""
     return execution_queue.list_jobs(limit)
+
+
+@app.post("/execution-jobs/reconcile")
+def reconcile_execution_jobs(request: Request) -> Dict[str, Any]:
+    """R04 explicit command: recover expired leases now.
+
+    Previously performed implicitly by GET /execution-jobs and
+    GET /reply-outbox; boot also reconciles once at startup.
+    """
+    principal = get_principal(request)
+    recovered = execution_queue.reconcile_expired_leases(work_order_manager)
+    return {
+        "ok": True,
+        "recovered": len(recovered),
+        "jobs": recovered,
+        "operator": principal.name,
+        "command": "execution-jobs-reconcile",
+    }
 
 
 @app.get("/execution-jobs/{job_id}")
@@ -3751,7 +3890,7 @@ def reply_outbox_list(
     limit: int = 100,
 ) -> Dict[str, Any]:
     """Return the authoritative reply lifecycle projected from approvals and execution jobs."""
-    execution_queue.reconcile_expired_leases(work_order_manager)
+    # R04: lease recovery moved to the explicit POST /execution-jobs/reconcile
     items = list_reply_outbox(
         work_order_manager=work_order_manager,
         execution_queue=execution_queue,
@@ -6709,8 +6848,9 @@ async def get_trial_run_status() -> Dict[str, Any]:
             )
             _trial.steps = state.get("steps", _trial.steps)
         else:
+            # R04: read-only status must not materialize a state file;
+            # initialization is the explicit POST /trial-run/init command
             _trial = TrialRun()
-            save_trial_state(settings.data_dir / "trial_run_state.json", _trial)
     return _trial.get_progress()
 
 
@@ -7015,11 +7155,14 @@ async def evaluate_commerce_opportunity(opportunity_id: str, request: Request) -
 
 
 @app.post("/commerce/opportunities/{opportunity_id}/revalidate")
-async def revalidate_commerce_opportunity(opportunity_id: str) -> Dict[str, Any]:
+async def revalidate_commerce_opportunity(opportunity_id: str, request: Request) -> Dict[str, Any]:
+    # R04: explicit command records the operator that ordered the recheck
+    principal = get_principal(request)
     try:
         return opportunity_service.validate_current(
             opportunity_id,
             terms_lookup=account_commercial_terms_store.get_snapshot,
+            actor=principal.name,
         )
     except OpportunityError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -7052,10 +7195,11 @@ async def list_commerce_data_providers() -> Dict[str, Any]:
 
 @app.get("/commerce/opportunities/{opportunity_id}/decision-card")
 async def commerce_decision_card(opportunity_id: str) -> Dict[str, Any]:
-    # downstream use re-runs the ready gates first: a stale ready is paused
-    # here instead of being rendered as valid (G1B/A25)
+    # R04: read-only rendering. The ready gates are recomputed and REPORTED
+    # (a stale ready shows up as not currently valid on the card); pausing
+    # the opportunity happens only through the explicit revalidate command.
     try:
-        opportunity_service.validate_current(
+        validity = opportunity_service.inspect_current(
             opportunity_id,
             terms_lookup=account_commercial_terms_store.get_snapshot,
         )
@@ -7065,6 +7209,7 @@ async def commerce_decision_card(opportunity_id: str) -> Dict[str, Any]:
         card = opportunity_service.decision_card(opportunity_id)
     except OpportunityError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    card["current_validity"] = validity
     # G2C: the card must answer "material expires when / which uses are
     # permitted" -- attach per-snapshot, freshly recomputed intake status
     material_status = []
@@ -7256,10 +7401,37 @@ def _market_channel_client():
 
 @app.get("/commerce/market-channel/status")
 async def market_channel_status() -> Dict[str, Any]:
-    return probe_channel(
+    # R04: passive configuration status only — an active probe (authorized
+    # platform read) is the explicit POST /commerce/market-channel/probe
+    from .market_channel import MARKET_CHANNEL_PROVIDER
+
+    configured = bool(os.environ.get("MARKET_CHANNEL_CONFIGURED"))
+    return {
+        "channel": "xianyu-market",
+        "provider_id": MARKET_CHANNEL_PROVIDER,
+        "channel_configured": configured,
+        # compatibility status field for the web panel: configuration
+        # state only, never a probe result
+        "status": "configured" if configured else "unconfigured",
+        "reasons": [] if configured else ["no channel is configured; manual observations remain available"],
+        "probe_authorized": os.environ.get("MARKET_CHANNEL_PROBE_AUTHORIZED", "0")
+        in ("1", "true", "True"),
+        "read_only": True,
+        "note": "passive status; POST /commerce/market-channel/probe runs the real probe",
+    }
+
+
+@app.post("/commerce/market-channel/probe")
+async def market_channel_probe(request: Request) -> Dict[str, Any]:
+    """R04 explicit command: run the (authorized, read-only) channel probe."""
+    principal = get_principal(request)
+    report = probe_channel(
         _market_channel_client(),
         channel_configured=bool(os.environ.get("MARKET_CHANNEL_CONFIGURED")),
     )
+    report["operator"] = principal.name
+    report["command"] = "market-channel-probe"
+    return report
 
 
 @app.post("/commerce/market-channel/fetch")
@@ -7430,11 +7602,21 @@ async def create_procurement_from_sales_order(request: Request) -> Dict[str, Any
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/commerce/procurement/{procurement_id}/approve")
+@app.post(
+    "/commerce/procurement/{procurement_id}/approve",
+    dependencies=[Depends(require_approvals_grant)],
+)
 async def approve_procurement(procurement_id: str, request: Request) -> Dict[str, Any]:
     payload = await request.json()
+    # R03: bind the approving actor to the authenticated principal —
+    # token principals cannot pose as a different operator, and the
+    # guard refuses model self-approval outright.
+    principal = get_principal(request)
+    claimed_operator = str(payload.get("operator") or "operator")
+    guard_approval(principal, proposed_by=claimed_operator)
+    operator = principal.name if principal.source == "token" else claimed_operator
     try:
-        return procurement_service.approve(procurement_id, operator=str(payload.get("operator") or "operator"))
+        return procurement_service.approve(procurement_id, operator=operator)
     except ProcurementError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -7840,8 +8022,13 @@ def run_next_pi_task() -> Dict[str, Any]:
     """Execute at most one queued job through the real Pi RPC client.
 
     Synchronous on purpose (runs in the threadpool): one analysis
-    worker, one job at a time, per the fixed run boundary.
+    worker, one job at a time, per the fixed run boundary. Explicit
+    operator command, so it self-ensures the runner boundary flag —
+    deployments that disable the ASGI lifespan (the offline validation
+    harness) still work.
     """
+    if not pi_task_runner.status["started"]:
+        pi_task_runner.start()
     result = pi_task_runner.run_once(pi_factory=_pi_job_client_factory)
     if result is None:
         return {"outcome": "no_claimable_job", "runner": pi_task_runner.status}

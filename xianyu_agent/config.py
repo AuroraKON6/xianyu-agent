@@ -7,6 +7,8 @@ from typing import Optional, Union
 
 
 def _load_dotenv(path: Path, override: bool = True) -> None:
+    if path is None:
+        return
     if not path.exists():
         return
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -128,7 +130,22 @@ class Settings:
     @classmethod
     def from_env(cls, env_path: Optional[Path] = None) -> "Settings":
         if env_path is None:
-            env_path = Path.cwd() / ".env"
+            # Offline-check mode (R01): never fall back to the repository .env.
+            # An explicit XIANYU_TEST_DOTENV may point at a sandbox file; the
+            # production .env itself is refused outright.
+            if os.environ.get("XIANYU_TEST_ISOLATION", "").strip() == "1":
+                explicit = os.environ.get("XIANYU_TEST_DOTENV", "").strip()
+                if explicit:
+                    candidate = Path(explicit)
+                    production_env = Path(__file__).resolve().parent.parent / ".env"
+                    if candidate.resolve() == production_env.resolve():
+                        raise ValueError(
+                            "XIANYU_TEST_DOTENV points at the production .env; "
+                            "refusing to load it in test isolation mode"
+                        )
+                    env_path = candidate
+            else:
+                env_path = Path.cwd() / ".env"
         _load_dotenv(env_path, override=False)
         data_dir = Path(os.environ.get("DATA_DIR", "data"))
         db_path = os.environ.get("DB_PATH", "").strip() or str(data_dir / "xianyu_data.db")

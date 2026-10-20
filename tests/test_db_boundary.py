@@ -108,6 +108,15 @@ class DbBoundaryTests(unittest.TestCase):
         before_live = _live_files_snapshot()
         with tempfile.TemporaryDirectory() as tmp:
             temp_db = str(Path(tmp) / "env.db")
+            # R01: under test isolation the repository .env is never loaded;
+            # the dotenv branch is exercised through an explicit sandbox
+            # file instead, so the child never sees production secrets.
+            sandbox_env_dir = Path(tmp) / "envdata"
+            sandbox_env_dir.mkdir()
+            dotenv_path = Path(tmp) / "sandbox.env"
+            dotenv_path.write_text(
+                "DATA_DIR=%s\n" % sandbox_env_dir.as_posix(), encoding="utf-8"
+            )
             code = (
                 "import json, os;"
                 "import xianyu_agent.db_manager as m;"
@@ -120,12 +129,28 @@ class DbBoundaryTests(unittest.TestCase):
                 "'baseline': baseline, 'override': override, "
                 "'is_absolute': os.path.isabs(baseline)}))" % temp_db
             )
-            result = _run_python(code)
+            env = dict(os.environ)
+            env.pop("DB_PATH", None)
+            env.pop("DATA_DIR", None)
+            env["XIANYU_TEST_ISOLATION"] = "1"
+            env["XIANYU_TEST_DOTENV"] = str(dotenv_path)
+            env["PYTHONIOENCODING"] = "utf-8"
+            result = subprocess.run(
+                [sys.executable, "-c", code],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=env,
+                timeout=180,
+            )
             self.assertEqual(result.returncode, 0, result.stderr[-2000:])
             payload = json.loads(result.stdout.strip().splitlines()[-1])
             self.assertTrue(payload["is_absolute"])
             self.assertTrue(payload["baseline"].endswith("xianyu_data.db"))
             self.assertEqual(payload["baseline"], payload["settings_first"])
+            self.assertTrue(payload["baseline"].startswith(str(sandbox_env_dir)))
             self.assertEqual(payload["override"], temp_db)
         self.assertEqual(_file_fingerprint(OLD_DEFAULT_DB), before_old)
         self.assertEqual(_live_files_snapshot(), before_live)

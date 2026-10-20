@@ -254,37 +254,55 @@ class PhysicalSourcingManager:
         self,
         cost_price: float,
         resale_price: float,
-        shipping_cost: float = 0.0,
+        shipping_cost: Optional[float] = 0.0,
         platform_fee_rate: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Calculate profit margins for physical products."""
+        """Rough profit sketch for physical sourcing (NOT a qualification).
+
+        R06: this legacy float sketch stays for quick orientation only.
+        It never grants listing/procurement eligibility — the authoritative
+        economics live in the commerce opportunity kernel (Money/Decimal,
+        complete cost sheet, unknown-fee handling). A missing shipping
+        cost is reported as an unknown fee, never as free shipping.
+        """
         if platform_fee_rate is None:
             platform_fee_rate = getattr(self.settings, "default_platform_fee_rate", 0.016)
 
+        fees_known = shipping_cost is not None
+        shipping_value = float(shipping_cost) if fees_known else 0.0
         platform_fee = resale_price * platform_fee_rate
-        total_cost = cost_price + shipping_cost + platform_fee
+        total_cost = cost_price + shipping_value + platform_fee
         profit = resale_price - total_cost
         profit_margin = profit / resale_price if resale_price > 0 else 0
         payback_ratio = profit / cost_price if cost_price > 0 else 0
+        margin_ok = profit_margin >= getattr(self.settings, "min_profit_rate", 0.30)
 
         return {
             "cost_price": cost_price,
             "resale_price": resale_price,
             "shipping_cost": shipping_cost,
+            "fee_state": "known" if fees_known else "unknown",
             "platform_fee": round(platform_fee, 2),
             "platform_fee_rate": platform_fee_rate,
             "total_cost": round(total_cost, 2),
             "profit": round(profit, 2),
             "profit_margin": round(profit_margin, 4),
             "payback_ratio": round(payback_ratio, 4),
-            "is_viable": profit_margin >= getattr(self.settings, "min_profit_rate", 0.30),
+            # unknown fees can never produce viability
+            "is_viable": bool(fees_known and margin_ok),
+            "qualification": (
+                "rough_estimate_only: legacy float sketch; listing/procurement "
+                "eligibility is decided solely by the commerce economics kernel"
+            ),
         }
 
     def evaluate_sourcing_opportunity(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Evaluate a physical product sourcing opportunity."""
         cost = float(payload.get("cost_price") or payload.get("cost") or 0)
         resale = float(payload.get("resale_price") or payload.get("price") or 0)
-        shipping = float(payload.get("shipping_cost") or 0)
+        # R06: a missing shipping cost stays unknown (never free shipping)
+        raw_shipping = payload.get("shipping_cost")
+        shipping = None if raw_shipping in (None, "") else float(raw_shipping)
         category = str(payload.get("category") or "")
 
         economics = self.calculate_profit(cost, resale, shipping)
@@ -311,11 +329,14 @@ class PhysicalSourcingManager:
             "is_standard_product": is_standard,
             "recommended_cities": cities,
             "listing_strategy": listing_strategy,
-            "stealth_templates": {
-                "order_note": STEALTH_TEMPLATES["order_note"],
-                "buyer_pdd_logo": STEALTH_TEMPLATES["buyer_pdd_logo"],
-                "buyer_pdd_sms": STEALTH_TEMPLATES["buyer_pdd_sms"],
-            },
+            # R06: the buyer-facing stealth scripts (buyer_pdd_logo /
+            # buyer_pdd_sms) were removed in WP12 and MUST stay removed;
+            # only the operator-to-supplier order note is returned.
+            "stealth_templates": dict(STEALTH_TEMPLATES),
+            "stealth_templates_note": (
+                "buyer-facing templates are never generated; buyer responses "
+                "come from verified facts only"
+            ),
             "created_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"),
         }
 
@@ -350,19 +371,18 @@ class PhysicalSourcingManager:
             "recommended_cities": cities[:3],
         }
 
-        # Low-price引流 strategy
+        # Low-price traffic strategy. R06: the fictional-size bait (and any
+        # variant the seller cannot actually deliver at the bait price) was
+        # removed — a low-price angle is only allowed when it is a real,
+        # clearly-labelled alternative product.
         if profit > 50 and margin > 0.3:
             strategy["bait_price_ratio"] = 0.5
             strategy["bait_strategy"] = "similar_product_combo"
-            strategy["note"] = "可用同类产品组合法做低价引流"
-        elif profit > 20:
-            strategy["bait_price_ratio"] = 0.6
-            strategy["bait_strategy"] = "fictional_size"
-            strategy["note"] = "可用虚构尺寸法做低价引流"
+            strategy["note"] = "可用真实同类低价款组合引流，文案写清标价对应哪款"
         else:
             strategy["bait_price_ratio"] = 1.0
             strategy["bait_strategy"] = "none"
-            strategy["note"] = "利润空间小，不建议低价引流"
+            strategy["note"] = "无诚实可用的低价引流位，按真实SKU定价"
 
         return strategy
 

@@ -159,46 +159,32 @@ class ListingStrategyEngine:
         return std_score > non_std_score
 
     def _create_price_strategy(self, actual_price: float, profit_margin: float) -> PriceStrategy:
-        """Create pricing strategy with low-price bait."""
+        """Create a pricing strategy.
+
+        R06: deceptive bait variants were removed — fabricated sizes,
+        "out of stock" bait and misleading multi-size titles (small-size
+        price under a large-size hero image) must never be generated.
+        The only low-price angle kept is a real, clearly-labelled
+        alternative product the seller can actually deliver.
+        """
         if profit_margin >= 0.5 and actual_price >= 200:
-            # High margin + high price: use similar product combo
+            # High margin + high price: an honestly labelled alternative
             bait_price = actual_price * 0.5
             return PriceStrategy(
                 actual_price=actual_price,
                 bait_price=round(bait_price, 2),
                 bait_price_ratio=0.5,
                 strategy_type="similar_product_combo",
-                explanation="用同类低价产品引流，文案写清楚标价对应哪款",
+                explanation="用真实可发货的同类低价款引流，文案写清楚标价对应哪款",
             )
-        elif profit_margin >= 0.3 and actual_price >= 100:
-            # Medium margin: use fictional size
-            bait_price = actual_price * 0.5
-            return PriceStrategy(
-                actual_price=actual_price,
-                bait_price=round(bait_price, 2),
-                bait_price_ratio=0.5,
-                strategy_type="fictional_size",
-                explanation="虚构小尺寸产品作为引流价，文案标注缺货",
-            )
-        elif profit_margin >= 0.2:
-            # Lower margin: use title contrast
-            bait_price = actual_price * 0.6
-            return PriceStrategy(
-                actual_price=actual_price,
-                bait_price=round(bait_price, 2),
-                bait_price_ratio=0.6,
-                strategy_type="title_contrast",
-                explanation="标题中大小规格价格差异，首图展示大规格",
-            )
-        else:
-            # Too low margin: no bait
-            return PriceStrategy(
-                actual_price=actual_price,
-                bait_price=actual_price,
-                bait_price_ratio=1.0,
-                strategy_type="none",
-                explanation="利润空间不足，不建议低价引流",
-            )
+        # No honest low-price angle: price the real SKU as it is
+        return PriceStrategy(
+            actual_price=actual_price,
+            bait_price=actual_price,
+            bait_price_ratio=1.0,
+            strategy_type="none",
+            explanation="无诚实可用的低价引流位，按真实SKU与真实规格定价",
+        )
 
     def _create_location_strategy(self, category: str, shipping_origin: str) -> LocationStrategy:
         """Create location strategy based on category and shipping origin."""

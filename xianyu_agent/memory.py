@@ -50,6 +50,20 @@ class AgentMemory:
         data = json.loads(self.storage.memory_profile_path.read_text(encoding="utf-8"))
         return merge_defaults(data)
 
+    def peek(self) -> Dict[str, Any]:
+        """R04 read-only variant of load(): same view, never persists.
+
+        Query surfaces (health, dashboards) must not create the profile
+        file as a side effect of being read; materializing defaults on
+        disk belongs to explicit writes (remember/save).
+        """
+        if not self.storage.memory_profile_path.exists():
+            memory = deepcopy(DEFAULT_MEMORY)
+            memory["updated_at"] = ""
+            return memory
+        data = json.loads(self.storage.memory_profile_path.read_text(encoding="utf-8"))
+        return merge_defaults(data)
+
     def save(self, memory: Dict[str, Any]) -> Dict[str, Any]:
         memory["updated_at"] = now_iso()
         self.storage.memory_profile_path.write_text(

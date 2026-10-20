@@ -1,0 +1,155 @@
+{
+  "generated": "2026-10-20",
+  "task": "R00",
+  "baseline_head": "f95c8cb1744b8b34cff12134943bbe6b7fb569af",
+  "branch": "codex/opc-dashboard-v1",
+  "legend": {
+    "available": "代码与测试在场，可离线复验；不代表真实经营验证",
+    "historical": "有历史演示/验收证据，范围以当时记录为准",
+    "unverified": "代码或文档存在，真实通道未验证",
+    "not_present": "未发现对应产物",
+    "not_run": "尚未启动"
+  },
+  "capabilities": [
+    {
+      "id": "product-matching",
+      "area": "research",
+      "status": "available",
+      "evidence": ["xianyu_agent/product_matching.py", "tests/test_product_matching.py"],
+      "notes": "同款/可比/未知分级"
+    },
+    {
+      "id": "candidate-evidence",
+      "area": "research",
+      "status": "available",
+      "evidence": ["xianyu_agent/candidate_evidence_store.py", "xianyu_agent/quote_provenance.py", "tests/test_candidate_evidence_store.py"],
+      "notes": "来源快照、报价有效期、证据使用范围"
+    },
+    {
+      "id": "economics-core",
+      "area": "finance",
+      "status": "available",
+      "evidence": ["xianyu_agent/unit_economics.py", "xianyu_agent/commerce/contracts.py", "tests/test_unit_economics.py"],
+      "notes": "Money/Decimal 内核；费用/场景缺口转 R09 补"
+    },
+    {
+      "id": "approval-execution-chain",
+      "area": "execution",
+      "status": "available",
+      "evidence": ["xianyu_agent/work_orders.py", "xianyu_agent/execution_queue.py", "xianyu_agent/action_executor.py", "xianyu_agent/action_scope.py", "tests/test_action_executor.py"],
+      "notes": "含 lease/fencing/UNKNOWN 思路；持久化缺口转 R12"
+    },
+    {
+      "id": "account-attribution",
+      "area": "identity",
+      "status": "available",
+      "evidence": ["xianyu_agent/account_attribution.py", "xianyu_agent/account_commercial_terms.py", "tests/test_account_attribution.py"],
+      "notes": "跨账号唯一键缺口转 R13"
+    },
+    {
+      "id": "commerce-domain-objects",
+      "area": "fulfillment",
+      "status": "available",
+      "evidence": ["xianyu_agent/procurement.py", "xianyu_agent/budget_reservations.py", "xianyu_agent/inventory.py", "xianyu_agent/order_runtime.py", "xianyu_agent/ledger_service.py", "xianyu_agent/after_sales.py"],
+      "notes": "采购财务一致性缺口（预算拒绝后仍建采购等）转 R11/R14"
+    },
+    {
+      "id": "pi-runtime",
+      "area": "analysis",
+      "status": "available",
+      "evidence": ["xianyu_agent/pi_runtime.py", "xianyu_agent/pi_jobs.py", "xianyu_agent/pi_usage_reconciliation.py", "tests/test_agent_jobs.py"],
+      "notes": "类型化工具 + 单 worker 串行；入口生命周期转 R02，GET 副作用转 R04"
+    },
+    {
+      "id": "web-dashboard",
+      "area": "ui",
+      "status": "available",
+      "evidence": ["web/app.js", "web/pi-usage.js"],
+      "notes": "经营界面保留；R25/R26 演进"
+    },
+    {
+      "id": "scheduling-loops",
+      "area": "execution",
+      "status": "available",
+      "evidence": ["xianyu_agent/scheduler.py", "xianyu_agent/agent_scheduler.py", "xianyu_agent/radar_dispatch.py", "xianyu_agent/message_import_scheduler.py"],
+      "notes": "多调度并存、启动即后台；R05 收口为唯一推进者"
+    },
+    {
+      "id": "pi-live-calls",
+      "area": "analysis",
+      "status": "historical",
+      "evidence": ["docs/acceptance/", "git log: 4bd2cf7..f95c8cb (G0–R8 轮次, 1592/1592 记录)"],
+      "notes": "真实 Pi 调用与证据持久化曾以 source=demo 报价验证；不当作真实经营闭环"
+    },
+    {
+      "id": "market-observation",
+      "area": "research",
+      "status": "unverified",
+      "evidence": ["xianyu_agent/market_channel.py", "xianyu_agent/url_crawler.py"],
+      "notes": "PDD/1688/浏览器观察 UNVERIFIED（GLM_HANDOFF §2）；R19/R20/R33 处理"
+    },
+    {
+      "id": "xianguanjia-adapter",
+      "area": "connectors",
+      "status": "unverified",
+      "evidence": ["xianyu_agent/config.py (XIANGUANJIA_* 配置)", "xianyu_agent/adapters.py"],
+      "notes": "配置在、通道未验证"
+    },
+    {
+      "id": "source-quotas",
+      "area": "research",
+      "status": "available",
+      "evidence": ["xianyu_agent/source_quotas.py", "E:/闲鱼/research/resale-rebuild-review-2026-10-20/evidence/ (5/5 失败记录)"],
+      "notes": "审查复测 5 项全红；保持红转 R08"
+    },
+    {
+      "id": "backup-restore",
+      "area": "storage",
+      "status": "available",
+      "evidence": ["xianyu_agent/backup.py", "xianyu_agent/recovery.py", "scripts/export_commerce_to_sql.py"],
+      "notes": "恢复/导出校验 3 缺口；转 R15"
+    },
+    {
+      "id": "batch01-application-services",
+      "area": "research",
+      "status": "not_present",
+      "evidence": ["E:/闲鱼/xianyu-wt/batch01 干净、同 HEAD、无产物"],
+      "notes": "X01–X03 不得计为完成"
+    },
+    {
+      "id": "docker-deployment",
+      "area": "infra",
+      "status": "not_run",
+      "evidence": ["审查包 05-docker-workflow-design.md (UNVERIFIED)"],
+      "notes": "R16"
+    },
+    {
+      "id": "n8n-orchestration",
+      "area": "infra",
+      "status": "not_run",
+      "evidence": [],
+      "notes": "R17/R18"
+    },
+    {
+      "id": "postgres-authoritative-store",
+      "area": "storage",
+      "status": "not_run",
+      "evidence": ["docs/adr/0001-commerce-storage-and-migration.md", "docs/adr/0002-g5a-transactional-storage-and-migration.md"],
+      "notes": "仅有 ADR 文档；R10–R15"
+    },
+    {
+      "id": "mcp-layer",
+      "area": "connectors",
+      "status": "not_run",
+      "evidence": ["docs/adr/0003-xianyu-mcp-read-channel.md"],
+      "notes": "R23"
+    },
+    {
+      "id": "real-platform-transactions",
+      "area": "business",
+      "status": "not_run",
+      "evidence": ["GLM_HANDOFF.md §2: live 账号表 0 条"],
+      "notes": "R33/R34；无真实成交记录"
+    }
+  ]
+}

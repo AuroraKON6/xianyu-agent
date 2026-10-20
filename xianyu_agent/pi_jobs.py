@@ -635,9 +635,12 @@ class PiTaskRunner:
 
     def start(self) -> None:
         with self._boundary_lock:
-            if self._started:
+            # R02: refuse a repeat start while active (no double worker);
+            # a full start->stop->start cycle is a fresh lifecycle.
+            if self._started and not self._stopped:
                 raise RuntimeError("PiTaskRunner already started; repeated start refused")
             self._started = True
+            self._stopped = False
 
     def stop(self) -> None:
         with self._boundary_lock:

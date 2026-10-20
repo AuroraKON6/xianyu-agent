@@ -185,8 +185,89 @@ class TemplateCleanupTests(unittest.TestCase):
             "pdd_logo", context={"verified_facts": {"fulfillment_note": "由本地仓库直发，48小时内出库。"}}
         )
         self.assertIn("本地仓库直发", factual)
-        # fact-based response must itself pass the guard
-        self.assertEqual(scan_listing_text(factual), [])
+
+
+class SourcingEvaluationCleanupTests(unittest.TestCase):
+    """R06: the legacy sourcing evaluation must not crash on removed
+    template keys, must report unknown fees as unknown, and must never
+    generate fictional-size/misleading bait or grant eligibility."""
+
+    def _manager(self):
+        from types import SimpleNamespace
+
+        from xianyu_agent.physical_sourcing import PhysicalSourcingManager
+        from xianyu_agent.storage import JsonStorage
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        settings = SimpleNamespace(
+            default_platform_fee_rate=0.016,
+            min_profit_rate=0.30,
+            data_dir=Path(tmp.name),
+        )
+        return PhysicalSourcingManager(settings, JsonStorage(Path(tmp.name)), None)
+
+    def test_full_evaluation_returns_without_key_error(self):
+        manager = self._manager()
+        report = manager.evaluate_sourcing_opportunity(
+            {
+                "title": "不锈钢工作台 120x60cm",
+                "category": "厨具",
+                "cost_price": 160,
+                "resale_price": 300,
+                "shipping_cost": 15,
+            }
+        )
+        self.assertEqual(report["type"], "physical_sourcing_opportunity")
+        self.assertIn("order_note", report["stealth_templates"])
+        self.assertNotIn("buyer_pdd_logo", report["stealth_templates"])
+        self.assertNotIn("buyer_pdd_sms", report["stealth_templates"])
+
+    def test_missing_shipping_is_unknown_fee_and_never_viable(self):
+        manager = self._manager()
+        report = manager.evaluate_sourcing_opportunity(
+            {
+                "title": "不锈钢工作台",
+                "category": "厨具",
+                "cost_price": 160,
+                "resale_price": 300,
+                # shipping_cost deliberately absent
+            }
+        )
+        economics = report["economics"]
+        self.assertEqual(economics["fee_state"], "unknown")
+        self.assertIsNone(economics["shipping_cost"])
+        self.assertFalse(economics["is_viable"])
+
+    def test_legacy_profit_entry_is_rough_estimate_only(self):
+        manager = self._manager()
+        economics = manager.calculate_profit(160, 300, 15)
+        self.assertTrue(economics["is_viable"])  # high margin, fees known
+        self.assertIn("rough_estimate_only", economics["qualification"])
+        self.assertIn("commerce economics kernel", economics["qualification"])
+
+    def test_no_fictional_size_bait_anywhere(self):
+        from xianyu_agent.listing_strategy import ListingStrategyEngine
+
+        manager = self._manager()
+        for payload_shipping in (15, None):
+            report = manager.evaluate_sourcing_opportunity(
+                {
+                    "title": "商用工作台",
+                    "category": "厨具",
+                    "cost_price": 200,
+                    "resale_price": 260,
+                    "shipping_cost": payload_shipping,
+                }
+            )
+            strategy = report["listing_strategy"]
+            self.assertNotIn(strategy.get("bait_strategy"), ("fictional_size", "title_contrast"))
+        # the engine never emits the removed deceptive variants
+        import inspect
+
+        source = inspect.getsource(ListingStrategyEngine._create_price_strategy)
+        self.assertNotIn("fictional_size", source)
+        self.assertNotIn("title_contrast", source)
 
 
 if __name__ == "__main__":

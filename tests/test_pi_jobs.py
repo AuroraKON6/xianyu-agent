@@ -285,6 +285,11 @@ class EvidenceEndpointTests(unittest.TestCase):
         submit = client.post("/commerce/pi-tasks/quote-review", json={})
         self.assertEqual(submit.status_code, 200, submit.text)
         job_id = submit.json()["record_id"]
+        # R02: the runner boundary flag is raised by the app runtime, no
+        # longer at import time — ensure it is started for run_once (a
+        # lifespan shutdown elsewhere in the suite may have stopped it).
+        if not server.pi_task_runner.status["started"] or server.pi_task_runner.status["stopped"]:
+            server.pi_task_runner.start()
         # mock layer only: execute through the runner with a FakePi
         # (real Pi runs belong to scripts/run_pi_quote_review_real.py)
         outcome = server.pi_task_runner.run_once(pi_factory=lambda env: FakePi())
