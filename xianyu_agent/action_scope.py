@@ -39,6 +39,7 @@ TARGET_KEYS = (
     "commercial_trial_id",
     "purchase_task_id",
     "supplier_order_id",
+    "supplier_snapshot_id",
     "source_message_id",
     "reply_source_message_id",
 )
@@ -52,6 +53,7 @@ VERSION_KEYS = {
     "approved_evidence_fingerprint",
     "commercial_terms_version",
     "snapshot_version",
+    "supplier_snapshot_payload_hash",
     "reply_revision",
     "experiment_revision",
     "policy_version",

@@ -709,6 +709,12 @@ class ResaleManager:
             "supplier_verification_note": "",
             "supplier_quote_checked_at": None,
             "supplier_quote_evidence_ref": "",
+            # R12: bind the candidate's economics to the exact supplier
+            # snapshot they were priced from (when the intake flow knows
+            # it) — a newer committed snapshot then invalidates approvals
+            # derived from this candidate at execution time
+            "supplier_snapshot_id": str(payload.get("supplier_snapshot_id") or ""),
+            "supplier_snapshot_payload_hash": str(payload.get("supplier_snapshot_payload_hash") or ""),
             "minimum_order_quantity": None,
             "stock_status": "",
             "stock_quantity": None,

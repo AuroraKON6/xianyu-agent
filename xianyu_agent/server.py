@@ -2443,6 +2443,9 @@ async def run_next_execution_jobs() -> Dict[str, Any]:
             "data_dir": settings.data_dir,
             "workflow": workflow,
             "commercial_trial_store": commercial_trial_store,
+            # R12: handlers verify supplier-quote bindings against the
+            # authoritative offers repository at execution time
+            "commerce_repositories": commerce_repositories,
         },
     )
     chat_events_recorded = _record_outbound_chat_events(results)

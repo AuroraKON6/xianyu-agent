@@ -552,7 +552,14 @@ async def handle_refund_order(approval: Dict[str, Any], context: Dict[str, Any])
 
 
 async def handle_prepare_purchase_draft(approval: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate a purchase draft and create a manual purchase task. Does NOT auto-pay or auto-submit."""
+    """Generate a purchase draft and create a manual purchase task. Does NOT auto-pay or auto-submit.
+
+    R12: the candidate's supplier-quote binding is re-verified at execution
+    time — the bound snapshot must still exist and still be the LATEST
+    committed snapshot for its provider+SKU. A newer committed snapshot
+    (price change) invalidates the approval: no draft, no task, the
+    operator must re-evaluate and approve a fresh plan.
+    """
     action = "prepare_purchase_draft"
     payload = approval.get("payload", {})
     plan_id = payload.get("plan_id", "")
@@ -569,12 +576,52 @@ async def handle_prepare_purchase_draft(approval: Dict[str, Any], context: Dict[
     except Exception as exc:
         return {"ok": False, "action": action, "error": f"Failed to init ResaleManager: {exc}"}
 
+    plan = manager.get_plan(plan_id)
+    if plan is None:
+        return {"ok": False, "action": action, "error": f"Plan not found: {plan_id}"}
+
+    # ---- R12 quote-freshness gate (before any draft is materialized) ----
+    bound_snapshot_id = str(payload.get("supplier_snapshot_id") or "")
+    if not bound_snapshot_id and plan:
+        candidate = manager.get_candidate(str(plan.get("candidate_id") or ""))
+        bound_snapshot_id = str((candidate or {}).get("supplier_snapshot_id") or "")
+    if bound_snapshot_id:
+        repositories = context.get("commerce_repositories")
+        if repositories is None:
+            return {
+                "ok": False, "action": action,
+                "error": "supplier-quote binding present but commerce repositories are not "
+                         "wired into the execution context; refusing to execute blind",
+                "operator_next_action": "wire_repositories_or_remove_binding",
+            }
+        bound = repositories.offers.get(bound_snapshot_id)
+        if bound is None:
+            return {
+                "ok": False, "action": action,
+                "error": f"Bound supplier snapshot {bound_snapshot_id} no longer exists; "
+                         "re-evaluate against a current quote and approve a fresh plan",
+                "scope_validation": {"ok": False, "code": "supplier_snapshot_missing"},
+                "operator_next_action": "recreate_action_plan_and_approve",
+            }
+        latest = repositories.offers.latest(
+            provider_id=str(bound.get("provider_id") or ""),
+            source_item_id=str(bound.get("source_item_id") or ""),
+        )
+        if latest is not None and str(latest.get("record_id")) != bound_snapshot_id:
+            return {
+                "ok": False, "action": action,
+                "error": (
+                    f"A newer committed supplier snapshot {latest.get('record_id')} exists for "
+                    f"{bound.get('provider_id')}/{bound.get('source_item_id')}; the approved "
+                    "economics are stale — re-evaluate and approve a fresh plan"
+                ),
+                "scope_validation": {"ok": False, "code": "stale_supplier_quote"},
+                "operator_next_action": "recreate_action_plan_and_approve",
+            }
+
     if draft_id:
         draft = manager.get_purchase_draft(draft_id)
     else:
-        plan = manager.get_plan(plan_id)
-        if not plan:
-            return {"ok": False, "action": action, "error": f"Plan not found: {plan_id}"}
         draft = manager.create_purchase_draft(
             plan_id=plan_id,
             quantity=int(payload.get("quantity", 1)),
