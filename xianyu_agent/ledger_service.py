@@ -50,11 +50,20 @@ class LedgerService:
         opportunity_id: str = "",
         evidence_ref: str = "",
         payment_evidence_ref: str = "",
+        verified: Optional[bool] = None,
     ) -> Dict[str, Any]:
-        """Record spend; settled only with verified payment evidence."""
+        """Record spend; settled only with verified payment evidence.
+
+        R11: ``verified=False`` forces provisional regardless of the
+        reference prefix — a supplier receipt document is NOT payment
+        evidence, and string prefixes alone must not settle entries.
+        """
         ref = (payment_evidence_ref or evidence_ref).strip()
+        is_verified = (
+            self._is_verified_evidence(ref) if verified is None else bool(verified)
+        )
         entry = build_ledger_entry(
-            kind=LEDGER_KIND_SETTLED if self._is_verified_evidence(ref) else "provisional",
+            kind=LEDGER_KIND_SETTLED if is_verified else "provisional",
             direction="debit",
             category=category,
             amount=amount,

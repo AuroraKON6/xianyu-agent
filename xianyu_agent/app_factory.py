@@ -76,6 +76,10 @@ class AppRuntime:
         self._managed_threads: List[ManagedThread] = []
         self._boot_hooks: List[Callable[[], Any]] = []
         self._stop_hooks: List[Callable[[], Any]] = []
+        # idempotent heals (lease reconcile, orphan-lock recovery) that run
+        # on EVERY startup event, not just the first one — a redeployed
+        # lifespan re-entering the same runtime still gets its recovery
+        self._reconcile_hooks: List[Callable[[], Any]] = []
         self._loops: List[Tuple[str, Callable[[], Any]]] = []
         self._tasks: List[asyncio.Task] = []
         self._started = False
@@ -95,6 +99,11 @@ class AppRuntime:
     def on_stop(self, hook: Callable[[], Any]) -> None:
         with self._lock:
             self._stop_hooks.append(hook)
+
+    def on_reconcile(self, hook: Callable[[], Any]) -> None:
+        """Register an idempotent heal that runs on every startup event."""
+        with self._lock:
+            self._reconcile_hooks.append(hook)
 
     def add_loop(self, name: str, factory: Callable[[], Any]) -> None:
         """Register an async loop factory; started once on start_async."""
@@ -125,6 +134,12 @@ class AppRuntime:
     async def start_async(self) -> bool:
         """Boot + spawn registered loops, keeping every task handle."""
         started = self.start()
+        # heals are idempotent by contract: they run on EVERY startup
+        # event, including a re-entered lifespan on an already-started
+        # runtime (a crashed process's recovery must not be skipped just
+        # because the runtime object survived)
+        for hook in list(self._reconcile_hooks):
+            hook()
         for name, factory in list(self._loops):
             task = asyncio.ensure_future(factory())
             task.set_name("runtime-loop:%s" % name)  # type: ignore[attr-defined]

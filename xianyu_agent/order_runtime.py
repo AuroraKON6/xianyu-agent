@@ -94,9 +94,34 @@ class OrderRuntimeStore:
         clean_id = self._clean_order_id(order_id)
         clean_status = self._clean_status(status)
         now = self._timestamp(timestamp)
+        clean_cookie = str(cookie_id or "").strip()
         with self._lock:
+            # R11: runtime identity is (account, order). The same external
+            # order id arriving under a DIFFERENT cookie is a separate row
+            # (cross-account collision), never an overwrite of the first
+            # account's facts. Same-cookie upserts keep updating in place.
             existing = self._orders.get(clean_id)
-            if existing is None:
+            if (
+                existing is not None
+                and clean_cookie
+                and str(existing.get("cookie_id") or "")
+                and clean_cookie != str(existing.get("cookie_id"))
+            ):
+                composite_key = f"{clean_cookie}\x1f{clean_id}"
+                existing = self._orders.get(composite_key)
+                if existing is None:
+                    order = self._default_order(clean_id, now)
+                    order["cookie_id"] = clean_cookie
+                    order["runtime_key"] = composite_key
+                    self._orders[composite_key] = order
+                    self._record_history(order, "", clean_status, "created", source, now)
+                else:
+                    order = existing
+                    old_status = str(order.get("status") or "pending_payment")
+                    if old_status != clean_status:
+                        self._validate_transition(old_status, clean_status)
+                        self._record_history(order, old_status, clean_status, "synced", source, now)
+            elif existing is None:
                 order = self._default_order(clean_id, now)
                 self._orders[clean_id] = order
                 self._record_history(order, "", clean_status, "created", source, now)
@@ -333,7 +358,9 @@ class OrderRuntimeStore:
                 order["fulfillment_lock"] = _default_lock()
             if not isinstance(order.get("status_history"), list):
                 order["status_history"] = []
-            self._orders[order_id] = order
+            # R11: cross-account rows persist under their composite runtime
+            # key so a reload keeps both accounts' orders distinct
+            self._orders[str(order.get("runtime_key") or order_id)] = order
 
     def _persist(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

@@ -209,6 +209,13 @@ class ProcurementService:
                     f"procurement {procurement_id} already has receipt {existing[0].get('receipt_ref')!r}; "
                     "different receipt requires after-sales flow"
                 )
+            # R11: the FIRST receipt must carry the immutable actual costs —
+            # a quote-derived fallback must never enter the ledger as cost
+            if actual_unit_cost in (None, "") or actual_freight in (None, ""):
+                raise ProcurementError(
+                    "first receipt requires actual_unit_cost and actual_freight "
+                    "(quote costs are never a substitute for received facts)"
+                )
             return self._transition(
                 procurement_id, "received", require_status="ordered", actor=operator,
                 extra={
@@ -224,40 +231,66 @@ class ProcurementService:
             if str(found.get("status")) == "cancelled":
                 # idempotent: a stale retry against an already-cancelled
                 # order must not touch anything (especially not a newer
-                # reservation created for the same sales order)
+                # reservation created for the same sales order) — but a
+                # crash may have persisted the cancel before the lock
+                # release, so the retry HEALS the missing release
+                self._release_inventory_lock(found, reason=f"cancel retry heal: {reason}")
                 return dict(found)
             if str(found.get("status")) in ("ordered", "received"):
                 raise ProcurementError("cannot cancel after supplier order; use the after-sales flow")
             cancelled = self._transition(procurement_id, "cancelled", require_status=None, actor=operator, extra={"cancel_reason": reason})
             # return THIS order's reservation only (keyed to this record)
-            reservation_key = str(found.get("reservation_key") or "")
-            if reservation_key:
-                try:
-                    self._inventory.release_order(
-                        account_id=str(found.get("account_id") or ""),
-                        sku=str(found.get("canonical_sku") or ""),
-                        order_id=reservation_key,
-                        reason=f"procurement cancelled: {reason}",
-                    )
-                except InventoryError:
-                    pass  # no lock held (e.g. created before the reservation fix)
+            self._release_inventory_lock(found, reason=f"procurement cancelled: {reason}")
             return cancelled
 
+    def _release_inventory_lock(self, order: Mapping[str, Any], *, reason: str) -> bool:
+        reservation_key = str(order.get("reservation_key") or "")
+        if not reservation_key:
+            return False
+        try:
+            self._inventory.release_order(
+                account_id=str(order.get("account_id") or ""),
+                sku=str(order.get("canonical_sku") or ""),
+                order_id=reservation_key,
+                reason=reason,
+            )
+            return True
+        except InventoryError:
+            return False  # no lock held (already released / never created)
+
+    def rollback_create(self, order: Mapping[str, Any], *, reason: str) -> None:
+        """R11 compensation: an unfunded creation leaves NOTHING behind.
+
+        When the cash reservation is refused after the procurement record
+        and its inventory lock were written, the creation must be fully
+        undone — the row is removed (not left as a cancelled ghost) and
+        the lock is released. Called under the mutation lock.
+        """
+        self._release_inventory_lock(order, reason=f"creation rolled back: {reason}")
+        record_id = str(order.get("record_id") or "")
+        with self._store as items:
+            items._items = [
+                row for row in items._items if str(row.get("record_id")) != record_id
+            ]
+
     def reconcile_orphan_locks(self) -> Dict[str, Any]:
-        """Startup recovery: release inventory locks whose procurement is gone.
+        """Startup recovery: release inventory locks whose procurement is
+        gone OR cancelled.
 
         A lock keyed ``proc:<record_id>`` is only meaningful while that
-        procurement exists. If the procurement record was never written (or
-        was removed), the lock would hold sellable stock hostage forever, so
-        startup reconciles the two authorities. Locks outside the ``proc:``
-        namespace belong to other owners and are never touched here.
+        procurement exists AND is live. A procurement that never landed
+        (crash mid-create) or was cancelled (crash between the cancel
+        commit and the lock release) must not hold sellable stock
+        hostage, so startup reconciles the two authorities. Locks
+        outside the ``proc:`` namespace belong to other owners and are
+        never touched here.
         """
         released: List[Dict[str, Any]] = []
         kept = 0
         foreign = 0
         with self.mutation_guard():
-            known = {
-                str(row.get("record_id"))
+            records = {
+                str(row.get("record_id")): row
                 for row in self._store.find(lambda _row: True)
             }
             for lock in self._inventory.list_locks():
@@ -265,21 +298,27 @@ class ProcurementService:
                 if not order_id.startswith("proc:"):
                     foreign += 1
                     continue
-                if order_id[len("proc:"):] in known:
+                record = records.get(order_id[len("proc:"):])
+                if record is not None and str(record.get("status")) != "cancelled":
                     kept += 1
                     continue
+                reason = (
+                    "startup recovery: lock references a procurement that does not exist"
+                    if record is None
+                    else "startup recovery: procurement is cancelled, lock is void"
+                )
                 try:
                     self._inventory.release_order(
                         account_id=str(lock.get("account_id") or ""),
                         sku=str(lock.get("sku") or ""),
                         order_id=order_id,
-                        reason="startup recovery: lock references a procurement that does not exist",
+                        reason=reason,
                     )
                 except InventoryError:
                     continue  # concurrently released; nothing to do
                 released.append(lock)
         return {
-            "known_procurements": len(known),
+            "known_procurements": len(records),
             "kept_locks": kept,
             "foreign_locks_untouched": foreign,
             "released_locks": released,

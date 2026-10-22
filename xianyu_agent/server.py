@@ -355,12 +355,12 @@ WEB_DIR = PROJECT_ROOT / "web"
 # the runtime; startup/shutdown handlers only delegate, so repeated
 # starts cannot double-loop and shutdown cancels every task handle.
 runtime.on_boot(db_manager.init_db)
-runtime.on_boot(lambda: execution_queue.reconcile_expired_leases(work_order_manager))
-# Codex E (A94): reconcile the two write authorities at boot -- release
-# inventory locks whose procurement record does not exist so orphaned
-# reservations cannot hold sellable stock hostage forever. Late-bound:
-# procurement_service is constructed further down this module.
-runtime.on_boot(lambda: procurement_service.reconcile_orphan_locks())
+# R11: lease/lock reconciliation is an idempotent heal — it must run on
+# EVERY startup event (crash-restart recovery), not just the first one
+runtime.on_reconcile(
+    lambda: execution_queue.reconcile_expired_leases(work_order_manager)
+)
+runtime.on_reconcile(lambda: procurement_service.reconcile_orphan_locks())
 
 
 def _start_radar_dispatcher() -> None:
@@ -6076,37 +6076,30 @@ async def get_purchase_task(purchase_task_id: str) -> Dict[str, Any]:
 
 @app.post("/resale/purchase-tasks/{purchase_task_id}/mark-ordered")
 async def mark_purchase_task_ordered(purchase_task_id: str, request: MarkOrderedRequest) -> Dict[str, Any]:
-    """Mark a purchase task as ordered (manual supplier order completed)."""
-    task = resale_manager.get_purchase_task(purchase_task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Purchase task not found")
-    if task["status"] != "pending_manual_order":
-        raise HTTPException(status_code=400, detail=f"Cannot mark ordered: status is '{task['status']}'")
-    # Codex E: once the new-chain procurement authority owns a sales order
-    # (any live, non-cancelled procurement), the legacy task must not order
-    # the same sale independently -- that is how one platform order becomes
-    # two supplier orders and two payments
-    sales_ref = str(task.get("xianyu_order_id") or "")
-    if sales_ref:
-        live = [
-            order for order in procurement_service.list()
-            if str(order.get("sales_order_ref")) == sales_ref
-            and str(order.get("status")) != "cancelled"
-        ]
-        if live:
-            raise HTTPException(
-                status_code=409,
-                detail=f"sales order {sales_ref} is already owned by new-chain procurement "
-                       f"{live[0].get('record_id')} ({live[0].get('status')}); continue there instead",
-            )
-    updated = resale_manager.update_purchase_task(purchase_task_id, {
-        "status": "ordered",
-        "supplier_order_id": request.supplier_order_id,
-        "tracking_number": request.tracking_number,
-        "manual_order_note": request.manual_order_note,
-        "ordered_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
-    })
-    return {"ok": True, "purchase_task": updated}
+    """Mark a purchase task as ordered (manual supplier order completed).
+
+    R11: thin delegation — the command layer holds the SAME ownership
+    lock the new procurement chain uses, and the duplicate check is
+    scoped to (account, sales order) so a different account's order id
+    never collides.
+    """
+    from .application.purchase_commands import (
+        PurchaseCommandError,
+        mark_purchase_task_ordered as command,
+    )
+
+    try:
+        return command(
+            resale_manager=resale_manager,
+            procurement_service=procurement_service,
+            purchase_task_id=purchase_task_id,
+            supplier_order_id=request.supplier_order_id,
+            tracking_number=request.tracking_number,
+            manual_order_note=request.manual_order_note,
+            now_text=time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
+        )
+    except PurchaseCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @app.post("/resale/purchase-tasks/{purchase_task_id}/cancel")
@@ -7531,71 +7524,20 @@ async def get_procurement(procurement_id: str) -> Dict[str, Any]:
 
 @app.post("/commerce/procurement/from-sales-order")
 async def create_procurement_from_sales_order(request: Request) -> Dict[str, Any]:
+    """R11: thin delegation to the atomic purchase command layer."""
+    from .application.purchase_commands import PurchaseCommandError, create_procurement
+
     payload = await request.json()
-    # Codex E1-E5: verify against the authoritative order runtime.
-    # - When the caller asserts payment facts (paid/status in body), the
-    #   runtime order MUST exist and be paid; body is never authoritative.
-    # - Even without paid/status, if a runtime order EXISTS for this ref,
-    #   the account and SKU must match (cross-check identity).
-    # - If no runtime order exists and no payment is asserted, this is a
-    #   manual/research procurement; the runtime gate does not apply.
-    sales_order_ref = str(payload.get("sales_order_ref") or "")
-    account_id = str(payload.get("account_id") or "")
-    sku = str(payload.get("sku") or "")
     try:
-        runtime_order = order_runtime_store.get_order(sales_order_ref)
-    except (KeyError, ValueError):
-        runtime_order = None
-    asserts_payment = "paid" in payload or "status" in payload
-    if asserts_payment and runtime_order is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"platform order {sales_order_ref!r} not found in order runtime; "
-                   "procurement requires a verified paid platform order",
+        return create_procurement(
+            procurement_service=procurement_service,
+            budget_store=budget_reservation_store,
+            resale_manager=resale_manager,
+            order_runtime_store=order_runtime_store,
+            payload=payload,
         )
-    if runtime_order is not None:
-        if asserts_payment and str(runtime_order.get("status") or "") != "paid":
-            raise HTTPException(
-                status_code=409,
-                detail=f"platform order {sales_order_ref!r} status is {runtime_order.get('status')!r}, not 'paid'; "
-                       "body paid/status fields are not authoritative",
-            )
-        if str(runtime_order.get("cookie_id") or "") != account_id:
-            raise HTTPException(
-                status_code=409,
-                detail=f"procurement account {account_id!r} does not match order account "
-                       f"{runtime_order.get('cookie_id')!r}",
-            )
-        if str(runtime_order.get("item_id") or "") != sku:
-            raise HTTPException(
-                status_code=409,
-                detail=f"procurement SKU {sku!r} does not match order item {runtime_order.get('item_id')!r}",
-            )
-    try:
-        result = procurement_service.create_from_sales_order(
-            account_id=account_id,
-            sku=sku,
-            quantity=int(payload.get("quantity") or 0),
-            sales_order_ref=sales_order_ref,
-            opportunity_id=str(payload.get("opportunity_id") or ""),
-        )
-        # Codex E7: accepted procurement must own a persisted cash reservation
-        from decimal import Decimal as _dec
-        from .budget_reservations import BudgetError as _BudgetError
-        quantity = int(payload.get("quantity") or 0)
-        unit_cost = (result.get("unit_cost") or {}).get("amount") or "0"
-        shipping = (result.get("shipping_cost") or {}).get("amount") or "0"
-        try:
-            total = _dec(str(unit_cost)) * quantity + _dec(str(shipping))
-            budget_reservation_store.reserve(
-                account_id=account_id,
-                budget_bucket="procurement",
-                job_id=str(result.get("record_id") or ""),
-                amount={"state": "known", "amount": str(total), "currency": "CNY"},
-            )
-        except _BudgetError:
-            pass  # budget store not configured or limit exceeded; procurement stands
-        return result
+    except PurchaseCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except ProcurementError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (TypeError, ValueError) as exc:
@@ -7636,49 +7578,50 @@ async def record_procurement_supplier_order(procurement_id: str, request: Reques
 
 @app.post("/commerce/procurement/{procurement_id}/receipt")
 async def record_procurement_receipt(procurement_id: str, request: Request) -> Dict[str, Any]:
+    """R11: receipt + immutable cost entry in one command (thin delegation)."""
+    from .application.purchase_commands import (
+        PurchaseCommandError,
+        record_procurement_receipt as command,
+    )
+
     payload = await request.json()
     try:
-        result = procurement_service.record_receipt(
-            procurement_id,
+        return command(
+            procurement_service=procurement_service,
+            ledger_service=ledger_service,
+            budget_store=budget_reservation_store,
+            procurement_id=procurement_id,
             receipt_ref=str(payload.get("receipt_ref") or ""),
             actual_unit_cost=payload.get("actual_unit_cost"),
             actual_freight=payload.get("actual_freight"),
             operator=str(payload.get("operator") or "operator"),
         )
-        # Codex E9: recorded actual costs must reach the authoritative
-        # provisional ledger (receipt is NOT payment evidence -> provisional)
-        from decimal import Decimal as _dec
-        quantity = int(result.get("quantity") or 0)
-        unit = str(payload.get("actual_unit_cost") or (result.get("unit_cost") or {}).get("amount") or "0")
-        freight = str(payload.get("actual_freight") or (result.get("shipping_cost") or {}).get("amount") or "0")
-        try:
-            total = _dec(unit) * quantity + _dec(freight)
-            if total > 0:
-                ledger_service.record_spend(
-                    category="procurement",
-                    amount={"state": "known", "amount": str(total), "currency": "CNY"},
-                    order_ref=str(result.get("sales_order_ref") or ""),
-                    opportunity_id=str(result.get("opportunity_id") or ""),
-                    evidence_ref=str(payload.get("receipt_ref") or ""),
-                )
-        except Exception:
-            pass  # ledger recording must not block the receipt fact itself
-        return result
+    except PurchaseCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except ProcurementError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post("/commerce/procurement/{procurement_id}/cancel")
 async def cancel_procurement(procurement_id: str, request: Request) -> Dict[str, Any]:
+    """R11: cancel releases the inventory lock AND the cash reservation."""
+    from .application.purchase_commands import (
+        PurchaseCommandError,
+        cancel_procurement as command,
+    )
+
     payload = await request.json()
     try:
-        return procurement_service.cancel(
-            procurement_id,
+        return command(
+            procurement_service=procurement_service,
+            budget_store=budget_reservation_store,
+            procurement_id=procurement_id,
             reason=str(payload.get("reason") or ""),
             operator=str(payload.get("operator") or "operator"),
         )
-    except ProcurementError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (PurchaseCommandError, ProcurementError) as exc:
+        status_code = getattr(exc, "status_code", 409)
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 @app.get("/commerce/inventory")

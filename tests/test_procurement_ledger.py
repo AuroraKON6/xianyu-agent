@@ -74,7 +74,8 @@ class NormalOrderScenario(ScenarioBase):
         )
         self.assertEqual(ordered["status"], "ordered")
         received = self.procurement.record_receipt(
-            draft["record_id"], receipt_ref="receipt://wp13/normal", operator="操作者"
+            draft["record_id"], receipt_ref="receipt://wp13/normal",
+            actual_unit_cost="160", actual_freight="20", operator="操作者",
         )
         self.assertEqual(received["status"], "received")
 

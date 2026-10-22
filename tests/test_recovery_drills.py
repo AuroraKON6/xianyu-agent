@@ -262,7 +262,10 @@ class FullFlowCombinationDrill(DrillBase):
         self.assertEqual(self.inventory.allocation(account_id="acc-1", sku="GZ-1200")["available"], 8)  # 10 - qty 2 (Codex E4 MOQ fix)
         self.procurement.approve(order["record_id"], operator="操作者")
         self.procurement.record_supplier_order(order["record_id"], supplier_order_id="SO-DRILL-1", operator="操作者")
-        received = self.procurement.record_receipt(order["record_id"], receipt_ref="receipt://drill/1", operator="操作者")
+        received = self.procurement.record_receipt(
+            order["record_id"], receipt_ref="receipt://drill/1",
+            actual_unit_cost="160", actual_freight="20", operator="操作者",
+        )
         self.assertEqual(received["status"], "received")
 
         # 3. money: pay with evidence, income with payout evidence
