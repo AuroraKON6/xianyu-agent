@@ -118,9 +118,7 @@ class OrderRuntimeStore:
                 else:
                     order = existing
                     old_status = str(order.get("status") or "pending_payment")
-                    if old_status != clean_status:
-                        self._validate_transition(old_status, clean_status)
-                        self._record_history(order, old_status, clean_status, "synced", source, now)
+                    clean_status = self._synced_status(order, old_status, clean_status, source, now)
             elif existing is None:
                 order = self._default_order(clean_id, now)
                 self._orders[clean_id] = order
@@ -128,9 +126,7 @@ class OrderRuntimeStore:
             else:
                 order = existing
                 old_status = str(order.get("status") or "pending_payment")
-                if old_status != clean_status:
-                    self._validate_transition(old_status, clean_status)
-                    self._record_history(order, old_status, clean_status, "synced", source, now)
+                clean_status = self._synced_status(order, old_status, clean_status, source, now)
 
             order.update(
                 {
@@ -151,6 +147,42 @@ class OrderRuntimeStore:
             )
             self._persist()
             return _copy(order)
+
+    def _synced_status(
+        self,
+        order: Dict[str, Any],
+        old_status: str,
+        new_status: str,
+        source: str,
+        now: float,
+    ) -> str:
+        """R13: apply a synced transition or IGNORE an out-of-order replay.
+
+        A stale sync batch delivering an earlier lifecycle stage (e.g.
+        'paid' after the order is already 'shipped') must neither regress
+        the state machine nor crash the whole sync — the anomaly is
+        recorded in the status history and the current status stands.
+        """
+        if old_status == new_status:
+            return new_status
+        try:
+            self._validate_transition(old_status, new_status)
+        except ValueError:
+            history = order.setdefault("status_history", [])
+            if not isinstance(history, list):
+                history = []
+                order["status_history"] = history
+            history.append({
+                "at": now,
+                "from": old_status,
+                "to": new_status,
+                "change": "ignored_out_of_order",
+                "context": str(source or ""),
+                "note": "out-of-order event kept the current status",
+            })
+            return old_status
+        self._record_history(order, old_status, new_status, "synced", source, now)
+        return new_status
 
     def update_status(
         self,

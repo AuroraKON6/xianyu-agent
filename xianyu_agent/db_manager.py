@@ -134,10 +134,12 @@ class DBManager:
                 )
             """)
 
-            # Orders table
+            # Orders table — R13: composite business identity (account,
+            # order) so the same external order id on two accounts
+            # coexists instead of overwriting each other
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS orders (
-                    order_id TEXT PRIMARY KEY,
+                    order_id TEXT NOT NULL,
                     cookie_id TEXT NOT NULL,
                     item_id TEXT DEFAULT '',
                     buyer_id TEXT DEFAULT '',
@@ -146,6 +148,7 @@ class DBManager:
                     delivery_payload TEXT DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (cookie_id, order_id),
                     FOREIGN KEY (cookie_id) REFERENCES cookies(id) ON DELETE CASCADE
                 )
             """)
@@ -207,6 +210,49 @@ class DBManager:
             """)
 
             self.conn.commit()
+
+            # R13 migration: an orders table from an older schema has
+            # order_id as the sole primary key (cross-account overwrite).
+            # Rebuild it with the composite (cookie_id, order_id) key,
+            # keeping the newest row per (account, order).
+            try:
+                pk_columns = [
+                    row[1]
+                    for row in cursor.execute("PRAGMA table_info(orders)").fetchall()
+                    if int(row[5] or 0) > 0
+                ]
+                if pk_columns == ["order_id"]:
+                    cursor.execute("ALTER TABLE orders RENAME TO orders_legacy_single_pk")
+                    cursor.execute("""
+                        CREATE TABLE orders (
+                            order_id TEXT NOT NULL,
+                            cookie_id TEXT NOT NULL,
+                            item_id TEXT DEFAULT '',
+                            buyer_id TEXT DEFAULT '',
+                            status TEXT DEFAULT 'processing',
+                            amount REAL DEFAULT 0,
+                            delivery_payload TEXT DEFAULT '',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (cookie_id, order_id),
+                            FOREIGN KEY (cookie_id) REFERENCES cookies(id) ON DELETE CASCADE
+                        )
+                    """)
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO orders
+                            (order_id, cookie_id, item_id, buyer_id, status, amount,
+                             delivery_payload, created_at, updated_at)
+                        SELECT order_id, cookie_id, item_id, buyer_id, status, amount,
+                               delivery_payload, created_at, MAX(updated_at)
+                        FROM orders_legacy_single_pk
+                        GROUP BY cookie_id, order_id
+                    """)
+                    cursor.execute("DROP TABLE orders_legacy_single_pk")
+                    self.conn.commit()
+                    logger.info("orders table migrated to composite (cookie_id, order_id) key")
+            except Exception as exc:
+                logger.warning("orders composite-key migration skipped: %s", exc)
+
             logger.info(f"Database initialized: {self.db_path}")
 
         except Exception as e:
@@ -414,14 +460,34 @@ class DBManager:
             ),
         )
 
-    def update_order_status(self, order_id: str, status: str):
-        self._execute(
-            "UPDATE orders SET status = ?, updated_at = ? WHERE order_id = ?",
-            (status, time.strftime("%Y-%m-%d %H:%M:%S"), order_id),
-        )
+    def update_order_status(self, order_id: str, status: str, cookie_id: str = None):
+        """R13: scope the update to one account when cookie_id is given —
+        the same external order id on another account must not move."""
+        if cookie_id:
+            self._execute(
+                "UPDATE orders SET status = ?, updated_at = ? WHERE order_id = ? AND cookie_id = ?",
+                (status, time.strftime("%Y-%m-%d %H:%M:%S"), order_id, cookie_id),
+            )
+        else:
+            self._execute(
+                "UPDATE orders SET status = ?, updated_at = ? WHERE order_id = ?",
+                (status, time.strftime("%Y-%m-%d %H:%M:%S"), order_id),
+            )
 
-    def get_order(self, order_id: str) -> Optional[Dict[str, Any]]:
-        row = self._fetchone("SELECT * FROM orders WHERE order_id = ?", (order_id,))
+    def get_order(self, order_id: str, cookie_id: str = None) -> Optional[Dict[str, Any]]:
+        """R13: with the composite key the same order id can exist on two
+        accounts — cookie-scoped lookup is exact; unscoped returns the
+        most recently updated row."""
+        if cookie_id:
+            row = self._fetchone(
+                "SELECT * FROM orders WHERE order_id = ? AND cookie_id = ?",
+                (order_id, cookie_id),
+            )
+        else:
+            row = self._fetchone(
+                "SELECT * FROM orders WHERE order_id = ? ORDER BY updated_at DESC LIMIT 1",
+                (order_id,),
+            )
         return dict(row) if row else None
 
     def get_orders_by_cookie(self, cookie_id: str, status: str = None) -> List[Dict[str, Any]]:

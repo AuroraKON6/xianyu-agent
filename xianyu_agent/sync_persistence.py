@@ -28,6 +28,8 @@ def sync_account_snapshot(
 
     orders_ok = bool(orders_result.get("ok"))
     listings_ok = bool(listings_result.get("ok"))
+    # R13: sync failure must never refresh the last-success timestamp —
+    # only the resource that actually succeeded writes its sync state
     if hasattr(db, "save_account_sync_state") and orders_ok:
         db.save_account_sync_state(
             cookie_id,
@@ -47,8 +49,12 @@ def sync_account_snapshot(
     if hasattr(db, "get_account_sync_state"):
         sync_freshness = db.get_account_sync_state(cookie_id)
 
+    both_ok = orders_ok and listings_ok
     return {
-        "ok": orders_ok and listings_ok,
+        "ok": both_ok,
+        # R13: a partial sync (one resource ok, the other failed) is
+        # explicitly marked so consumers never mistake it for complete
+        "partial": orders_ok != listings_ok,
         "adapter": adapter_name,
         "cookie_id": cookie_id,
         "status": status,
