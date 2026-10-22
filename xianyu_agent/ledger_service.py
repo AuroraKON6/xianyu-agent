@@ -57,11 +57,22 @@ class LedgerService:
         R11: ``verified=False`` forces provisional regardless of the
         reference prefix — a supplier receipt document is NOT payment
         evidence, and string prefixes alone must not settle entries.
+
+        R14: evidence idempotency is per (evidence ref, category) — one
+        payment fact may legitimately post several LINES (goods 150 +
+        freight 15 under one payout); replaying the SAME line with a
+        DIFFERENT amount or currency is a conflict, never a silent
+        duplicate or overwrite.
         """
         ref = (payment_evidence_ref or evidence_ref).strip()
         is_verified = (
             self._is_verified_evidence(ref) if verified is None else bool(verified)
         )
+        if ref:
+            existing = self._find_by_evidence(ref, category=category)
+            if existing is not None:
+                self._assert_same_fact(existing, amount, field="spend")
+                return existing  # idempotent replay of the same line
         entry = build_ledger_entry(
             kind=LEDGER_KIND_SETTLED if is_verified else "provisional",
             direction="debit",
@@ -86,10 +97,22 @@ class LedgerService:
     def _is_verified_evidence(self, ref: str) -> bool:
         return ref.strip().lower().startswith(self._SETTLED_EVIDENCE_PREFIXES)
 
-    def _find_by_evidence(self, evidence_ref: str) -> Optional[Dict[str, Any]]:
-        found = self._store.find(
-            lambda e: str(e.get("evidence_ref") or "") == evidence_ref and evidence_ref != ""
-        )
+    def _find_by_evidence(self, evidence_ref: str, category: str = "") -> Optional[Dict[str, Any]]:
+        """Find the non-reversal entry for an evidence reference.
+
+        R14: when ``category`` is given, the lookup is per payment LINE
+        (evidence ref + category) — one payout may post several lines
+        (goods + freight under one payment); an exact line match is
+        required for idempotent replay, otherwise no match.
+        """
+        def predicate(entry: Mapping[str, Any]) -> bool:
+            if str(entry.get("evidence_ref") or "") != evidence_ref or not evidence_ref:
+                return False
+            if entry.get("reversal_of"):
+                return False
+            return not category or str(entry.get("category") or "") == category
+
+        found = self._store.find(predicate)
         return found[0] if found else None
 
     def record_income(
@@ -100,12 +123,18 @@ class LedgerService:
         opportunity_id: str = "",
         payout_evidence_ref: str = "",
     ) -> Dict[str, Any]:
-        """Record sale income; settled only with verified payout evidence."""
+        """Record sale income; settled only with verified payout evidence.
+
+        R14: a replayed payout fact with a DIFFERENT amount or currency
+        is a CONFLICT (raised), not a silent return of the old entry —
+        the same platform payout cannot have two amounts.
+        """
         ref = payout_evidence_ref.strip()
         if ref:
             existing = self._find_by_evidence(ref)
             if existing is not None:
-                return existing  # one payment fact = one entry (idempotent)
+                self._assert_same_fact(existing, amount, field="income")
+                return existing  # one payout fact = one income entry (idempotent)
         entry = build_ledger_entry(
             kind=LEDGER_KIND_SETTLED if self._is_verified_evidence(ref) else "provisional",
             direction="credit",
@@ -117,6 +146,26 @@ class LedgerService:
         )
         return self._store.append(entry)
 
+    @staticmethod
+    def _assert_same_fact(existing: Mapping[str, Any], amount: Mapping[str, Any], *, field: str) -> None:
+        """R14: the same evidence reference replayed with a different
+        known amount or currency is a fact conflict — reject it."""
+        incoming = money_from_mapping(amount, field_name=field)
+        recorded = money_from_mapping(existing.get("amount") or {}, field_name="recorded")
+        if incoming.state != PRICE_STATE_KNOWN or recorded.state != PRICE_STATE_KNOWN:
+            return  # unknown amounts cannot be compared; append paths handle them
+        if incoming.currency != recorded.currency:
+            raise LedgerError(
+                f"evidence {existing.get('evidence_ref')!r} replayed with currency "
+                f"{incoming.currency} but was recorded as {recorded.currency}"
+            )
+        if incoming.amount != recorded.amount:
+            raise LedgerError(
+                f"evidence {existing.get('evidence_ref')!r} replayed with amount "
+                f"{incoming.amount} but was recorded as {recorded.amount}; "
+                "a fact cannot have two amounts"
+            )
+
     def record_adjustment(
         self,
         *,
@@ -127,7 +176,18 @@ class LedgerService:
         opportunity_id: str = "",
         evidence_ref: str = "",
     ) -> Dict[str, Any]:
-        """Record a real adjustment fact (e.g. supplier compensation)."""
+        """Record a real adjustment fact (e.g. supplier compensation).
+
+        R14: one evidence reference = at most one adjustment (a refund
+        replayed by webhook or retry must not double-count); a replay
+        with a different amount is a conflict.
+        """
+        ref = str(evidence_ref or "").strip()
+        if ref:
+            existing = self._find_by_evidence(ref)
+            if existing is not None:
+                self._assert_same_fact(existing, amount, field="adjustment")
+                return existing  # the same refund fact counted once
         entry = build_ledger_entry(
             kind=LEDGER_KIND_SETTLED,
             direction=direction,
@@ -135,7 +195,7 @@ class LedgerService:
             amount=amount,
             opportunity_id=opportunity_id,
             order_ref=order_ref,
-            evidence_ref=evidence_ref,
+            evidence_ref=ref,
         )
         return self._store.append(entry)
 
@@ -233,15 +293,24 @@ class LedgerService:
             value = Decimal(str((entry.get("amount") or {}).get("amount") or "0"))
             return value if str(entry.get("direction")) == "credit" else -value
 
+        def currency_of(entry: Mapping[str, Any]) -> str:
+            return str((entry.get("amount") or {}).get("currency") or "CNY")
+
         def tier(kind: str) -> Dict[str, Any]:
             # reversals carry the opposite direction, so they must be
             # INCLUDED in the net; originals are never rewritten
             selected = [e for e in rows if str(e.get("kind")) == kind]
             originals = [e for e in selected if not e.get("reversal_of")]
             reversals = [e for e in selected if e.get("reversal_of")]
-            net = sum((signed(e) for e in selected), Decimal("0"))
+            # R14: currencies are NEVER mixed into one number — nets are
+            # reported per currency (F09: 对同机会金额直接相加没有按币种分组)
+            nets = {}
+            for e in selected:
+                nets.setdefault(currency_of(e), Decimal("0"))
+                nets[currency_of(e)] += signed(e)
             return {
-                "net": str(net),
+                "net": str(nets.get("CNY", Decimal("0"))),
+                "net_by_currency": {code: str(value) for code, value in sorted(nets.items())},
                 "original_count": len(originals),
                 "reversal_count": len(reversals),
             }
@@ -255,7 +324,15 @@ class LedgerService:
             "settled": settled,
             "notes": [],
         }
-        if Decimal(provisional["net"]) != 0:
+        currencies = sorted(
+            set(provisional["net_by_currency"]) | set(settled["net_by_currency"])
+        )
+        if len(currencies) > 1:
+            result["notes"].append(
+                f"multiple currencies present ({', '.join(currencies)}); "
+                "nets are per currency and never summed across currencies"
+            )
+        if any(Decimal(v) != 0 for v in provisional["net_by_currency"].values()):
             result["notes"].append("provisional tier has unreconciled entries; not money in hand")
         if expected_profit is None:
             result["notes"].append("expected tier not provided (no economics reference attached)")
