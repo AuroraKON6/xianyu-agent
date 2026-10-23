@@ -154,6 +154,42 @@ def drill(source: Path, work: Path) -> dict:
                 "note": "ledger not a clean list of objects; divergence demo skipped",
             }
     report["phases"]["divergence"] = divergence
+
+    # R15: FINAL restored-tree verification. The first restore check runs
+    # BEFORE the divergence mutation; the final tree (after the blind
+    # rollback) must be verified against the manifest too. The final walk
+    # enumerates EVERY file in the authority areas (not only the known
+    # list) — an unlisted file (planted, shadow, drifted) is flagged.
+    final_mismatches = []
+    final_unexpected = []
+    if divergence.get("demonstrated"):
+        restored_all = set()
+        commerce_root = restored_dir / "commerce"
+        if commerce_root.is_dir():
+            for path in commerce_root.rglob("*"):
+                if path.is_file():
+                    restored_all.add(str(path.relative_to(restored_dir)))
+        for name in TOP_LEVEL_FILES:
+            candidate = restored_dir / name
+            if candidate.is_file():
+                restored_all.add(name)
+        evidence_root = restored_dir / EVIDENCE_DIR
+        if evidence_root.is_dir():
+            for path in evidence_root.rglob("*"):
+                if path.is_file():
+                    restored_all.add(str(path.relative_to(restored_dir)))
+        for relative in sorted(restored_all):
+            expected = manifest.get(relative)
+            if expected is None:
+                final_unexpected.append(f"unexpected file after final restore: {relative}")
+            elif _sha256(restored_dir / relative) != expected:
+                final_mismatches.append(f"hash mismatch after final restore: {relative}")
+        for relative in sorted(set(manifest) - restored_all):
+            final_mismatches.append(f"missing after final restore: {relative}")
+    report["phases"]["final_verification"] = {
+        "hash_mismatches": final_mismatches,
+        "unexpected_files": final_unexpected,
+    }
     return report
 
 
@@ -177,7 +213,12 @@ def main(argv=None) -> int:
         return 1
     report = drill(source, work)
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 2 if report["phases"]["restore"]["hash_mismatches"] else 0
+    # R15: exit 2 on ANY verification failure — first restore, the final
+    # restored tree, or unlisted files inside the authoritative set
+    final = report["phases"].get("final_verification") or {}
+    if report["phases"]["restore"]["hash_mismatches"] or final.get("hash_mismatches") or final.get("unexpected_files"):
+        return 2
+    return 0
 
 
 if __name__ == "__main__":

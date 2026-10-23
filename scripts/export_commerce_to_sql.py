@@ -94,6 +94,35 @@ def _sql_literal(value) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
+def _ordered_ledger_rows(rows: list) -> list:
+    """R15: topological order — an original always precedes its reversals.
+
+    The ledger FK (reversal_of -> record_id) is IMMEDIATE, so a reversal
+    appearing before its original in the JSON file would fail the load.
+    Rows without reversals keep their file order (stable); orphan
+    reversals (missing target) stay in file order for the auditor to
+    report separately.
+    """
+    pending = [row for row in rows if isinstance(row, dict)]
+    emitted_ids = set()
+    ordered: list = []
+    changed = True
+    while pending and changed:
+        changed = False
+        remaining = []
+        for row in pending:
+            target = str(row.get("reversal_of") or "")
+            if not target or target in emitted_ids:
+                ordered.append(row)
+                emitted_ids.add(str(row.get("record_id") or ""))
+                changed = True
+            else:
+                remaining.append(row)
+        pending = remaining
+    ordered.extend(pending)  # orphans/cycles: keep file order, auditor flags them
+    return ordered
+
+
 def export(data_dir: Path) -> dict:
     commerce = data_dir / "commerce"
     lines = [
@@ -112,6 +141,8 @@ def export(data_dir: Path) -> dict:
         if path.exists():
             text = path.read_text(encoding="utf-8")
             rows = json.loads(text) if text.strip() else []
+        if table == "ledger":
+            rows = _ordered_ledger_rows(rows)
         counts[table] = len(rows)
         for row in rows:
             if not isinstance(row, dict):
@@ -220,6 +251,28 @@ def main(argv=None) -> int:
     if out == data_dir or data_dir in out.parents or out in data_dir.parents:
         print(json.dumps({"error": f"output path {out} overlaps the authority data dir {data_dir}; refusing"}))
         return 1
+    # R15: a HARDLINK outside the data dir still shares the inode with an
+    # authoritative JSON file — writing through it destroys the authority
+    # even though the paths look disjoint. Refuse same-inode outputs.
+    try:
+        out_stat = out.stat() if out.exists() else None
+    except OSError:
+        out_stat = None
+    if out_stat is not None:
+        for authority_file in sorted(data_dir.rglob("*")):
+            if not authority_file.is_file():
+                continue
+            try:
+                if out.samefile(authority_file):
+                    print(json.dumps({
+                        "error": (
+                            f"output {out} is the same file (hardlink) as authority "
+                            f"{authority_file}; writing it would destroy the authority"
+                        )
+                    }))
+                    return 1
+            except OSError:
+                continue
     result = export(data_dir)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(result["sql"], encoding="utf-8")
