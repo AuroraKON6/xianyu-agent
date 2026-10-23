@@ -208,6 +208,14 @@ app.include_router(build_usage_reconciliation_router(
     token_sha256=os.environ.get("PI_USAGE_RECONCILE_TOKEN_SHA256", ""),
     operator=os.environ.get("PI_USAGE_RECONCILE_OPERATOR", ""),
 ))
+# R17: versioned workflow API v1 (n8n/orchestrator surface; contract
+# contracts/workflow-api.v1.yaml)
+from .application.workflow_runs import WorkflowRunService, WorkflowRunStore  # noqa: E402
+from .api.v1 import configure_workflow_api, router as workflow_api_v1_router  # noqa: E402
+
+workflow_run_service = WorkflowRunService(WorkflowRunStore(settings.data_dir))
+configure_workflow_api(workflow_run_service)
+app.include_router(workflow_api_v1_router)
 app.include_router(build_supplier_intake_router(commerce_repositories, supplier_import_service))
 shadow_observer = ShadowObserver(
     settings.data_dir,

@@ -1,0 +1,75 @@
+# Workflow API v1 contract (taskbook R17; authoritative semantics: server)
+# Status codes: 202 accepted-not-completed; 401/403 auth+account;
+# 409 idempotency/version/state conflicts; 422 invalid input; 503 not configured.
+openapi: 3.0.3
+info:
+  title: Xianyu Workflow API
+  version: v1
+paths:
+  /api/v1/capabilities:
+    get:
+      summary: Versioned capability registry (pure query, no warmup)
+      responses: { "200": { description: registry } }
+  /api/v1/workflow-runs:
+    post:
+      summary: Create a run keyed by business_intent_id (idempotent)
+      description: >
+        Same intent + same payload returns the SAME run (created=false);
+        same intent + different payload is 409 idempotency_conflict.
+        Client-supplied `status` is rejected (server transitions only).
+        orchestration_mode=whole_run is python-owned; external runs are
+        stepwise (409 mode_not_authorized).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_intent_id, workflow_type, account_id]
+              properties:
+                business_intent_id: { type: string }
+                workflow_type: { type: string }
+                account_id: { type: string }
+                input_version: { type: integer }
+                input_artifact_ids: { type: array, items: { type: string } }
+                requested_capabilities: { type: array, items: { type: string } }
+                orchestration_mode: { type: string, enum: [stepwise, whole_run] }
+                orchestration_trace: { type: object }
+      responses:
+        "202": { description: run accepted (queued intent) }
+        "409": { description: idempotency_conflict | mode_not_authorized }
+        "422": { description: invalid input | client_status_forbidden }
+  /api/v1/workflow-runs/{run_id}:
+    get: { summary: Run state (account-scoped read), responses: { "200": { description: run }, "403": { description: account_forbidden }, "404": { description: not found } } }
+  /api/v1/workflow-runs/{run_id}/steps:
+    post:
+      summary: Request one capability (workflow:trigger scope required)
+      responses:
+        "202": { description: step_run queued }
+        "403": { description: scope/account forbidden }
+        "409": { description: live_step_exists | invalid_state }
+  /api/v1/workflow-runs/{run_id}/cancel:
+    post: { summary: Cancel (actor+expected_revision), responses: { "200": { description: cancelled }, "409": { description: revision_conflict | invalid_state } } }
+  /api/v1/workflow-runs/{run_id}/resume:
+    post: { summary: Resume blocked/waiting, responses: { "200": { description: running }, "409": { description: invalid_state | revision_conflict } } }
+  /api/v1/workflow-runs/{run_id}/finalize:
+    post:
+      summary: Server-side completion judgment
+      description: >
+        Every REQUIRED capability must be terminal (succeeded, or skipped
+        under an allowed contract rule with recorded reason). The manifest
+        is generated server-side; clients never declare success.
+      responses:
+        "200": { description: finalized with manifest }
+        "409": { description: required_steps_incomplete | invalid_state }
+  /api/v1/workflow-runs/{run_id}/events:
+    get: { summary: Append-only event sequence (cursor-based), responses: { "200": { description: events + next_cursor } } }
+  /api/v1/artifacts/{artifact_id}:
+    get: { summary: Artifact (account-scoped), responses: { "200": { description: bounded content }, "403": { description: account_forbidden }, "404": { description: not found } } }
+
+# Capability contract (server-registry versions):
+#   validate_evidence   v1  required
+#   match_products      v1  required
+#   calculate_economics v1  required
+#   export_candidates   v1  optional
+# Allowed skip reasons (recorded, server-validated):
+#   no_spread_available | capability_not_applicable
