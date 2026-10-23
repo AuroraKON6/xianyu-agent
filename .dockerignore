@@ -1,0 +1,33 @@
+# R16: the image must never contain secrets or live business data
+.env
+.env.*
+!.env.example
+data/
+backups/
+output/
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.git_*/
+.mimosa/
+.pi/
+.playwright-cli/
+*.log
+*.pid
+*.lock
+browser_cookies.json
+test_data/
+docs/
+research/
+scripts/
+tests/
+*.md
+codex openclaw/
+openclaw/
+openclaw-control-center/
+skills/
+compliance_check_results/

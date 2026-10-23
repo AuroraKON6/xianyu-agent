@@ -1,0 +1,37 @@
+# R16: minimal single-writer offline profile first (taskbook: 先单writer
+# 离线profile，PG后分api/worker). postgres/n8n join in later profiles —
+# this file only brings up ONE business process plus nothing else.
+#
+# Ports bind to loopback by default (override in .env for LAN use).
+# /state is the ONLY persistent mount; the image carries no data.
+
+services:
+  commerce-api:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile
+    image: xianyu-commerce-api:r16
+    container_name: xianyu-commerce-api
+    # single writer: never scale this service until PG splits api/worker
+    deploy:
+      replicas: 1
+    environment:
+      XIANYU_ADAPTER: ${XIANYU_ADAPTER:-stub}
+      XIANYU_TEST_ISOLATION: ${XIANYU_TEST_ISOLATION:-1}
+      DATA_DIR: /state/data
+      DB_PATH: /state/data/xianyu_data.db
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8788
+      XIANYU_AUTH_LOCAL_OPERATOR: ${XIANYU_AUTH_LOCAL_OPERATOR:-1}
+      # background chains stay python-owned in this profile; override per
+      # chain with XIANYU_CHAIN_OWNER_<NAME>=n8n|manual when R18 lands
+      SHADOW_OBSERVER_ENABLED: "0"
+      RADAR_DISPATCHER_ENABLED: "0"
+    ports:
+      - "${XIANYU_BIND:-127.0.0.1}:8788:8788"
+    volumes:
+      - xianyu-state:/state
+    restart: unless-stopped
+
+volumes:
+  xianyu-state:
