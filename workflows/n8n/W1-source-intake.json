@@ -1,0 +1,166 @@
+{
+  "name": "W1-source-intake",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Intake Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "w1-trigger",
+      "notes": "人工触发（R33 前不接 webhook 自动触发）；触发负载带 account_id / input_artifact_ids / input_version"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.XIANYU_API_BASE}}/api/v1/workflow-runs",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ business_intent_id: 'source-intake:' + $json.account_id + ':' + $json.input_digest + ':v' + $json.input_version, workflow_type: 'source_intake', account_id: $json.account_id, input_version: $json.input_version, input_artifact_ids: $json.input_artifact_ids, requested_capabilities: ['validate_evidence'], orchestration_mode: 'stepwise', orchestration_trace: { engine: 'n8n', execution_id: $execution.id } }) }}",
+        "options": {}
+      },
+      "name": "Create Run (idempotent)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [220, 0],
+      "id": "w1-create-run",
+      "notes": "同一 business_intent_id 重复 POST 返回同一 run（幂等）；不同 payload 得 409——此时走 Idempotent Conflict 分支终止，不重试"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            { "value1": "={{$json.created}}", "value2": true }
+          ]
+        }
+      },
+      "name": "Already Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [440, 0],
+      "id": "w1-exists-check"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.XIANYU_API_BASE}}/api/v1/workflow-runs/{{$json.run_id}}/steps",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ capability: 'validate_evidence' }) }}",
+        "options": {}
+      },
+      "name": "Request validate_evidence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [660, -60],
+      "id": "w1-step-validate",
+      "notes": "重复执行到这一步是安全的：live_step_exists 409 说明该能力已有活步，直接进轮询"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.XIANYU_API_BASE}}/api/v1/workflow-runs/{{$('Create Run (idempotent)').item.json.run_id}}",
+        "method": "GET",
+        "options": {}
+      },
+      "name": "Poll Run Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [880, -60],
+      "id": "w1-poll-status",
+      "notes": "轮询有上限（n8n Wait 节点退避，最多 N 次后进入错误队列），不做节点内无限重试"
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "name": "Wait Before Re-poll",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [880, 60],
+      "id": "w1-wait"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            { "value1": "={{$('Poll Run Status').item.json.steps[0].status}}", "value2": "succeeded" }
+          ]
+        }
+      },
+      "name": "Step Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1100, -60],
+      "id": "w1-step-done-check"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.XIANYU_API_BASE}}/api/v1/workflow-runs/{{$('Create Run (idempotent)').item.json.run_id}}/finalize",
+        "method": "POST",
+        "options": {}
+      },
+      "name": "Finalize Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1320, -60],
+      "id": "w1-finalize",
+      "notes": "finalize 是服务端判定：必需能力未终态会 409，节点把 409 当作继续等待而非失败"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.XIANYU_API_BASE}}/api/v1/workflow-runs/{{$('Create Run (idempotent)').item.json.run_id}}/events",
+        "method": "GET",
+        "options": {}
+      },
+      "name": "Emit Events Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1540, -60],
+      "id": "w1-events",
+      "notes": "结束时读事件序列输出摘要（run 链接/通知文本），通知本身走 outbox 幂等——不在 n8n 内直接发通知"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.XIANYU_ERROR_WEBHOOK}}",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow: 'W1-source-intake', run_id: $('Create Run (idempotent)').item.json.run_id, failure: $json.detail, execution_id: $execution.id }) }}",
+        "options": {}
+      },
+      "name": "Error Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1320, 120],
+      "id": "w1-error-queue",
+      "notes": "错误队列：validation failure / 非 retryable 状态错误统一进这里，人工处置；不做节点内自动重试"
+    }
+  ],
+  "connections": {
+    "Intake Trigger": { "main": [[{ "node": "Create Run (idempotent)", "type": "main", "index": 0 }]] },
+    "Create Run (idempotent)": { "main": [[{ "node": "Already Exists?", "type": "main", "index": 0 }]] },
+    "Already Exists?": { "main": [
+      [{ "node": "Request validate_evidence", "type": "main", "index": 0 }],
+      [{ "node": "Poll Run Status", "type": "main", "index": 0 }]
+    ]},
+    "Request validate_evidence": { "main": [[{ "node": "Poll Run Status", "type": "main", "index": 0 }]] },
+    "Poll Run Status": { "main": [[{ "node": "Step Done?", "type": "main", "index": 0 }]] },
+    "Step Done?": { "main": [
+      [{ "node": "Finalize Run", "type": "main", "index": 0 }],
+      [{ "node": "Wait Before Re-poll", "type": "main", "index": 0 }]
+    ]},
+    "Wait Before Re-poll": { "main": [[{ "node": "Poll Run Status", "type": "main", "index": 0 }]] },
+    "Finalize Run": { "main": [[{ "node": "Emit Events Summary", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "W1-source-intake Error Queue"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "not-exported",
+    "description": "R18 W1 来源接入链：人工导入快照 -> 幂等建 run -> validate_evidence -> 轮询 -> finalize -> 事件摘要。所有业务语义在后端 API；本工作流只编排 HTTP 调用/等待/分支/错误队列，不直接写任何存储。credentials 不导出（base URL 走环境变量）。"
+  },
+  "tags": [{ "name": "xianyu" }, { "name": "W1" }, { "name": "offline-first" }]
+}
