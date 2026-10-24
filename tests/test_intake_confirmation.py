@@ -74,6 +74,14 @@ def _declaration(batch, snapshots, *, issued=None, received=None, valid_until=No
         "issued_at": issued.isoformat(),
         "received_at": received.isoformat(),
         "valid_until": valid_until.isoformat(),
+        # R21: fully-ready fixtures declare all five supply entities
+        "entities": {
+            "quote_entity": str(batch["supplier"]),
+            "promising_entity": str(batch["supplier"]),
+            "collection_entity": str(batch["supplier"]),
+            "shipping_entity": str(batch["supplier"]),
+            "returns_entity": str(batch["supplier"]),
+        },
         "offers": {s["record_id"]: _offer_terms() for s in snapshots},
     }
     fields.update(overrides)

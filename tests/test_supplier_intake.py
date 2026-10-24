@@ -50,6 +50,15 @@ class SupplierIntakeTests(unittest.TestCase):
             "issued_at": (self.now - timedelta(hours=1)).isoformat(),
             "received_at": (self.now - timedelta(minutes=30)).isoformat(),
             "valid_until": quote_expiry,
+            # R21: complete fixtures declare all five supply entities
+            # (all same as the fixture supplier by default)
+            "entities": {
+                "quote_entity": self.batch["supplier"],
+                "promising_entity": self.batch["supplier"],
+                "collection_entity": self.batch["supplier"],
+                "shipping_entity": self.batch["supplier"],
+                "returns_entity": self.batch["supplier"],
+            },
             "offers": {self.snapshot_id: {
                 "currency": "CNY", "price_unit": "pc", "quantity_unit": "pc", "freight_basis": "per_unit",
                 "freight_destination": "fixture destination only", "tax_terms": "fixture stated price includes tax",

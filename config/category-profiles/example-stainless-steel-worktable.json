@@ -1,0 +1,26 @@
+{
+  "_comment": "R21 category profile sample (类目档案样例). Profiles declare what a category's quotes MUST carry before review; the intake assessment stays generic — profiles guide the operator checklist and future per-category gates.",
+  "category": "商用厨具/不锈钢工作台",
+  "version": 1,
+  "spec_fields": {
+    "required": ["长宽高(cm)", "材质(201/304)", "层架数", "是否带轮"],
+    "unit_convention": "规格三边以厘米明示；'标准'/'加大'不可作为规格"
+  },
+  "commercial": {
+    "moq_convention": "起订量按件；阶梯价须标明每档件数",
+    "freight_expectation": "大件物流须按件计运费并声明目的地；'包邮'须确认计价数量口径",
+    "validity_expectation": "钢材价格波动类目建议报价有效期 ≤ 7 天",
+    "after_sales_expectation": "运输变形/划伤的退换责任与运费承担方必须显式"
+  },
+  "supply_entities_checklist": {
+    "quote_entity": "报价单抬头（厂家/贸易商/平台店铺）",
+    "promising_entity": "质保承诺出具方（可能与发货方不同）",
+    "collection_entity": "收款主体（对公/个人/平台担保交易）",
+    "shipping_entity": "实际发货仓库/物流方",
+    "returns_entity": "退货接收方与地址"
+  },
+  "risk_notes": [
+    "同款名不同尺寸规格是常见替换陷阱：规格必须逐字比对",
+    "201/304 材质价差大：材质声明须有证据引用"
+  ]
+}

@@ -41,6 +41,24 @@ class OfferEvidence(BaseModel):
     evidence_ref: str = Field(default="", max_length=256)
 
 
+class SupplyChainEntities(BaseModel):
+    """R21: the five entities behind one supply relationship.
+
+    Defaults are empty strings — "not declared". The assessment compares
+    each declared entity against the declared supplier and surfaces every
+    DIFFERENCE as an explicit review-required finding. Entity consistency
+    is a DECLARATION, never a verification: even all-same entities do
+    not verify stock or fulfillment quality (master plan §10).
+    """
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+
+    quote_entity: str = Field(default="", max_length=160)
+    promising_entity: str = Field(default="", max_length=160)   # 承诺/质保主体
+    collection_entity: str = Field(default="", max_length=160)  # 收款主体
+    shipping_entity: str = Field(default="", max_length=160)    # 发货主体
+    returns_entity: str = Field(default="", max_length=160)     # 退货接收方
+
+
 class IntakeDeclaration(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
 
@@ -56,6 +74,7 @@ class IntakeDeclaration(BaseModel):
     issued_at: str = Field(default="", max_length=40)
     received_at: str = Field(default="", max_length=40)
     valid_until: str = Field(default="", max_length=40)
+    entities: SupplyChainEntities = Field(default_factory=SupplyChainEntities)
     offers: Dict[str, OfferEvidence] = Field(default_factory=dict, max_length=MAX_ASSESSED_OFFERS)
 
 
@@ -159,6 +178,40 @@ def assess_supplier_intake(batch, snapshots, declaration=None, *, quote_bytes=No
     check("unexpected_evidence_rows", set(declaration.offers).issubset(expected_set),
           "Evidence must reference snapshots from this batch, not a different supplier or attempt.")
 
+    # ---- R21: supply-chain entity difference checks -----------------------
+    # Five entities behind one supply relationship. Each DECLARED entity is
+    # compared against the declared supplier; differences are surfaced as
+    # review-required findings with the difference explained in detail. All-
+    # same entities remain a DECLARATION: they do not verify stock or
+    # fulfillment quality (master plan §10).
+    entities = declaration.entities
+    entity_report = {}
+    for name in ("quote_entity", "promising_entity", "collection_entity",
+                 "shipping_entity", "returns_entity"):
+        declared_value = str(getattr(entities, name) or "").strip()
+        if not declared_value:
+            state = "undeclared"
+            detail = "Not declared; assumed to require confirmation during review."
+        elif declared_value == supplier:
+            state = "same_as_supplier"
+            detail = "Declared to be the same as the supplier (a declaration, not a verification)."
+        else:
+            state = "different_from_supplier"
+            detail = (
+                f"Declared as {declared_value!r} while the supplier is {supplier!r}; "
+                "an entity difference (e.g. a platform escrow collects payment, a "
+                "different warehouse ships) must be understood before use — "
+                "differences are review items, never silently accepted."
+            )
+        entity_report[name] = {"state": state, "declared": declared_value, "detail": detail}
+    check(
+        "supply_entities_declared",
+        all(entry["state"] != "undeclared" for entry in entity_report.values()),
+        "All five supply-chain entities (quote/promising/collection/shipping/returns) "
+        "must be explicitly declared, even when they equal the supplier.",
+        missing=any(entry["state"] == "undeclared" for entry in entity_report.values()),
+    )
+
     for snapshot in selected:
         record_id = snapshot["record_id"]
         terms = declaration.offers.get(record_id, OfferEvidence())
@@ -228,6 +281,7 @@ def assess_supplier_intake(batch, snapshots, declaration=None, *, quote_bytes=No
         "policy_version": POLICY_VERSION, "batch_id": batch_id, "assessed_at": moment.isoformat(), "status": status,
         "input_sha256": _digest(inputs), "checks": checks, "gaps": failures,
         "snapshot_count": len(selected), "original_file_sha256": actual_hash,
+        "supply_entities": entity_report,
         "source_kind_declared": declaration.source_kind, "provider_verified": False,
         "human_confirmation_required": True, "external_llm_authorized": False, "platform_action_authorized": False,
         "external_llm_permission_declared": declaration.external_llm_permitted,
