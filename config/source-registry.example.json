@@ -1,0 +1,19 @@
+{
+  "_comment": "R19 source-registry candidate sample. Sources start DISABLED; enabling is an explicit operator decision. quota_bucket links to the R08 SourceQuotaLedger.",
+  "sources": [
+    {
+      "source": "market:xianyu_channel",
+      "connector": "xianyu-market-read",
+      "quota_bucket": "market:xianyu_channel",
+      "enabled": false,
+      "notes": "read-only market observation channel (R20); requires authorized browser context"
+    },
+    {
+      "source": "supplier:file-import",
+      "connector": "supplier-file",
+      "quota_bucket": "supplier:file-import",
+      "enabled": true,
+      "notes": "offline supplier quote files (R21) — no network transport, quota bucket for accounting only"
+    }
+  ]
+}
